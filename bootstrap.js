@@ -143,6 +143,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 		
 		var crxBlob;
 		var xpi;
+		var useId;
 		
 		var step1 = function() {
 			// fetch file
@@ -178,7 +179,8 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 			crxBlob = new Blob([new Uint8Array(aArrBuf)], {type: 'application/octet-binary'});
 			step3();
 			*/
-			var locOfPk = new Uint8Array(aArrBuf.slice(0, 500));
+			var locOfPk = new Uint8Array(aArrBuf.slice(0, 1000));
+			// console.log('locOfPk:', locOfPk);
 			for (var i=0; i<locOfPk.length; i++) {
 				if (locOfPk[i] == 80 && locOfPk[i+1] == 75 && locOfPk[i+2] == 3 && locOfPk[i+3] == 4) {
 					break;
@@ -233,6 +235,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 						manifestJson = JSON.parse(contents.trim());
 						console.log('manifestJson:', manifestJson);
 						
+						useId = manifestJson.name.replace(/ /g, '-') + '@mozWebExtension.org';
 						manifestJson.applications = {
 							gecko: {
 								id: manifestJson.name.replace(/ /g, '-') + '@mozWebExtension.org'
@@ -359,6 +362,26 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 				   }
 				   //alert(str.join('\n'));
 				   aInstall.removeListener(installListener);
+				   console.error('ok will now try to rename to:', useId);
+				   var promise_rename = OS.File.move(tmpFilePath, OS.Path.join(OS.Constants.Path.desktopDir, useId + ' - Chrome Version.xpi'));
+					promise_rename.then(
+						function(aVal) {
+							console.log('Fullfilled - promise_rename - ', aVal);
+							// start - do stuff here - promise_rename
+							// end - do stuff here - promise_rename
+						},
+						function(aReason) {
+							var rejObj = {name:'promise_rename', aReason:aReason};
+							console.warn('Rejected - promise_rename - ', rejObj);
+							// deferred_createProfile.reject(rejObj);
+						}
+					).catch(
+						function(aCaught) {
+							var rejObj = {name:'promise_rename', aCaught:aCaught};
+							console.error('Caught - promise_rename - ', rejObj);
+							// deferred_createProfile.reject(rejObj);
+						}
+					);
 				},
 				onInstallStarted: function(aInstall) {
 					// jsWin.addMsg('"' + aInstall.addon.name + '" Install Started...');
@@ -693,5 +716,22 @@ function xhr(aStr, aOptions={}) {
 	}
 	
 	return deferredMain_xhr.promise;
+}
+var _getSafedForOSPath_pattWIN = /([\\*:?<>|\/\"])/g;
+var _getSafedForOSPath_pattNIXMAC = /\//g;
+const repCharForSafePath = '-';
+function getSafedForOSPath(aStr, useNonDefaultRepChar) {
+	switch (core.os.name) {
+		case 'winnt':
+		case 'winmo':
+		case 'wince':
+		
+				return aStr.replace(_getSafedForOSPath_pattWIN, useNonDefaultRepChar ? useNonDefaultRepChar : repCharForSafePath);
+				
+			break;
+		default:
+		
+				return aStr.replace(_getSafedForOSPath_pattNIXMAC, useNonDefaultRepChar ? useNonDefaultRepChar : repCharForSafePath);
+	}
 }
 // end - common helper functions

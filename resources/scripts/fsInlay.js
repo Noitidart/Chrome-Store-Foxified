@@ -33,7 +33,7 @@ function doPageUnloaders() {
 function actOnExt(aExtId, aEvent) {
 	aEvent.stopPropagation();
 	aEvent.preventDefault();
-	content.alert('ok will do my stuff');
+	content.alert(L10N.starting);
 	sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['actOnExt', aExtId], bootstrapMsgListener.funcScope, function(aStatus, aStatusInfo) {
 		if (aStatus == 'promise_rejected') {
 			content.alert('Failed to download and install extension, please report to addon author. Here is the error, see browser console for more readable version:\n\n' + JSON.stringify(aStatusInfo));
@@ -48,6 +48,12 @@ function actOnExt(aExtId, aEvent) {
 	});
 }
 
+function prevDefault(aEvent) {
+	aEvent.stopPropagation();
+	aEvent.preventDefault();
+}
+
+var firstNonFind = true;
 function domInsert(aContentWindow) {
 	var aContentDocument = aContentWindow.document;
 	
@@ -58,10 +64,19 @@ function domInsert(aContentWindow) {
 	}, false);
 	*/
 	
-	var domEl_downloadGoogleChrome = aContentDocument.querySelector('a[href*="www.google.com/chrome?brand=GGRF"]');
+	var domEl_downloadGoogleChrome = aContentDocument.querySelector('a[href*="www.google.com/chrome"]');
 	if (!domEl_downloadGoogleChrome) {
-		console.error('warning, could not find download gchrome link!');
-		throw new Error('warning, could not find download gchrome link!');
+		if (firstNonFind) {
+			firstNonFind = false;
+			content.setTimeout(function() {
+				domInsert(aContentWindow);
+			}, 300);
+			return;
+		} else {
+			firstNonFind = true;
+			console.error('warning, could not find download gchrome link!');
+			throw new Error('warning, could not find download gchrome link!');
+		}
 	}
 	// find the mainDiv, which will be the position fixed div
 	var domEl_downloadGoogleChromeMainDiv = domEl_downloadGoogleChrome.parentNode;
@@ -76,7 +91,6 @@ function domInsert(aContentWindow) {
 	}
 	
 	if (aContentWindow.getComputedStyle(domEl_downloadGoogleChromeMainDiv).position != 'fixed') {
-		console.error('warning, could not find download gchrome link main container!');
 		throw new Error('warning, could not find download gchrome link main container!');
 	}
 	
@@ -117,10 +131,12 @@ function domInsert(aContentWindow) {
 		domEl_installBtnBg.style.backgroundColor = 'rgb(124, 191, 54)';
 		domEl_installBtnBg.style.backgroundImage = 'linear-gradient(to bottom, rgb(101, 173, 40), rgb(124, 191, 54))';
 		domEl_installBtnBg.style.borderColor = 'rgb(78, 155, 25)';
+		domEl_installBtnBg.addEventListener('click', domEl_installBtnBg, false);
 		PAGE_UNLOADERS.push(function() {
 			domEl_installBtnBg.style.backgroundColor = '';
 			domEl_installBtnBg.style.backgroundImage = '';
 			domEl_installBtnBg.style.borderColor = '';
+			domEl_installBtnBg.removeEventListener('click', domEl_installBtnBg, false);
 		});
 		
 		var domEl_installBtnSiblingBg = domEl_installBtnBg.nextSibling;
