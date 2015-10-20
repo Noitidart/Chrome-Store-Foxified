@@ -137,14 +137,14 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 		console.log('in actOnExt server side, aExtId:', aExtId);
 		var deferredMain_actOnExt = new Deferred();
 		
-		var tmpFileName = 'foxify_this-1445325364638'; //'foxify_this-' + new Date().getTime();
-		var tmpFilePath = OS.Path.join(OS.Constants.Path.tmpDir, tmpFileName + '.xpi');
-		var tmpFilePath = OS.Path.join(OS.Constants.Path.desktopDir, tmpFileName + '.tmp'); // :debug:
+		var tmpFileName = 'foxify_this-' + new Date().getTime();
+		var tmpFilePath = OS.Path.join(OS.Constants.Path.desktopDir, tmpFileName + '.xpi');
 		
 		var crxBlob;
 		
 		var step1 = function() {
 			// fetch file
+			
 			var promise_xhr = xhr('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc', {
 				aResponseType: 'arraybuffer'
 			});
@@ -171,11 +171,19 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 		
 		var step2 = function(aArrBuf) {
 			// write to disk
-			/*
+			// figure out how much to strip from crx
+						/*
 			crxBlob = new Blob([new Uint8Array(aArrBuf)], {type: 'application/octet-binary'});
 			step3();
 			*/
-			var promise_write = OS.File.writeAtomic(tmpFilePath, new Uint8Array(aArrBuf), {
+			var locOfPk = new Uint8Array(aArrBuf.slice(0, 500));
+			for (var i=0; i<locOfPk.length; i++) {
+				if (locOfPk[i] == 80 && locOfPk[i+1] == 75 && locOfPk[i+2] == 3 && locOfPk[i+3] == 4) {
+					break;
+				}
+			}
+			console.log('pk found at:', i);
+			var promise_write = OS.File.writeAtomic(tmpFilePath, new Uint8Array(aArrBuf.slice(i)), {
 				tmpPath: tmpFilePath + '.tmp'
 			});
 			promise_write.then(
@@ -204,7 +212,9 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 			
 			
 			var ZipFileReader = CC('@mozilla.org/libjar/zip-reader;1', 'nsIZipReader', 'open');
+			var ZipFileWriter = CC('@mozilla.org/zipwriter;1', 'nsIZipWriter', 'open');
 			var ScriptableInputStream = CC('@mozilla.org/scriptableinputstream;1', 'nsIScriptableInputStream', 'init');
+			var manifestJson;
 			
 			var handleEntry = function(name) {
 				try {
@@ -218,6 +228,14 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 						// Use readBytes to get binary data, read to read a (null-terminated) string
 						var contents = stream.readBytes(entry.realSize);
 						console.log('Contents of ' + name, contents);
+						manifestJson = JSON.parse(contents.trim());
+						console.log('manifestJson:', manifestJson);
+						
+						manifestJson.applications = {
+							gecko: {
+								id: manifestJson.name.replace(/ /g, '-') + '@mozWebExtension.org'
+							}
+						};
 					} finally {
 						stream.close();
 					}
@@ -234,14 +252,31 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 				var entries = reader.findEntries('*');
 				while (entries.hasMore()) {
 					var name = entries.getNext();
-					if (handleEntry.call(reader, name)) {
-						console.log('Handled entry ' + name);
+					if (name == 'manifest.json') {
+						if (handleEntry.call(reader, name)) {
+							console.log('Handled entry ' + name);
+							break;
+						}
 					}
 				}
 			} finally {
 				reader.close();
 			}
 
+			
+			console.log('will now write, name:', name);
+			var writer = new ZipFileWriter(xpi, 0x04);
+			try {
+				writer.removeEntry(name, false);
+				var is = Cc["@mozilla.org/io/string-input-stream;1"].createInstance(Ci.nsIStringInputStream);
+				is.data = JSON.stringify(manifestJson);
+				writer.addEntryStream(name, Date.now(), Ci.nsIZipWriter.COMPRESSION_FASTEST, is, false);
+			} catch (ex) {
+				console.warn('ex:', ex);
+			} finally {
+				writer.close();
+			}
+			
 			deferredMain_actOnExt.resolve(['temp resolve', 'this is message saying temp resolve']);
 			
 			/*
