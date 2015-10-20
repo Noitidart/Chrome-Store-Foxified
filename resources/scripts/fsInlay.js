@@ -30,6 +30,24 @@ function doPageUnloaders() {
 	}
 }
 
+function actOnExt(aExtId, aEvent) {
+	aEvent.stopPropagation();
+	aEvent.preventDefault();
+	content.alert('ok will do my stuff');
+	sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['actOnExt', aExtId], bootstrapMsgListener.funcScope, function(aStatus, aStatusInfo) {
+		if (aStatus == 'promise_rejected') {
+			content.alert('Failed to download and install extension, please report to addon author. Here is the error, see browser console for more readable version:\n\n' + JSON.stringify(aStatusInfo));
+			console.error(aStatusInfo);
+			throw new Error(aStatusInfo);
+		} else {
+			content.alert('Succesfully downloaded and installed extension!');
+			if (aStatusInfo) {
+				content.alert('Success message was:\n\n' + aStatusInfo);
+			}
+		}
+	});
+}
+
 function domInsert(aContentWindow) {
 	var aContentDocument = aContentWindow.document;
 	
@@ -89,11 +107,7 @@ function domInsert(aContentWindow) {
 		});
 		domEl_installBtn.textContent = L10N.add_to_firefox;
 		
-		var clickedInstallBtn = function(aEvent) {
-			aEvent.stopPropagation();
-			aEvent.preventDefault();
-			content.alert('ok will do my stuff');
-		};
+		var clickedInstallBtn = actOnExt.bind(null, extId);
 		domEl_installBtn.addEventListener('click', clickedInstallBtn, false);
 		PAGE_UNLOADERS.push(function() {
 			domEl_installBtn.removeEventListener('click', clickedInstallBtn, false);

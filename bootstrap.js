@@ -1,9 +1,11 @@
 // Imports
 const {classes: Cc, interfaces: Ci, manager: Cm, results: Cr, utils: Cu, Constructor: CC} = Components;
-Cm.QueryInterface(Ci.nsIComponentRegistrar);
+
+Cu.import('resource://gre/modules/FileUtils.jsm');
 const {TextDecoder, TextEncoder, OS} = Cu.import('resource://gre/modules/osfile.jsm', {});
 Cu.import('resource://gre/modules/Services.jsm');
 Cu.import('resource://gre/modules/XPCOMUtils.jsm');
+Cu.importGlobalProperties(['Blob']);
 
 // Globals
 const core = {
@@ -17,6 +19,8 @@ const core = {
 			locale: 'chrome://foxified-chrome-extensions-and-store/locale/',
 			resources: 'chrome://foxified-chrome-extensions-and-store/content/resources/',
 			scripts: 'chrome://foxified-chrome-extensions-and-store/content/resources/scripts/',
+			modules: 'chrome://foxified-chrome-extensions-and-store/content/modules/',
+			workers: 'chrome://foxified-chrome-extensions-and-store/content/modules/workers/',
 		},
 		cache_key: Math.random() // set to version on release
 	},
@@ -58,6 +62,24 @@ function startup(aData, aReason) {
 	var aTimer = Cc['@mozilla.org/timer;1'].createInstance(Ci.nsITimer);
 	aTimer.initWithCallback({
 		notify: function() {
+			/*
+			var nsIFile_workers = aData.installPath;
+			nsIFile_workers.append('modules');
+			nsIFile_workers.append('workers');
+			var osPath_workers = OS.Path.join(nsIFile_workers.path, '');
+			var filePath_workers = OS.Path.toFileURI(osPath_workers);
+			var jarPath_workers = 'jar:' + filePath_workers.replace(aData.id + '.xpi', aData.id + '.xpi!');
+			
+			console.log('osPath_workers:', osPath_workers);
+			console.log('filePath_workers:', filePath_workers);
+			console.log('jarPath_workers:', jarPath_workers);
+			
+			console.log(core.addon.path.modules + 'zip.js');
+			
+			myServices.zip = Cu.import(core.addon.path.modules + 'zip.js').zip;
+			// myServices.zip.workerScriptsPath = jarPath_workers + '/';
+			myServices.zip.workerScriptsPath = core.addon.path.workers;
+			*/
 			console.error('ok starting up adding');
 			// register framescript listener
 			Services.mm.addMessageListener(core.addon.id, fsMsgListener);
@@ -80,6 +102,8 @@ function shutdown(aData, aReason) {
 	
 	// unregister framescript listener
 	Services.mm.removeMessageListener(core.addon.id, fsMsgListener);
+	
+	Cu.unload(core.addon.path.modules + 'zip.js');
 }
 
 // start - server/framescript comm layer
@@ -108,6 +132,160 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 			aCore: core,
 			aL10n: l10n
 		}];
+	},
+	actOnExt: function(aExtId) {
+		console.log('in actOnExt server side, aExtId:', aExtId);
+		var deferredMain_actOnExt = new Deferred();
+		
+		var tmpFileName = 'foxify_this-1445325364638'; //'foxify_this-' + new Date().getTime();
+		var tmpFilePath = OS.Path.join(OS.Constants.Path.tmpDir, tmpFileName + '.xpi');
+		var tmpFilePath = OS.Path.join(OS.Constants.Path.desktopDir, tmpFileName + '.tmp'); // :debug:
+		
+		var crxBlob;
+		
+		var step1 = function() {
+			// fetch file
+			var promise_xhr = xhr('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc', {
+				aResponseType: 'arraybuffer'
+			});
+			promise_xhr.then(
+				function(aVal) {
+					console.log('Fullfilled - promise_xhr - ', aVal);
+					// start - do stuff here - promise_xhr
+					step2(aVal.response);
+					// end - do stuff here - promise_xhr
+				},
+				function(aReason) {
+					var rejObj = {name:'promise_xhr', aReason:aReason};
+					console.warn('Rejected - promise_xhr - ', rejObj);
+					deferredMain_actOnExt.reject(rejObj);
+				}
+			).catch(
+				function(aCaught) {
+					var rejObj = {name:'promise_xhr', aCaught:aCaught};
+					console.error('Caught - promise_xhr - ', rejObj);
+					deferredMain_actOnExt.reject(rejObj);
+				}
+			);
+		};
+		
+		var step2 = function(aArrBuf) {
+			// write to disk
+			/*
+			crxBlob = new Blob([new Uint8Array(aArrBuf)], {type: 'application/octet-binary'});
+			step3();
+			*/
+			var promise_write = OS.File.writeAtomic(tmpFilePath, new Uint8Array(aArrBuf), {
+				tmpPath: tmpFilePath + '.tmp'
+			});
+			promise_write.then(
+				function(aVal) {
+					console.log('Fullfilled - promise_write - ', aVal);
+					// start - do stuff here - promise_write
+					step3();
+					// end - do stuff here - promise_write
+				},
+				function(aReason) {
+					var rejObj = {name:'promise_write', aReason:aReason};
+					console.warn('Rejected - promise_write - ', rejObj);
+					deferredMain_actOnExt.reject(rejObj);
+				}
+			).catch(
+				function(aCaught) {
+					var rejObj = {name:'promise_write', aCaught:aCaught};
+					console.error('Caught - promise_write - ', rejObj);
+					deferredMain_actOnExt.reject(rejObj);
+				}
+			);
+		};
+		
+		var step3 = function() {
+			// modify the manifest.json
+			
+			
+			var ZipFileReader = CC('@mozilla.org/libjar/zip-reader;1', 'nsIZipReader', 'open');
+			var ScriptableInputStream = CC('@mozilla.org/scriptableinputstream;1', 'nsIScriptableInputStream', 'init');
+			
+			var handleEntry = function(name) {
+				try {
+					var entry = this.getEntry(name);
+					if (entry.isDirectory) {
+						console.log(name + ' is directory, no stream to read');
+						return false;
+					}
+					var stream = new ScriptableInputStream(this.getInputStream(name));
+					try {
+						// Use readBytes to get binary data, read to read a (null-terminated) string
+						var contents = stream.readBytes(entry.realSize);
+						console.log('Contents of ' + name, contents);
+					} finally {
+						stream.close();
+					}
+					return true;
+				} catch (ex) {
+					console.warn('Failed to read ' + name);
+				}
+				return false;
+			};
+
+			var xpi = new FileUtils.File(tmpFilePath);
+			var reader = new ZipFileReader(xpi);
+			try {
+				var entries = reader.findEntries('*');
+				while (entries.hasMore()) {
+					var name = entries.getNext();
+					if (handleEntry.call(reader, name)) {
+						console.log('Handled entry ' + name);
+					}
+				}
+			} finally {
+				reader.close();
+			}
+
+			deferredMain_actOnExt.resolve(['temp resolve', 'this is message saying temp resolve']);
+			
+			/*
+			myServices.zip.createReader(
+				new myServices.zip.BlobReader(crxBlob),
+				function(reader) {
+
+					// get all entries from the zip
+					reader.getEntries(
+						function(entries) {
+							if (entries.length) {
+								// get first entry content as text
+								entries[0].getData(
+									new myServices.zip.TextWriter(),
+									function(text) {
+										// text contains the entry data as a String
+										console.log(text);
+
+										// close the zip reader
+										reader.close(function() {
+											console.info('onclose callback');
+										});
+
+									},
+									function(current, total) {
+										console.info('onprogress callback', current, total);
+									}
+								);
+							} else {
+								console.error('no entries!');
+							}
+						}
+					);
+				},
+				function(error) {
+					console.error('onerror callback, error:', error);
+				}
+			);
+			*/
+		};
+		
+		step1();
+		
+		return deferredMain_actOnExt.promise;
 	}
 };
 var fsMsgListener = {
@@ -161,45 +339,35 @@ var fsMsgListener = {
 
 // start - common helper functions
 function Deferred() {
-	if (Promise && Promise.defer) {
-		//need import of Promise.jsm for example: Cu.import('resource:/gree/modules/Promise.jsm');
-		return Promise.defer();
-	} else if (PromiseUtils && PromiseUtils.defer) {
-		//need import of PromiseUtils.jsm for example: Cu.import('resource:/gree/modules/PromiseUtils.jsm');
-		return PromiseUtils.defer();
-	} else if (Promise) {
-		try {
-			/* A method to resolve the associated Promise with the value passed.
-			 * If the promise is already settled it does nothing.
-			 *
-			 * @param {anything} value : This value is used to resolve the promise
-			 * If the value is a Promise then the associated promise assumes the state
-			 * of Promise passed as value.
-			 */
-			this.resolve = null;
+	try {
+		/* A method to resolve the associated Promise with the value passed.
+		 * If the promise is already settled it does nothing.
+		 *
+		 * @param {anything} value : This value is used to resolve the promise
+		 * If the value is a Promise then the associated promise assumes the state
+		 * of Promise passed as value.
+		 */
+		this.resolve = null;
 
-			/* A method to reject the assocaited Promise with the value passed.
-			 * If the promise is already settled it does nothing.
-			 *
-			 * @param {anything} reason: The reason for the rejection of the Promise.
-			 * Generally its an Error object. If however a Promise is passed, then the Promise
-			 * itself will be the reason for rejection no matter the state of the Promise.
-			 */
-			this.reject = null;
+		/* A method to reject the assocaited Promise with the value passed.
+		 * If the promise is already settled it does nothing.
+		 *
+		 * @param {anything} reason: The reason for the rejection of the Promise.
+		 * Generally its an Error object. If however a Promise is passed, then the Promise
+		 * itself will be the reason for rejection no matter the state of the Promise.
+		 */
+		this.reject = null;
 
-			/* A newly created Pomise object.
-			 * Initially in pending state.
-			 */
-			this.promise = new Promise(function(resolve, reject) {
-				this.resolve = resolve;
-				this.reject = reject;
-			}.bind(this));
-			Object.freeze(this);
-		} catch (ex) {
-			console.error('Promise not available!', ex);
-			throw new Error('Promise not available!');
-		}
-	} else {
+		/* A newly created Pomise object.
+		 * Initially in pending state.
+		 */
+		this.promise = new Promise(function(resolve, reject) {
+			this.resolve = resolve;
+			this.reject = reject;
+		}.bind(this));
+		Object.freeze(this);
+	} catch (ex) {
+		console.error('Promise not available!', ex);
 		throw new Error('Promise not available!');
 	}
 }
@@ -283,5 +451,157 @@ function extendCore() {
 	}
 	
 
+}
+function xhr(aStr, aOptions={}) {
+	// update 092315 - added support for aMethod when posting data, so like we can use PUT and still post data
+	// update 092315 - also am now testing if aOptions.aPostData is a key value pair by testing aOptions.aPostData.consturctor.name == 'Object'. if its Object then i assume its key  value pair, else its a blob or something so i just do xhr.send with it
+	// update 072615 - added support for aOptions.aMethod
+	// currently only setup to support GET and POST
+	// does an async request
+	// aStr is either a string of a FileURI such as `OS.Path.toFileURI(OS.Path.join(OS.Constants.Path.desktopDir, 'test.png'));` or a URL such as `http://github.com/wet-boew/wet-boew/archive/master.zip`
+	// Returns a promise
+		// resolves with xhr object
+		// rejects with object holding property "xhr" which holds the xhr object
+	
+	/*** aOptions
+	{
+		aLoadFlags: flags, // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/NsIRequest#Constants
+		aTiemout: integer (ms)
+		isBackgroundReq: boolean, // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest#Non-standard_properties
+		aResponseType: string, // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest#Browser_Compatibility
+		aPostData: string
+	}
+	*/
+	
+	var aOptions_DEFAULT = {
+		aLoadFlags: Ci.nsIRequest.LOAD_ANONYMOUS | Ci.nsIRequest.LOAD_BYPASS_CACHE | Ci.nsIRequest.INHIBIT_PERSISTENT_CACHING,
+		aPostData: null,
+		aResponseType: 'text',
+		isBackgroundReq: true, // If true, no load group is associated with the request, and security dialogs are prevented from being shown to the user
+		aTimeout: 0, // 0 means never timeout, value is in milliseconds
+		Headers: null
+	}
+	
+	for (var opt in aOptions_DEFAULT) {
+		if (!(opt in aOptions)) {
+			aOptions[opt] = aOptions_DEFAULT[opt];
+		}
+	}
+	
+	// Note: When using XMLHttpRequest to access a file:// URL the request.status is not properly set to 200 to indicate success. In such cases, request.readyState == 4, request.status == 0 and request.response will evaluate to true.
+	
+	var deferredMain_xhr = new Deferred();
+	console.log('here222');
+	var xhr = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance(Ci.nsIXMLHttpRequest);
+
+	var handler = ev => {
+		evf(m => xhr.removeEventListener(m, handler, !1));
+
+		switch (ev.type) {
+			case 'load':
+			
+					if (xhr.readyState == 4) {
+						if (xhr.status == 200) {
+							deferredMain_xhr.resolve(xhr);
+						} else {
+							var rejObj = {
+								name: 'deferredMain_xhr.promise',
+								aReason: 'Load Not Success', // loaded but status is not success status
+								xhr: xhr,
+								message: xhr.statusText + ' [' + ev.type + ':' + xhr.status + ']'
+							};
+							deferredMain_xhr.reject(rejObj);
+						}
+					} else if (xhr.readyState == 0) {
+						var uritest = Services.io.newURI(aStr, null, null);
+						if (uritest.schemeIs('file')) {
+							deferredMain_xhr.resolve(xhr);
+						} else {
+							var rejObj = {
+								name: 'deferredMain_xhr.promise',
+								aReason: 'Load Failed', // didnt even load
+								xhr: xhr,
+								message: xhr.statusText + ' [' + ev.type + ':' + xhr.status + ']'
+							};
+							deferredMain_xhr.reject(rejObj);
+						}
+					}
+					
+				break;
+			case 'abort':
+			case 'error':
+			case 'timeout':
+				
+					var rejObj = {
+						name: 'deferredMain_xhr.promise',
+						aReason: ev.type[0].toUpperCase() + ev.type.substr(1),
+						xhr: xhr,
+						message: xhr.statusText + ' [' + ev.type + ':' + xhr.status + ']'
+					};
+					deferredMain_xhr.reject(rejObj);
+				
+				break;
+			default:
+				var rejObj = {
+					name: 'deferredMain_xhr.promise',
+					aReason: 'Unknown',
+					xhr: xhr,
+					message: xhr.statusText + ' [' + ev.type + ':' + xhr.status + ']'
+				};
+				deferredMain_xhr.reject(rejObj);
+		}
+	};
+
+	var evf = f => ['load', 'error', 'abort'].forEach(f);
+	evf(m => xhr.addEventListener(m, handler, false));
+
+	if (aOptions.isBackgroundReq) {
+		xhr.mozBackgroundRequest = true;
+	}
+	
+	if (aOptions.aTimeout) {
+		xhr.timeout
+	}
+	
+	var do_setHeaders = function() {
+		if (aOptions.Headers) {
+			for (var h in aOptions.Headers) {
+				xhr.setRequestHeader(h, aOptions.Headers[h]);
+			}
+		}
+	};
+	
+	if (aOptions.aPostData) {
+		xhr.open(aOptions.aMethod ? aOptions.aMethod : 'POST', aStr, true);
+		do_setHeaders();
+		xhr.channel.loadFlags |= aOptions.aLoadFlags;
+		xhr.responseType = aOptions.aResponseType;
+		
+		/*
+		var aFormData = Cc['@mozilla.org/files/formdata;1'].createInstance(Ci.nsIDOMFormData);
+		for (var pd in aOptions.aPostData) {
+			aFormData.append(pd, aOptions.aPostData[pd]);
+		}
+		xhr.send(aFormData);
+		*/
+		if (aOptions.aPostData.constructor.name == 'Object') {
+			var aPostStr = [];
+			for (var pd in aOptions.aPostData) {
+				aPostStr.push(pd + '=' + encodeURIComponent(aOptions.aPostData[pd])); // :todo: figure out if should encodeURIComponent `pd` also figure out if encodeURIComponent is the right way to do this
+			}
+			console.info('aPostStr:', aPostStr.join('&'));
+			xhr.send(aPostStr.join('&'));
+		} else {
+			xhr.send(aOptions.aPostData);
+		}
+	} else {
+		xhr.open(aOptions.aMethod ? aOptions.aMethod : 'GET', aStr, true);
+		do_setHeaders();
+		xhr.channel.loadFlags |= aOptions.aLoadFlags;
+		xhr.responseType = aOptions.aResponseType;
+		xhr.send(null);
+	}
+	
+	return deferredMain_xhr.promise;
 }
 // end - common helper functions
