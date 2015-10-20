@@ -12,18 +12,127 @@ var core = {
 		cache_key: Math.random() // set to version on release
 	}
 };
-var l10n = {};
+
 const NS_HTML = 'http://www.w3.org/1999/xhtml';
 const CHROMESTORE_HOSTNAME = 'chrome.google.com';
-var SANDBOXES = {};
-var last_sandbox_id = -1;
+
+var L10N = {};
+var FS_UNLOADERS = [];
+var PAGE_UNLOADERS = [];
 
 // start - addon functionalities
+var myWebProgressListener = {
+	init: function() {
+		var webProgress = docShell.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebProgress);
+		webProgress.addProgressListener(this, Ci.nsIWebProgress.NOTIFY_STATE_ALL);
+	},
+	uninit: function() {
+		if (!docShell) {
+			return;
+		}
+		var webProgress = docShell.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebProgress);
+		webProgress.removeProgressListener(this);
+	},
+
+	onStateChange: function(webProgress, aRequest, flags, status) {
+		// figure out the flags
+		var flagStrs = [];
+		for (var f in Ci.nsIWebProgressListener) {
+			if (!/a-z/.test(f)) { // if it has any lower case letters its not a flag
+				if (flags & Ci.nsIWebProgressListener[f]) {
+					flagStrs.push(f);
+				}
+			}
+		}
+		
+		if (aRequest && flags & Ci.nsIWebProgressListener.STATE_STOP) {
+			var contentWindow = getContentWindowFromNsiRequest(aRequest);
+			var contentWindow = getContentWindowFromNsiRequest(aRequest);
+			if (contentWindow) {
+				console.log('onStateChange', 'URI.spec:', aRequest.QueryInterface(Ci.nsIChannel).URI.spec, 'contentWindow:', contentWindow, 'contentWindow.hostname', contentWindow.location.hostname, 'flagStrs:', flagStrs);
+			} else {
+				try {
+					console.warn('onStateChange', 'URI.spec:', aRequest.QueryInterface(Ci.nsIChannel).URI.spec, 'flagStrs:', flagStrs);
+				} catch (ex) {
+					// console.error('onStateChange', flagStrs);
+				}
+			}
+			// aRequest.cancel(Cr.NS_BINDING_ABORTED);
+		} else {
+			
+		}
+		// var data = {
+		// 	requestURL: request.QueryInterface(Ci.nsIChannel).URI.spec,
+		// 	windowId: webProgress.DOMWindowID,
+		// 	parentWindowId: getParentWindowId(webProgress.DOMWindow),
+		// 	status,
+		// 	stateFlags,
+		// };
+
+		// if (webProgress.DOMWindow.top != webProgress.DOMWindow) {
+		// 	// this is a frame element
+		// 	var webNav = webProgress.QueryInterface(Ci.nsIWebNavigation);
+		// 	if (!webNav.canGoBack) {
+		// 		// For some reason we don't fire onLocationChange for the
+		// 		// initial navigation of a sub-frame. So we need to simulate
+		// 		// it here.
+		// 	}
+		// }
+	},
+	onLocationChange: function(webProgress, aRequest, locationURI, flags) {
+		// figure out the flags
+		var flagStrs = [];
+		for (var f in Ci.nsIWebProgressListener) {
+			if (!/a-z/.test(f)) { // if it has any lower case letters its not a flag
+				if (flags & Ci.nsIWebProgressListener[f]) {
+					flagStrs.push(f);
+				}
+			}
+		}
+		
+		if (aRequest && flags & Ci.nsIWebProgressListener.STATE_STOP) {
+			var contentWindow = getContentWindowFromNsiRequest(aRequest);
+			if (contentWindow) {
+				// console.log('onLocationChange', 'URI.spec:', aRequest.QueryInterface(Ci.nsIChannel).URI.spec, 'contentWindow:', contentWindow, 'flagStrs:', flagStrs);
+			}
+			// aRequest.cancel(Cr.NS_BINDING_ABORTED);
+		}
+		// var data = {
+		// 	location: locationURI ? locationURI.spec : '',
+		// 	windowId: webProgress.DOMWindowID,
+		// 	parentWindowId: getParentWindowId(webProgress.DOMWindow),
+		// 	flags,
+		// };
+	},
+	QueryInterface: function QueryInterface(aIID) {
+		if (aIID.equals(Ci.nsIWebProgressListener) || aIID.equals(Ci.nsISupportsWeakReference) || aIID.equals(Ci.nsISupports)) {
+			return this;
+		}
+
+		throw Cr.NS_ERROR_NO_INTERFACE;
+	}
+};
+
+function doPageUnloaders() {
+	console.error('kicking of page unloaders');
+	for (var i=0; i<PAGE_UNLOADERS.length; i++) {
+		PAGE_UNLOADERS[i]();
+		PAGE_UNLOADERS.splice(i, 1);
+		i--;
+	}
+}
 
 function domInsertOnReady(aContentWindow) {
 	var aContentDocument = aContentWindow.document;
 	
+	myWebProgressListener.init();
 	
+	aContentWindow.addEventListener('beforeunload', function() {
+		// aContentWindow.removeEventListener('unload', arguments.callee, false); // probably dont need this as on unload content whatever listeners it had are dead
+		doPageUnloaders();
+	}, false);
+	
+	PAGE_UNLOADERS.push(myWebProgressListener.uninit);
 }
 
 function doOnReady(aContentWindow) {
@@ -58,96 +167,7 @@ function doOnReady(aContentWindow) {
 	}
 }
 
-function onFullLoad(aSbId, aEvent) {
-	var aContentWindow = aEvent.target.defaultView;
-	if (aContentWindow == SANDBOXES[aSbId].contentWindowWeak.get()) {
-		console.error('OK aContentWindow::LOAD triggered and its a match');
-		SANDBOXES[aSbId].unloaders.unFullLoader();
-		injectContentScript(aSbId, aContentWindow);
-	} else {
-		console.error('aContentWindow::LOAD triggered but the cContentWindow does not equal SANDBOX[aSbId].contentWindow');
-		return;
-	}
-}
 
-function ensureLoaded(aContentWindow) {
-	// only attached to twitter pages once idented as twitter
-	// need to ensure loaded because jquery is needed by the content script
-	
-	console.log('in ensureLoaded');
-	
-	last_sandbox_id++;
-	var cSbId = last_sandbox_id;
-	
-	SANDBOXES[cSbId] = {
-		unloaders: {}
-	};
-	SANDBOXES[cSbId].contentWindowWeak = Cu.getWeakReference(aContentWindow);
-	
-	var aContentDocument = aContentWindow.document;
-	
-	console.log('in ensureLoaded STEP 2');
-	
-	if (aContentDocument.readyState == 'complete') {
-		console.log('ok twitter was ALREADY fully loaded, so lets inject content script');
-		injectContentScript(cSbId, aContentWindow);
-	} else {
-		console.log('twitter not yet FULLY LOADEd so attaching listener to listen for full load');
-		var fullLoader = onFullLoad.bind(null, cSbId);
-		SANDBOXES[cSbId].unloaders.unFullLoader = function() {
-			delete SANDBOXES[cSbId].unloaders.unFullLoader;
-			aContentWindow.removeEventListener('load', fullLoader, true);
-		};
-		aContentWindow.addEventListener('load', fullLoader, true); // need to wait for load, as need to wait for jquery $ to come in // need to use true otherwise load doesnt trigger
-	}
-}
-
-function injectContentScript(aSbId, aContentWindow) {
-	
-	console.log('executing injectContentScript');
-	
-	var aContentDocument = aContentWindow.document;
-	
-	var options = {
-		sandboxPrototype: aContentWindow,
-		wantXrays: false
-	};
-	var principal = docShell.chromeEventHandler.contentPrincipal; // aContentWindow.location.origin;
-
-	
-	SANDBOXES[aSbId].sb = Cu.Sandbox(principal, options);
-	SANDBOXES[aSbId].unloaders.unSandbox = function() {
-
-		delete SANDBOXES[aSbId].unloaders.unSandbox;
-		
-		console.log('nuked sandbox with id:', aSbId);
-		
-		Cu.nukeSandbox(SANDBOXES[aSbId].sb);
-		
-		
-		for (var p in SANDBOXES[aSbId].unloaders) {
-			SANDBOXES[aSbId].unloaders[p]();
-		}
-		
-		delete SANDBOXES[aSbId];
-	};
-	
-	var onBeforeUnload = function() {
-		console.log('triggered onBeforeUnload for id:', aSbId);
-		SANDBOXES[aSbId].unloaders.unOnBeforeUnload(); // i dont have to do this, as unSandbox runs all the unloaders, but i just do it for consistency so if i revisit this code in future i dont get confused
-		SANDBOXES[aSbId].unloaders.unSandbox();
-	};
-	
-	SANDBOXES[aSbId].unloaders.unOnBeforeUnload = function() {
-		delete SANDBOXES[aSbId].unloaders.unOnBeforeUnload;
-		aContentWindow.removeEventListener('beforeunload', onBeforeUnload, false);
-	};
-	
-	aContentWindow.addEventListener('beforeunload', onBeforeUnload, false);
-	
-	console.log('will now load jquery crap');
-	Services.scriptloader.loadSubScript(core.addon.path.scripts + 'csInlay.js?' + core.addon.cache_key, SANDBOXES[aSbId].sb, 'UTF-8');
-}
 // end - addon functionalities
 
 // start - server/framescript comm layer
@@ -155,32 +175,15 @@ function injectContentScript(aSbId, aContentWindow) {
 var bootstrapCallbacks = { // can use whatever, but by default it uses this
 	// put functions you want called by bootstrap/server here
 	destroySelf: function() {
-		removeEventListener('unload', fsUnloaded, false);
-		removeEventListener('DOMContentLoaded', onPageReady, false);
-		console.log('content.location.hostname:', content.location.hostname);
-		for (var aSbId in SANDBOXES) {
-			if (SANDBOXES[aSbId].unloaders.unSandbox) {
-				SANDBOXES[aSbId].unloaders.unSandbox(); // as this will run all the unloaders
-			} else {
-				for (var aUnloaderName in SANDBOXES[aSbId].unloaders) {
-					SANDBOXES[aSbId].unloaders[aUnloaderName]();
-				}
-			}
+		// console.log('content.location.hostname:', content.location.hostname);
+		console.error('doing destroySelf');
+		doPageUnloaders();
+		console.error('doing fs unloaders');
+		for (var i=0; i<FS_UNLOADERS.length; i++) {
+			FS_UNLOADERS[i]();
+			FS_UNLOADERS.splice(i, 1);
+			i--;
 		}
-
-		contentMMFromContentWindow_Method2(content).removeMessageListener(core.addon.id, bootstrapMsgListener);
-		
-		console.log('content.location.hostname:', content.location.hostname);
-		if (content.location.hostname == CHROMESTORE_HOSTNAME) {
-			console.log('found matching hostname');
-			var stuff = content.document.querySelectorAll('.foxified-chrome-extensions-and-store');
-			console.info('stuff:', stuff);
-			for (var i=0; i<stuff.length; i++) {
-				stuff[i].parentNode.removeChild(stuff[i]);
-				console.log('iter rem:', i);
-			}
-		}
-		console.error('okkkkkkkkkkkkkkkkkkkkkkkkkkkkkk iterated removed');
 	}
 };
 const SAM_CB_PREFIX = '_sam_gen_cb_';
@@ -350,33 +353,72 @@ function jsonToDOM(json, doc, nodes) {
     }
     return tag.apply(null, json);
 }
+
+function getContentWindowFromNsiRequest(aRequest) {
+
+	var loadContext = null;
+
+	if (aRequest instanceof Ci.nsIRequest) {
+		try {
+			loadContext = aRequest.loadGroup.notificationCallbacks.getInterface(Ci.nsILoadContext);
+		} catch (ex1) {
+			// console.exception('aRequest loadGroup with notificationCallbacks but oculd not get nsIloadContext', ex1, 'aRequest:', aRequest);
+			try {
+				loadContext = aRequest.notificationCallbacks.getInterface(Ci.nsILoadContext);
+			} catch (ex2) {
+				// console.error('aRequest has notificationCallbacks but could not get nsILoadContext', ex2, 'aRequest:', aRequest);
+			}
+		}
+	} else {
+		console.warn('aRequest argument is not instance of nsIRequest, aRequest:', aRequest);
+	}
+
+	if (!loadContext) {
+		return null;
+	}
+
+	return loadContext.associatedWindow;
+}
 // end - common helper functions
 
 // start - load unload stuff
 function fsUnloaded() {
 	// framescript on unload
-	console.log('fsTwitterInlay.js framworker unloading');
+	console.log('fsInaly.js framworker unloading');
 	bootstrapCallbacks.destroySelf();
 
 }
 function onPageReady(aEvent) {
 	var aContentWindow = aEvent.target.defaultView;
-	// console.log('fsTwitterInlay.js page ready, content.location:', content.location.href, 'aContentWindow.location:', aContentWindow.location.href);
+	console.error('fsInaly.js page ready, content.location:', content.location.href, 'aContentWindow.location:', aContentWindow.location.href);
 	doOnReady(aContentWindow);
 }
 
 function init() {
 	console.error('in init');
 		contentMMFromContentWindow_Method2(content).addMessageListener(core.addon.id, bootstrapMsgListener);
+		FS_UNLOADERS.push(function() {
+			contentMMFromContentWindow_Method2(content).removeMessageListener(core.addon.id, bootstrapMsgListener);
+			L10N = null;
+			core = null;
+		});
 		
 		sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['requestInit'], bootstrapMsgListener.funcScope, function(aData) {
 			// core = aData.aCore;
 			console.error('back in callback', aData, content.location.href);
-			l10n = aData.aL10n
-			console.error('set l10n to:', aData.aL10n, content.location.href)
+			L10N = aData.aL10n
+			console.error('set L10N to:', aData.aL10n, content.location.href)
 			
 			addEventListener('unload', fsUnloaded, false);
+			FS_UNLOADERS.push(function() {
+				removeEventListener('unload', fsUnloaded, false);
+			});
+			
 			addEventListener('DOMContentLoaded', onPageReady, false);
+			FS_UNLOADERS.push(function() {
+				removeEventListener('DOMContentLoaded', onPageReady, false);
+			});
+			
 			if (content.document.readyState == 'complete') {
 				var fakeEvent = {
 					target: {
