@@ -1,6 +1,7 @@
 // Imports
 const {classes: Cc, interfaces: Ci, manager: Cm, results: Cr, utils: Cu, Constructor: CC} = Components;
 
+Cu.import('resource://gre/modules/AddonManager.jsm');
 Cu.import('resource://gre/modules/FileUtils.jsm');
 const {TextDecoder, TextEncoder, OS} = Cu.import('resource://gre/modules/osfile.jsm', {});
 Cu.import('resource://gre/modules/Services.jsm');
@@ -141,6 +142,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 		var tmpFilePath = OS.Path.join(OS.Constants.Path.desktopDir, tmpFileName + '.xpi');
 		
 		var crxBlob;
+		var xpi;
 		
 		var step1 = function() {
 			// fetch file
@@ -246,7 +248,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 				return false;
 			};
 
-			var xpi = new FileUtils.File(tmpFilePath);
+			xpi = new FileUtils.File(tmpFilePath);
 			var reader = new ZipFileReader(xpi);
 			try {
 				var entries = reader.findEntries('*');
@@ -277,7 +279,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 				writer.close();
 			}
 			
-			deferredMain_actOnExt.resolve(['temp resolve', 'this is message saying temp resolve']);
+			step4();
 			
 			/*
 			myServices.zip.createReader(
@@ -316,6 +318,59 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 				}
 			);
 			*/
+		};
+		
+		var step4 = function() {
+			// install to firefox
+			Services.prefs.setBoolPref('xpinstall.signatures.required', false);
+
+			var installListener = {
+				onInstallEnded: function(aInstall, aAddon) {
+				   var str = [];
+				   //str.push('"' + aAddon.name + '" Install Ended!');
+				   // jsWin.addMsg('"' + aAddon.name + '" Install Ended...');
+				   if (aInstall.state != AddonManager.STATE_INSTALLED) {
+					   //str.push('aInstall.state: ' + aInstall.state)
+					   //jsWin.addMsg('aInstall.state: ' + aInstall.state);
+					   // jsWin.addMsg('<red>Addon Install Failed - Status Code: ' + aInstall.state);
+					   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-install-failed') + aInstall.state]);
+				   } else {
+					   //str.push('aInstall.state: Succesfully Installed')
+					   //jsWin.addMsg('aInstall.state: Succesfully Installed')
+					   // jsWin.addMsg('<green>Addon Succesfully Installed!');
+					   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed')]);
+				   }
+				   if (aAddon.appDisabled) {
+					   //str.push('appDisabled: ' + aAddon.appDisabled);
+					   // jsWin.addMsg('<red>Addon is disabled by application');
+					   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed-appdisabled')]);
+				   }
+				   if (aAddon.userDisabled) {
+					   //str.push('userDisabled: ' + aAddon.userDisabled);
+					   //jsWin.addMsg('userDisabled: ' + aAddon.userDisabled);
+					   // jsWin.addMsg('<orange>Addon is currently disabled - go to addon manager to enable it');
+					   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed-userdisabled')]);
+				   }
+				   if (aAddon.pendingOperations != AddonManager.PENDING_NONE) {
+					   //str.push('NEEDS RESTART: ' + aAddon.pendingOperations);
+					   //jsWin.addMsg('NEEDS RESTART: ' + aAddon.pendingOperations);
+					   // jsWin.addMsg('Needs to RESTART to complete install...');
+					   deferredMain_actOnExt.resolve([true, 'this should never happen, webexts are restartless']);
+				   }
+				   //alert(str.join('\n'));
+				   aInstall.removeListener(installListener);
+				},
+				onInstallStarted: function(aInstall) {
+					// jsWin.addMsg('"' + aInstall.addon.name + '" Install Started...');
+				}
+			};
+			
+			AddonManager.getInstallForFile(xpi, function(aInstall) {
+			  // aInstall is an instance of AddonInstall
+				aInstall.addListener(installListener);
+				aInstall.install(); //does silent install
+				//AddonManager.installAddonsFromWebpage('application/x-xpinstall', gBrowser.contentWindow, null, [aInstall]); //does regular popup install
+			}, 'application/x-xpinstall');
 		};
 		
 		step1();

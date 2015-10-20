@@ -40,10 +40,10 @@ function actOnExt(aExtId, aEvent) {
 			console.error(aStatusInfo);
 			throw new Error(aStatusInfo);
 		} else {
-			content.alert('Succesfully downloaded and installed extension!');
-			if (aStatusInfo) {
-				content.alert('Success message was:\n\n' + aStatusInfo);
-			}
+			content.alert(aStatusInfo);
+			// if (aStatusInfo) {
+				// content.alert('Success message was:\n\n' + aStatusInfo);
+			// }
 		}
 	});
 }
