@@ -21,98 +21,6 @@ var FS_UNLOADERS = [];
 var PAGE_UNLOADERS = [];
 
 // start - addon functionalities
-var myWebProgressListener = {
-	init: function() {
-		var webProgress = docShell.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebProgress);
-		webProgress.addProgressListener(this, Ci.nsIWebProgress.NOTIFY_STATE_ALL);
-	},
-	uninit: function() {
-		if (!docShell) {
-			return;
-		}
-		var webProgress = docShell.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebProgress);
-		webProgress.removeProgressListener(this);
-	},
-
-	onStateChange: function(webProgress, aRequest, flags, status) {
-		// figure out the flags
-		var flagStrs = [];
-		for (var f in Ci.nsIWebProgressListener) {
-			if (!/a-z/.test(f)) { // if it has any lower case letters its not a flag
-				if (flags & Ci.nsIWebProgressListener[f]) {
-					flagStrs.push(f);
-				}
-			}
-		}
-		
-		if (aRequest && flags & Ci.nsIWebProgressListener.STATE_STOP) {
-			var contentWindow = getContentWindowFromNsiRequest(aRequest);
-			var contentWindow = getContentWindowFromNsiRequest(aRequest);
-			if (contentWindow) {
-				console.log('onStateChange', 'URI.spec:', aRequest.QueryInterface(Ci.nsIChannel).URI.spec, 'contentWindow:', contentWindow, 'contentWindow.hostname', contentWindow.location.hostname, 'flagStrs:', flagStrs);
-			} else {
-				try {
-					console.warn('onStateChange', 'URI.spec:', aRequest.QueryInterface(Ci.nsIChannel).URI.spec, 'flagStrs:', flagStrs);
-				} catch (ex) {
-					// console.error('onStateChange', flagStrs);
-				}
-			}
-			// aRequest.cancel(Cr.NS_BINDING_ABORTED);
-		} else {
-			
-		}
-		// var data = {
-		// 	requestURL: request.QueryInterface(Ci.nsIChannel).URI.spec,
-		// 	windowId: webProgress.DOMWindowID,
-		// 	parentWindowId: getParentWindowId(webProgress.DOMWindow),
-		// 	status,
-		// 	stateFlags,
-		// };
-
-		// if (webProgress.DOMWindow.top != webProgress.DOMWindow) {
-		// 	// this is a frame element
-		// 	var webNav = webProgress.QueryInterface(Ci.nsIWebNavigation);
-		// 	if (!webNav.canGoBack) {
-		// 		// For some reason we don't fire onLocationChange for the
-		// 		// initial navigation of a sub-frame. So we need to simulate
-		// 		// it here.
-		// 	}
-		// }
-	},
-	onLocationChange: function(webProgress, aRequest, locationURI, flags) {
-		// figure out the flags
-		var flagStrs = [];
-		for (var f in Ci.nsIWebProgressListener) {
-			if (!/a-z/.test(f)) { // if it has any lower case letters its not a flag
-				if (flags & Ci.nsIWebProgressListener[f]) {
-					flagStrs.push(f);
-				}
-			}
-		}
-		
-		if (aRequest && flags & Ci.nsIWebProgressListener.STATE_STOP) {
-			var contentWindow = getContentWindowFromNsiRequest(aRequest);
-			if (contentWindow) {
-				// console.log('onLocationChange', 'URI.spec:', aRequest.QueryInterface(Ci.nsIChannel).URI.spec, 'contentWindow:', contentWindow, 'flagStrs:', flagStrs);
-			}
-			// aRequest.cancel(Cr.NS_BINDING_ABORTED);
-		}
-		// var data = {
-		// 	location: locationURI ? locationURI.spec : '',
-		// 	windowId: webProgress.DOMWindowID,
-		// 	parentWindowId: getParentWindowId(webProgress.DOMWindow),
-		// 	flags,
-		// };
-	},
-	QueryInterface: function QueryInterface(aIID) {
-		if (aIID.equals(Ci.nsIWebProgressListener) || aIID.equals(Ci.nsISupportsWeakReference) || aIID.equals(Ci.nsISupports)) {
-			return this;
-		}
-
-		throw Cr.NS_ERROR_NO_INTERFACE;
-	}
-};
-
 function doPageUnloaders() {
 	console.error('kicking of page unloaders');
 	for (var i=0; i<PAGE_UNLOADERS.length; i++) {
@@ -122,48 +30,129 @@ function doPageUnloaders() {
 	}
 }
 
-function domInsertOnReady(aContentWindow) {
+function domInsert(aContentWindow) {
 	var aContentDocument = aContentWindow.document;
 	
-	myWebProgressListener.init();
-	
+	/* // i only undo dom changes, so this ill leave to the fs unload
 	aContentWindow.addEventListener('beforeunload', function() {
 		// aContentWindow.removeEventListener('unload', arguments.callee, false); // probably dont need this as on unload content whatever listeners it had are dead
 		doPageUnloaders();
 	}, false);
+	*/
 	
-	PAGE_UNLOADERS.push(myWebProgressListener.uninit);
-}
-
-function doOnReady(aContentWindow) {
-
-	if (aContentWindow.frameElement) {
-		// console.warn('frame element DOMContentLoaded, so dont respond yet:', aContentWindow.location.href);
-		return;
-	} else {
-		// parent window loaded (not frame)
-		if (aContentWindow.location.hostname == CHROMESTORE_HOSTNAME) {
-			// ok twitter page ready, lets make sure its not an error page
-			// check if got error loading page:
-			var webnav = aContentWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebNavigation);
-			var docuri = webnav.document.documentURI;
-			// console.info('docuri:', docuri);
-			if (docuri.indexOf('about:') == 0) {
-				// twitter didnt really load, it was an error page
-				console.log('twitter hostname page ready, but an error page loaded, so like offline or something:', aContentWindow.location, 'docuri:', docuri);
-				// unregReason = 'error-loading';
-				return;
-			} else {
-				// twitter actually loaded
-				// twitterReady = true;
-				console.error('ok twitter page ready, lets ensure page loaded finished');
-				domInsertOnReady(aContentWindow);
-				// ensureLoaded(aContentWindow); // :note: commented out as not needing content script right now
-			}
-		} else {
-			// console.log('page ready, but its not twitter so do nothing:', uneval(aContentWindow.location));
+	var domEl_downloadGoogleChrome = aContentDocument.querySelector('a[href*="www.google.com/chrome?brand=GGRF"]');
+	if (!domEl_downloadGoogleChrome) {
+		console.error('warning, could not find download gchrome link!');
+		throw new Error('warning, could not find download gchrome link!');
+	}
+	// find the mainDiv, which will be the position fixed div
+	var domEl_downloadGoogleChromeMainDiv = domEl_downloadGoogleChrome.parentNode;
+	var maxTryLoop = 10;
+	var cTryLoop = 0;
+	while(aContentWindow.getComputedStyle(domEl_downloadGoogleChromeMainDiv).position != 'fixed') {
+		domEl_downloadGoogleChromeMainDiv = domEl_downloadGoogleChromeMainDiv.parentNode;
+		cTryLoop++;
+		if (cTryLoop == maxTryLoop) {
+			break;
+		}
+	}
+	
+	if (aContentWindow.getComputedStyle(domEl_downloadGoogleChromeMainDiv).position != 'fixed') {
+		console.error('warning, could not find download gchrome link main container!');
+		throw new Error('warning, could not find download gchrome link main container!');
+	}
+	
+	domEl_downloadGoogleChromeMainDiv.style.display = 'none';
+	PAGE_UNLOADERS.push(function() {
+		domEl_downloadGoogleChromeMainDiv.style.display = '';
+	});
+	
+	var extId = /webstore\/detail\/.*?\/([^\/]+)/.exec(aContentWindow.location.href);
+	if (extId) {
+		extId = extId[1];
+		console.info('extId:', extId);
+		
+		var domEl_installBtn = aContentDocument.querySelector('.webstore-test-button-label');
+		if (!domEl_installBtn) {
+			console.error('warning, could not find install button!');
+			throw new Error('warning, could not find install button!');
+		}
+		var origTextContent = domEl_installBtn.textContent;
+		console.log('origTextContent:', origTextContent);
+		if (origTextContent == L10N.add_to_firefox) {
+			console.error('already modified this dom so quit');
 			return;
 		}
+		PAGE_UNLOADERS.push(function() {
+			console.log('restoring orig text content of:', origTextContent);
+			domEl_installBtn.textContent = origTextContent;
+		});
+		domEl_installBtn.textContent = L10N.add_to_firefox;
+		
+		var clickedInstallBtn = function(aEvent) {
+			aEvent.stopPropagation();
+			aEvent.preventDefault();
+			content.alert('ok will do my stuff');
+		};
+		domEl_installBtn.addEventListener('click', clickedInstallBtn, false);
+		PAGE_UNLOADERS.push(function() {
+			domEl_installBtn.removeEventListener('click', clickedInstallBtn, false);
+		});
+		
+		var domEl_installBtnBg = domEl_installBtn.parentNode.parentNode;
+		domEl_installBtnBg.style.backgroundColor = 'rgb(124, 191, 54)';
+		domEl_installBtnBg.style.backgroundImage = 'linear-gradient(to bottom, rgb(101, 173, 40), rgb(124, 191, 54))';
+		domEl_installBtnBg.style.borderColor = 'rgb(78, 155, 25)';
+		PAGE_UNLOADERS.push(function() {
+			domEl_installBtnBg.style.backgroundColor = '';
+			domEl_installBtnBg.style.backgroundImage = '';
+			domEl_installBtnBg.style.borderColor = '';
+		});
+		
+		var domEl_installBtnSiblingBg = domEl_installBtnBg.nextSibling;
+		domEl_installBtnSiblingBg.style.backgroundColor = 'rgb(124, 191, 54)';
+		domEl_installBtnSiblingBg.style.backgroundImage = 'linear-gradient(to bottom, rgb(101, 173, 40), rgb(124, 191, 54))';
+		domEl_installBtnSiblingBg.style.borderColor = 'rgb(78, 155, 25)';
+		PAGE_UNLOADERS.push(function() {
+			domEl_installBtnSiblingBg.style.backgroundColor = '';
+			domEl_installBtnSiblingBg.style.backgroundImage = '';
+			domEl_installBtnSiblingBg.style.borderColor = '';
+		});
+		
+		
+		
+	} else {
+		console.log('probably (well hopefully) NOT on an extension page');
+	}
+	
+	// PAGE_UNLOADERS.push(myWebProgressListener.uninit);
+}
+
+function bodyOnDOMContentLoaded(aContentWindow) {
+	// im intentionally using content below, cuz chrome webstore does some weird stuff
+	
+	// parent window loaded (not frame)
+	if (content.location.hostname == CHROMESTORE_HOSTNAME) {
+		// ok twitter page ready, lets make sure its not an error page
+		// check if got error loading page:
+		var webnav = content.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebNavigation);
+		var docuri = webnav.document.documentURI;
+		// console.info('docuri:', docuri);
+		if (docuri.indexOf('about:') == 0) {
+			// twitter didnt really load, it was an error page
+			console.log('twitter hostname page ready, but an error page loaded, so like offline or something:', content.location, 'docuri:', docuri);
+			// unregReason = 'error-loading';
+			return;
+		} else {
+			// twitter actually loaded
+			// twitterReady = true;
+			console.error('ok twitter page ready, lets ensure page loaded finished');
+			domInsert(content);
+			// ensureLoaded(content); // :note: commented out as not needing content script right now
+		}
+	} else {
+		// console.log('page ready, but its not twitter so do nothing:', uneval(content.location));
+		return;
 	}
 }
 
@@ -388,14 +377,30 @@ function fsUnloaded() {
 	bootstrapCallbacks.destroySelf();
 
 }
-function onPageReady(aEvent) {
+function onDOMContentLoaded(aEvent) {
 	var aContentWindow = aEvent.target.defaultView;
-	console.error('fsInaly.js page ready, content.location:', content.location.href, 'aContentWindow.location:', aContentWindow.location.href);
-	doOnReady(aContentWindow);
+	console.error('DOMContentLoaded', 'content == aContentWindow', content == aContentWindow, 'content.location.href:', content.location.href, 'aContentWindow.location.href:', aContentWindow.location.href, 'aContentWindow.frameElement:', aContentWindow.frameElement);
+	bodyOnDOMContentLoaded(aContentWindow);
+}
+/*
+function onLoad(aEvent) {
+	var aContentWindow = aEvent.target.defaultView;
+	console.warn('onLoad', 'content == aContentWindow', content == aContentWindow, 'content.location.href:', content.location.href, 'aContentWindow.location.href:', aContentWindow.location.href, 'aContentWindow.frameElement:', aContentWindow.frameElement);
+	// doOnReady(aContentWindow);
 }
 
+function onPageShow(aEvent) {
+	var aContentWindow = aEvent.target.defaultView;
+	console.info('onPageShow.', 'content == aContentWindow', content == aContentWindow, 'content.location.href:', content.location.href, 'aContentWindow.location.href:', aContentWindow.location.href, 'aContentWindow.frameElement:', aContentWindow.frameElement);
+	// doOnReady(aContentWindow);
+}
+*/
 function init() {
-	console.error('in init');
+		console.error('in init on content.location.href:');
+		try {
+			console.log('content.location.href:', content.location.toString());
+		} catch (ignore) {}
+	
 		contentMMFromContentWindow_Method2(content).addMessageListener(core.addon.id, bootstrapMsgListener);
 		FS_UNLOADERS.push(function() {
 			contentMMFromContentWindow_Method2(content).removeMessageListener(core.addon.id, bootstrapMsgListener);
@@ -414,18 +419,30 @@ function init() {
 				removeEventListener('unload', fsUnloaded, false);
 			});
 			
-			addEventListener('DOMContentLoaded', onPageReady, false);
+			
+			addEventListener('DOMContentLoaded', onDOMContentLoaded, false);
 			FS_UNLOADERS.push(function() {
-				removeEventListener('DOMContentLoaded', onPageReady, false);
+				removeEventListener('DOMContentLoaded', onDOMContentLoaded, false);
 			});
 			
+			/*
+			addEventListener('load', onLoad, true);
+			FS_UNLOADERS.push(function() {
+				removeEventListener('load', onLoad, true);
+			});
+			
+			addEventListener('pageshow', onPageShow, false);
+			FS_UNLOADERS.push(function() {
+				removeEventListener('pageshow', onPageShow, false);
+			});
+			*/
 			if (content.document.readyState == 'complete') {
 				var fakeEvent = {
 					target: {
 						defaultView: content
 					}
 				}
-				onPageReady(fakeEvent);
+				onDOMContentLoaded(fakeEvent);
 			}
 		});
 }
