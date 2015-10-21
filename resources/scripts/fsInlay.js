@@ -142,6 +142,11 @@ function domInsert(aContentWindow) {
 	}, false);
 	*/
 	
+	if (aContentDocument.getElementById('chrome-store-foxified_stylesheet')) {
+		console.warn('already inserted into this document, so dont insert again');
+		return;
+	}
+	
 	// find and remove warning
 	var domEl_downloadGoogleChrome = aContentDocument.querySelector('a[href*="www.google.com/chrome"]');
 	if (!domEl_downloadGoogleChrome) {
