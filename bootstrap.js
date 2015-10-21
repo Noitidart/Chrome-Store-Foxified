@@ -11,17 +11,17 @@ Cu.importGlobalProperties(['Blob']);
 // Globals
 const core = {
 	addon: {
-		name: 'Foxified-Chrome-Extensions-and-Store',
-		id: 'Foxified-Chrome-Extensions-and-Store@jetpack',
+		name: 'Chrome-Store-Foxified',
+		id: 'Chrome-Store-Foxified@jetpack',
 		path: {
-			name: 'foxified-chrome-extensions-and-store',
-			content: 'chrome://foxified-chrome-extensions-and-store/content/',
-			images: 'chrome://foxified-chrome-extensions-and-store/content/resources/images/',
-			locale: 'chrome://foxified-chrome-extensions-and-store/locale/',
-			resources: 'chrome://foxified-chrome-extensions-and-store/content/resources/',
-			scripts: 'chrome://foxified-chrome-extensions-and-store/content/resources/scripts/',
-			modules: 'chrome://foxified-chrome-extensions-and-store/content/modules/',
-			workers: 'chrome://foxified-chrome-extensions-and-store/content/modules/workers/',
+			name: 'chrome-store-foxified',
+			content: 'chrome://chrome-store-foxified/content/',
+			images: 'chrome://chrome-store-foxified/content/resources/images/',
+			locale: 'chrome://chrome-store-foxified/locale/',
+			resources: 'chrome://chrome-store-foxified/content/resources/',
+			scripts: 'chrome://chrome-store-foxified/content/resources/scripts/',
+			modules: 'chrome://chrome-store-foxified/content/modules/',
+			workers: 'chrome://chrome-store-foxified/content/modules/workers/',
 		},
 		cache_key: Math.random() // set to version on release
 	},

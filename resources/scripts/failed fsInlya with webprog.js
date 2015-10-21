@@ -4,10 +4,10 @@ const {classes: Cc, interfaces: Ci, results: Cr, utils: Cu} = Components;
 // Globals
 var core = {
 	addon: {
-		id: 'Foxified-Chrome-Extensions-and-Store@jetpack',
+		id: 'Chrome-Store-Foxified@jetpack',
 		path: {
-			name: 'foxified-chrome-extensions-and-store',
-			scripts: 'chrome://foxified-chrome-extensions-and-store/content/resources/scripts/'
+			name: 'chrome-store-foxified',
+			scripts: 'chrome://chrome-store-foxified/content/resources/scripts/'
 		},
 		cache_key: Math.random() // set to version on release
 	}

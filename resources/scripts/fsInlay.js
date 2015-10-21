@@ -4,10 +4,10 @@ const {classes: Cc, interfaces: Ci, results: Cr, utils: Cu} = Components;
 // Globals
 var core = {
 	addon: {
-		id: 'Foxified-Chrome-Extensions-and-Store@jetpack',
+		id: 'Chrome-Store-Foxified@jetpack',
 		path: {
-			name: 'foxified-chrome-extensions-and-store',
-			scripts: 'chrome://foxified-chrome-extensions-and-store/content/resources/scripts/'
+			name: 'chrome-store-foxified',
+			scripts: 'chrome://chrome-store-foxified/content/resources/scripts/'
 		},
 		cache_key: Math.random() // set to version on release
 	}
@@ -180,7 +180,7 @@ function domInsert(aContentWindow) {
 
 	// put in stylesheet to change color of the buttons and give it "Add to Firefox" content
 	var stylesheet = jsonToDOM([
-		'style', {id:'foxified-chrome-extensions-and-store_stylesheet'},
+		'style', {id:'chrome-store-foxified_stylesheet'},
 			'div[role=button] { overflow:hidden !important; background-color:rgb(124, 191, 54) !important; background-image:linear-gradient(to bottom, rgb(101, 173, 40), rgb(124, 191, 54)) !important; border-color:rgb(78, 155, 25) !important;}',
 			'div[role=button] .webstore-test-button-label::before { display:block; content:\'' + L10N.add_to_firefox + '\'; }'
 	], aContentDocument, {});
