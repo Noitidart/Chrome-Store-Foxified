@@ -131,30 +131,28 @@ function domInsert(aContentWindow) {
 		
 		var clickedInstallBtn = actOnExt.bind(null, extId, extName);
 		domEl_installBtn.addEventListener('click', clickedInstallBtn, false);
+		domEl_installBtn.style.pointerEvents = 'auto';
 		PAGE_UNLOADERS.push(function() {
 			domEl_installBtn.removeEventListener('click', clickedInstallBtn, false);
+			domEl_installBtn.style.pointerEvents = '';
 		});
 		
 		var domEl_installBtnBg = domEl_installBtn.parentNode.parentNode;
 		domEl_installBtnBg.style.backgroundColor = 'rgb(124, 191, 54)';
 		domEl_installBtnBg.style.backgroundImage = 'linear-gradient(to bottom, rgb(101, 173, 40), rgb(124, 191, 54))';
 		domEl_installBtnBg.style.borderColor = 'rgb(78, 155, 25)';
-		domEl_installBtnBg.addEventListener('mousedown', prevDefault, false);
-		domEl_installBtn.parentNode.addEventListener('mousedown', prevDefault, false);
-		domEl_installBtnBg.addEventListener('mouseup', prevDefault, false);
-		domEl_installBtn.parentNode.addEventListener('mouseup', prevDefault, false);
-		domEl_installBtnBg.addEventListener('click', prevDefault, false);
-		domEl_installBtn.parentNode.addEventListener('click', prevDefault, false);
+		domEl_installBtnBg.style.pointerEvents = 'none';
+		
+		// var clonedDomEl_installBtnBg = domEl_installBtnBg.cloneNode(true);
+		// domEl_installBtnBg.parentNode.insertBefore(clonedDomEl_installBtnBg, domEl_installBtnBg);
+		// domEl_installBtnBg.parentNode.removeChild(domEl_installBtnBg);
+		// domEl_installBtnBg = clonedDomEl_installBtnBg;
+		
 		PAGE_UNLOADERS.push(function() {
 			domEl_installBtnBg.style.backgroundColor = '';
 			domEl_installBtnBg.style.backgroundImage = '';
 			domEl_installBtnBg.style.borderColor = '';
-			domEl_installBtnBg.removeEventListener('mousedown', prevDefault, false);
-			domEl_installBtn.parentNode.removeEventListener('mousedown', prevDefault, false);
-			domEl_installBtnBg.removeEventListener('mouseup', prevDefault, false);
-			domEl_installBtn.parentNode.removeEventListener('mouseup', prevDefault, false);
-			domEl_installBtnBg.removeEventListener('click', prevDefault, false);
-			domEl_installBtn.parentNode.removeEventListener('click', prevDefault, false);
+			domEl_installBtnBg.style.pointerEvents = '';
 		});
 		
 		var domEl_installBtnSiblingBg = domEl_installBtnBg.nextSibling;

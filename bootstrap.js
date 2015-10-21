@@ -239,6 +239,11 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 						manifestJson = JSON.parse(contents.trim());
 						console.log('manifestJson:', manifestJson);
 
+						/*
+						if (manifestJson.name.indexOf('_MSG') > -1) {
+							manifestJson.name = aExtName;
+						}
+						*/
 						manifestJson.applications = {
 							gecko: {
 								id: aExtId + '@mozWebExtension.org'
