@@ -1,3 +1,4 @@
 content foxified-chrome-extensions-and-store ./
 locale foxified-chrome-extensions-and-store en-US locale/en-US/
+locale foxified-chrome-extensions-and-store fr locale/fr/
 content foxified-chrome-extensions-and-store-content-accessible ./resources/content-accessible/ contentaccessible=true
