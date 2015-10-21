@@ -35,5 +35,15 @@
 				<em:creator>Noitidart</em:creator>
 			</Description>
 		</em:localized>
+		<!-- this is for French locale -->
+		<em:localized>
+			<Description>
+				<em:locale>fr</em:locale>
+				<em:name>Foxified Chrome Extensions and Store</em:name>
+				<em:description>Active le Google Chrome Store pour Firefox. Permet de cliquer pour installer les extensions de Chrome directement dans Firefox.</em:description>
+				<em:creator>Juest</em:creator>
+				<em:creator>Noitidart</em:creator>
+			</Description>
+		</em:localized>
 	  </Description>
 	</RDF>
