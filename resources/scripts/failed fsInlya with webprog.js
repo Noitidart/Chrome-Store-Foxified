@@ -30,7 +30,10 @@ function doPageUnloaders() {
 	}
 }
 
-function actOnExt(aExtId, aExtName) {
+function actOnExt(aExtId, aExtName, aEvent) {
+	aEvent.stopPropagation();
+	aEvent.preventDefault();
+	content.alert(L10N.starting + ':' + aExtName);
 	sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['actOnExt', aExtId, aExtName], bootstrapMsgListener.funcScope, function(aStatus, aStatusInfo) {
 		if (aStatus == 'promise_rejected') {
 			content.alert('Failed to download and install extension, please report to addon author. Here is the error, see browser console for more readable version:\n\n' + JSON.stringify(aStatusInfo));
@@ -43,106 +46,99 @@ function actOnExt(aExtId, aExtName) {
 			// }
 		}
 	});
-	content.alert(L10N.starting);
 }
 
-function listenMouseDownFalse(aEvent) {
-	console.log('mouse down FALSE happend:', aEvent.target);
-	if ((aEvent.target.classList.contains('webstore-test-button-label') || aEvent.target.getAttribute('role') == 'button' && aEvent.target.querySelector('.webstore-test-button-label'))) { // if its a button that contains "add to firefox"
-		aEvent.stopPropagation();
-		aEvent.preventDefault();
-	}
-}
-function listenMouseUpFalse(aEvent) {
-	console.log('mouse up FALSE happend:', aEvent.target);
-	if ((aEvent.target.classList.contains('webstore-test-button-label') || aEvent.target.getAttribute('role') == 'button' && aEvent.target.querySelector('.webstore-test-button-label'))) { // if its a button that contains "add to firefox"
-		aEvent.stopPropagation();
-		aEvent.preventDefault();
-	}
-}
-function listenClickFalse(aEvent) {
-	console.log('click FALSE happend:', aEvent.target);
-	if ((aEvent.target.classList.contains('webstore-test-button-label') || aEvent.target.getAttribute('role') == 'button' && aEvent.target.querySelector('.webstore-test-button-label'))) { // if its a button that contains "add to firefox"
-		aEvent.stopPropagation();
-		aEvent.preventDefault();
-	}
-}
 
-function listenMouseDownTrue(aEvent) {
-	console.log('mouse down TRUE happend:', aEvent.target);
-	if ((aEvent.target.classList.contains('webstore-test-button-label') || aEvent.target.getAttribute('role') == 'button' && aEvent.target.querySelector('.webstore-test-button-label'))) { // if its a button that contains "add to firefox"
-		aEvent.stopPropagation();
-		aEvent.preventDefault();
-	}
-}
-function listenMouseUpTrue(aEvent) {
-	console.log('mouse up TRUE happend:', aEvent.target);
-	if ((aEvent.target.classList.contains('webstore-test-button-label') || aEvent.target.getAttribute('role') == 'button' && aEvent.target.querySelector('.webstore-test-button-label'))) { // if its a button that contains "add to firefox"
-		aEvent.stopPropagation();
-		aEvent.preventDefault();
-	}
-}
-function listenClickTrue(aEvent) {
-	console.log('click TRUE happend:', aEvent.target);
-	var aContentWindow = aEvent.target.ownerDocument.defaultView;
-	if ((aEvent.target.classList.contains('webstore-test-button-label') || aEvent.target.getAttribute('role') == 'button' && aEvent.target.querySelector('.webstore-test-button-label'))) { // if its a button that contains "add to firefox"
-		aEvent.stopPropagation();
-		aEvent.preventDefault();
-		
-		var extId = /webstore\/detail\/.*?\/([^\/]+)/.exec(aContentWindow.location.href);
-		if (extId) {
-			// clicked button from dialog
-			extId = extId[1];
-			
-			// find dialog element
-			var domEl_dialog = aEvent.target.parentNode;
-			while (!domEl_dialog.getAttribute('role') || domEl_dialog.getAttribute('role') != 'dialog') {
-				domEl_dialog = domEl_dialog.parentNode;
-			}
-			if (!domEl_dialog.getAttribute('role') || domEl_dialog.getAttribute('role') != 'dialog') {
-				aContentWindow.alert('ERROR: Could not find dialog of this extension so cannot get name');
-				throw new Error('ERROR: Could not find dialog of this extension so cannot get name');
-			}
-			var extName = domEl_dialog.querySelector('h1').textContent;
-			// aContentWindow.alert('extName: ' + extName);
-			actOnExt(extId, extName);
-		} else {
-			// clicked button on search page
-			var domEl_withHref = aEvent.target.parentNode;
-			while (!domEl_withHref.getAttribute('href')) {
-				domEl_withHref = domEl_withHref.parentNode;
-			}
-			var theHref = domEl_withHref.getAttribute('href');
-			if (!theHref) {
-				aContentWindow.alert('ERROR: Could not find extension id, will not try to install');
-				throw new Error('could not figure out extension id');
-			}
-			var extId = /webstore\/detail\/.*?\/([^\/]+)/.exec(theHref);
-			if (!extId) {
-				aContentWindow.alert('ERROR: Could not find extension id, will not try to install from href');
-				throw new Error('could not figure out extension id from href');
-			}
-			extId = extId[1];
-			// aContentWindow.alert('extId: ' + extId);
-			var extName = domEl_withHref.querySelector('div:nth-of-type(3) > div:nth-of-type(3) > div:nth-of-type(1)').textContent;
-			// aContentWindow.alert('extName: ' + extName);
-			actOnExt(extId, extName);
+
+var myWebProgressListener = {
+	added: false,
+	init: function() {
+		if (myWebProgressListener.added) {
+			console.warn('my progress listener allready added, will not add again');
+			return;
 		}
+		var webProgress = docShell.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebProgress);
+		webProgress.addProgressListener(myWebProgressListener, Ci.nsIWebProgress.NOTIFY_LOCATION);
+		myWebProgressListener.added = true;
+	},
+	uninit: function() {
+		myWebProgressListener.added = false;
+		if (!docShell) {
+			console.error('nooooooooooooooooo docshell!!!!');
+			return;
+		}
+		var webProgress = docShell.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebProgress);
+		webProgress.removeProgressListener(myWebProgressListener);
+		console.error('okkkk removed prog listener');
+	},
+
+	onLocationChange: function(webProgress, aRequest, locationURI, flags) {
+		var reqContentWindow = getContentWindowFromNsiRequest(aRequest);
+		var consoleThis = ['onStateChange:', 'arguments:', arguments, 'flagStrs:', getFlags(flags, Ci.nsIWebProgressListener), 'uri.spec:'];
+		
+		try {
+			consoleThis.push(aRequest.QueryInterface(Ci.nsIChannel).URI.spec);
+		} catch(ignore) {
+			consoleThis.push('N/A');
+		}
+		
+		// window testing:
+		try {
+			consoleThis.push(reqContentWindow.location);
+			consoleThis.push('<< reqContentWindow');
+		} catch(ignore) {}
+		try {
+			consoleThis.push(webProgress.DOMWindow.location);
+			consoleThis.push('<< webProgress.DOMWindow');
+		} catch(ignore) {}
+		try {
+			consoleThis.push(content.location);
+			consoleThis.push('<< content');
+		} catch(ignore) {}
+		
+		
+		console.log.apply(console, consoleThis);
+		// var data = {
+		// 	requestURL: request.QueryInterface(Ci.nsIChannel).URI.spec,
+		// 	windowId: webProgress.DOMWindowID,
+		// 	parentWindowId: getParentWindowId(webProgress.DOMWindow),
+		// 	status,
+		// 	stateFlags,
+		// };
+
+		// if (webProgress.DOMWindow.top != webProgress.DOMWindow) {
+		// 	// this is a frame element
+		// 	var webNav = webProgress.QueryInterface(Ci.nsIWebNavigation);
+		// 	if (!webNav.canGoBack) {
+		// 		// For some reason we don't fire onLocationChange for the
+		// 		// initial navigation of a sub-frame. So we need to simulate
+		// 		// it here.
+		// 	}
+		// }
+	},
+	QueryInterface: function QueryInterface(aIID) {
+		if (aIID.equals(Ci.nsIWebProgressListener) || aIID.equals(Ci.nsISupportsWeakReference) || aIID.equals(Ci.nsISupports)) {
+			return this;
+		}
+
+		throw Cr.NS_ERROR_NO_INTERFACE;
 	}
-}
+};
 
 var firstNonFind = true;
 function domInsert(aContentWindow) {
 	var aContentDocument = aContentWindow.document;
 	
-	/* // i only undo dom changes, so this ill leave to the fs unload
+	///* // i only undo dom changes, so this ill leave to the fs unload
 	aContentWindow.addEventListener('beforeunload', function() {
 		// aContentWindow.removeEventListener('unload', arguments.callee, false); // probably dont need this as on unload content whatever listeners it had are dead
 		doPageUnloaders();
 	}, false);
-	*/
 	
-	// find and remove warning
+	PAGE_UNLOADERS.push(myWebProgressListener.uninit);
+	
+	myWebProgressListener.init();
+	
 	var domEl_downloadGoogleChrome = aContentDocument.querySelector('a[href*="www.google.com/chrome"]');
 	if (!domEl_downloadGoogleChrome) {
 		if (firstNonFind) {
@@ -177,34 +173,77 @@ function domInsert(aContentWindow) {
 	PAGE_UNLOADERS.push(function() {
 		domEl_downloadGoogleChromeMainDiv.style.display = '';
 	});
-
-	// put in stylesheet to change color of the buttons and give it "Add to Firefox" content
-	var stylesheet = jsonToDOM([
-		'style', {id:'foxified-chrome-extensions-and-store_stylesheet'},
-			'div[role=button] { overflow:hidden !important; background-color:rgb(124, 191, 54) !important; background-image:linear-gradient(to bottom, rgb(101, 173, 40), rgb(124, 191, 54)) !important; border-color:rgb(78, 155, 25) !important;}',
-			'div[role=button] .webstore-test-button-label::before { display:block; content:\'Add to Firefox\'; }'
-	], aContentDocument, {});
-	aContentDocument.documentElement.appendChild(stylesheet);
-	PAGE_UNLOADERS.push(function() {
-		stylesheet.parentNode.removeChild(stylesheet);
-	});
 	
-	// add click listener
-	// aContentWindow.addEventListener('mousedown', listenMouseDownFalse, false);
-	// aContentWindow.addEventListener('click', listenClickFalse, false);
-	// aContentWindow.addEventListener('mouseup', listenMouseUpFalse, false);
-	// aContentWindow.addEventListener('mousedown', listenMouseDownTrue, true);
-	aContentWindow.addEventListener('click', listenClickTrue, true);
-	// aContentWindow.addEventListener('mouseup', listenMouseUpTrue, true);
-	PAGE_UNLOADERS.push(function() {
-		// aContentWindow.removeEventListener('mousedown', listenMouseDownFalse, false);
-		// aContentWindow.removeEventListener('click', listenClickFalse, false);
-		// aContentWindow.removeEventListener('mouseup', listenMouseUpFalse, false);
-		// aContentWindow.removeEventListener('mousedown', listenMouseDownTrue, true);
-		aContentWindow.removeEventListener('click', listenClickTrue, true);
-		// aContentWindow.removeEventListener('mouseup', listenMouseUpTrue, true);
-	});
+	var extId = /webstore\/detail\/.*?\/([^\/]+)/.exec(aContentWindow.location.href);
+	if (extId) {
+		extId = extId[1];
+		console.info('extId:', extId);
 		
+		var domEl_installBtn = aContentDocument.querySelector('.webstore-test-button-label');
+		if (!domEl_installBtn) {
+			console.error('warning, could not find install button!');
+			throw new Error('warning, could not find install button!');
+		}
+		var origTextContent = domEl_installBtn.textContent;
+		console.log('origTextContent:', origTextContent);
+		if (origTextContent == L10N.add_to_firefox) {
+			console.error('already modified this dom so quit');
+			return;
+		}
+		PAGE_UNLOADERS.push(function() {
+			console.log('restoring orig text content of:', origTextContent);
+			domEl_installBtn.textContent = origTextContent;
+		});
+		domEl_installBtn.textContent = L10N.add_to_firefox;
+		
+		// get extension name
+		var domEl_extField = domEl_installBtn.parentNode.parentNode.parentNode.parentNode.parentNode.querySelector('h1');
+		var extName;
+		if (domEl_extField) {
+			extName = domEl_extField.textContent;
+		}
+		
+		var clickedInstallBtn = actOnExt.bind(null, extId, extName);
+		domEl_installBtn.addEventListener('click', clickedInstallBtn, false);
+		domEl_installBtn.style.pointerEvents = 'auto';
+		PAGE_UNLOADERS.push(function() {
+			domEl_installBtn.removeEventListener('click', clickedInstallBtn, false);
+			domEl_installBtn.style.pointerEvents = '';
+		});
+		
+		var domEl_installBtnBg = domEl_installBtn.parentNode.parentNode;
+		domEl_installBtnBg.style.backgroundColor = 'rgb(124, 191, 54)';
+		domEl_installBtnBg.style.backgroundImage = 'linear-gradient(to bottom, rgb(101, 173, 40), rgb(124, 191, 54))';
+		domEl_installBtnBg.style.borderColor = 'rgb(78, 155, 25)';
+		domEl_installBtnBg.style.pointerEvents = 'none';
+		
+		// var clonedDomEl_installBtnBg = domEl_installBtnBg.cloneNode(true);
+		// domEl_installBtnBg.parentNode.insertBefore(clonedDomEl_installBtnBg, domEl_installBtnBg);
+		// domEl_installBtnBg.parentNode.removeChild(domEl_installBtnBg);
+		// domEl_installBtnBg = clonedDomEl_installBtnBg;
+		
+		PAGE_UNLOADERS.push(function() {
+			domEl_installBtnBg.style.backgroundColor = '';
+			domEl_installBtnBg.style.backgroundImage = '';
+			domEl_installBtnBg.style.borderColor = '';
+			domEl_installBtnBg.style.pointerEvents = '';
+		});
+		
+		var domEl_installBtnSiblingBg = domEl_installBtnBg.nextSibling;
+		domEl_installBtnSiblingBg.style.backgroundColor = 'rgb(124, 191, 54)';
+		domEl_installBtnSiblingBg.style.backgroundImage = 'linear-gradient(to bottom, rgb(101, 173, 40), rgb(124, 191, 54))';
+		domEl_installBtnSiblingBg.style.borderColor = 'rgb(78, 155, 25)';
+		PAGE_UNLOADERS.push(function() {
+			domEl_installBtnSiblingBg.style.backgroundColor = '';
+			domEl_installBtnSiblingBg.style.backgroundImage = '';
+			domEl_installBtnSiblingBg.style.borderColor = '';
+		});
+		
+		
+		
+	} else {
+		console.log('probably (well hopefully) NOT on an extension page');
+	}
 	
 	// PAGE_UNLOADERS.push(myWebProgressListener.uninit);
 }
