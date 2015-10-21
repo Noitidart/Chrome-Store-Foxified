@@ -30,11 +30,11 @@ function doPageUnloaders() {
 	}
 }
 
-function actOnExt(aExtId, aExtName, aExtNameHashed, aEvent) {
+function actOnExt(aExtId, aExtName, aEvent) {
 	aEvent.stopPropagation();
 	aEvent.preventDefault();
 	content.alert(L10N.starting + ':' + aExtName);
-	sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['actOnExt', aExtId, aExtName, aExtNameHashed], bootstrapMsgListener.funcScope, function(aStatus, aStatusInfo) {
+	sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['actOnExt', aExtId, aExtName], bootstrapMsgListener.funcScope, function(aStatus, aStatusInfo) {
 		if (aStatus == 'promise_rejected') {
 			content.alert('Failed to download and install extension, please report to addon author. Here is the error, see browser console for more readable version:\n\n' + JSON.stringify(aStatusInfo));
 			console.error(aStatusInfo);
@@ -125,16 +125,11 @@ function domInsert(aContentWindow) {
 		// get extension name
 		var domEl_extField = domEl_installBtn.parentNode.parentNode.parentNode.parentNode.parentNode.querySelector('h1');
 		var extName;
-		var extNameHashed;
 		if (domEl_extField) {
 			extName = domEl_extField.textContent;
-			extName = extName.substr(0, extName.length-1);
-			extNameHashed = HashString(extName);
-		} else {
-			extNameHashed = new Date().getTime();
 		}
 		
-		var clickedInstallBtn = actOnExt.bind(null, extId, extName, extNameHashed);
+		var clickedInstallBtn = actOnExt.bind(null, extId, extName);
 		domEl_installBtn.addEventListener('click', clickedInstallBtn, false);
 		PAGE_UNLOADERS.push(function() {
 			domEl_installBtn.removeEventListener('click', clickedInstallBtn, false);
@@ -420,60 +415,6 @@ function getContentWindowFromNsiRequest(aRequest) {
 	}
 
 	return loadContext.associatedWindow;
-}
-var HashString = (function (){
-	/**
-	 * Javascript implementation of
-	 * https://hg.mozilla.org/mozilla-central/file/0cefb584fd1a/mfbt/HashFunctions.h
-	 * aka. the mfbt hash function.
-	 */ 
-  // Note: >>>0 is basically a cast-to-unsigned for our purposes.
-  const encoder = getTxtEncodr();
-  const kGoldenRatio = 0x9E3779B9;
-
-  // Multiply two uint32_t like C++ would ;)
-  const mul32 = (a, b) => {
-    // Split into 16-bit integers (hi and lo words)
-    let ahi = (a >> 16) & 0xffff;
-    let alo = a & 0xffff;
-    let bhi = (b >> 16) & 0xffff
-    let blo = b & 0xffff;
-    // Compute new hi and lo seperately and recombine.
-    return (
-      (((((ahi * blo) + (alo * bhi)) & 0xffff) << 16) >>> 0) +
-      (alo * blo)
-    ) >>> 0;
-  };
-
-  // kGoldenRatioU32 * (RotateBitsLeft32(aHash, 5) ^ aValue);
-  const add = (hash, val) => {
-    // Note, cannot >> 27 here, but / (1<<27) works as well.
-    let rotl5 = (
-      ((hash << 5) >>> 0) |
-      (hash / (1<<27)) >>> 0
-    ) >>> 0;
-    return mul32(kGoldenRatio, (rotl5 ^ val) >>> 0);
-  }
-
-  return function(text) {
-    // Convert to utf-8.
-    // Also decomposes the string into uint8_t values already.
-    let data = encoder.encode(text);
-
-    // Compute the actual hash
-    let rv = 0;
-    for (let c of data) {
-      rv = add(rv, c | 0);
-    }
-    return rv;
-  };
-})();
-var txtEncodr; // holds TextDecoder if created
-function getTxtEncodr() {
-	if (!txtEncodr) {
-		txtEncodr = new TextEncoder();
-	}
-	return txtEncodr;
 }
 // end - common helper functions
 

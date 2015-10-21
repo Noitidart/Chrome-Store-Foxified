@@ -134,14 +134,15 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 			aL10n: l10n
 		}];
 	},
-	actOnExt: function(aExtId, aExtName, aExtNameHashed) {
-		console.log('in actOnExt server side, aExtId:', aExtId, 'aExtName:', aExtName, 'aExtNameHashed:', aExtNameHashed);
+	actOnExt: function(aExtId, aExtName) {
+		console.log('in actOnExt server side, aExtId:', aExtId, 'aExtName:', aExtName);
 		var deferredMain_actOnExt = new Deferred();
 		
+		var tmpFileName;
 		if (aExtName) {
-			var tmpFileName = getSafedForOSPath(aExtName) + ' - Chrome Version'; //'foxify_this-' + new Date().getTime();
+			tmpFileName = getSafedForOSPath(aExtName) + ' ' + myServices.sb.GetStringFromName('xpi_suffix'); //'foxify_this-' + new Date().getTime();
 		} else {
-			var tmpFileName = 'foxify_this-' + new Date().getTime();
+			tmpFileName = 'foxified-' + new Date().getTime()  + ' ' +  myServices.sb.GetStringFromName('xpi_suffix');
 		}
 		var tmpFilePath = OS.Path.join(OS.Constants.Path.desktopDir, tmpFileName + '.xpi');
 		
@@ -240,7 +241,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 
 						manifestJson.applications = {
 							gecko: {
-								id: aExtNameHashed + '@mozWebExtension.org'
+								id: aExtId + '@mozWebExtension.org'
 							}
 						};
 					} finally {
@@ -370,9 +371,10 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 				   }
 				   //alert(str.join('\n'));
 				   aInstall.removeListener(installListener);
+				   /*
 				   if (!aExtName) {
-					   console.error('ok will now try to rename to:', aExtNameHashed + ' - Chrome Version');
-					   var promise_rename = OS.File.move(tmpFilePath, OS.Path.join(OS.Constants.Path.desktopDir, aExtNameHashed + ' - Chrome Version.xpi'));
+					   console.error('ok will now try to rename to:', new Date().getTime()  + ' ' +  myServices.sb.GetStringFromName('xpi_suffix'));
+					   var promise_rename = OS.File.move(tmpFilePath, OS.Path.join(OS.Constants.Path.desktopDir, new Date().getTime()  + ' ' +  myServices.sb.GetStringFromName('xpi_suffix') + '.xpi'));
 						promise_rename.then(
 							function(aVal) {
 								console.log('Fullfilled - promise_rename - ', aVal);
@@ -392,6 +394,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 							}
 						);
 				   }
+				   */
 				},
 				onInstallStarted: function(aInstall) {
 					// jsWin.addMsg('"' + aInstall.addon.name + '" Install Started...');
