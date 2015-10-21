@@ -33,7 +33,7 @@ function doPageUnloaders() {
 function actOnExt(aExtId, aExtName) {
 	sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['actOnExt', aExtId, aExtName], bootstrapMsgListener.funcScope, function(aStatus, aStatusInfo) {
 		if (aStatus == 'promise_rejected') {
-			content.alert('Failed to download and install extension, please report to addon author. Here is the error, see browser console for more readable version:\n\n' + JSON.stringify(aStatusInfo));
+			content.alert(L10N.failed_install + '\n\n' + JSON.stringify(aStatusInfo));
 			console.error(aStatusInfo);
 			throw new Error(aStatusInfo);
 		} else {
@@ -100,8 +100,8 @@ function listenClickTrue(aEvent) {
 				domEl_dialog = domEl_dialog.parentNode;
 			}
 			if (!domEl_dialog.getAttribute('role') || domEl_dialog.getAttribute('role') != 'dialog') {
-				aContentWindow.alert('ERROR: Could not find dialog of this extension so cannot get name');
-				throw new Error('ERROR: Could not find dialog of this extension so cannot get name');
+				aContentWindow.alert(L10N.error1);
+				throw new Error('ERROR: Could not find extension id, will not try to install from href');
 			}
 			var extName = domEl_dialog.querySelector('h1').textContent;
 			// aContentWindow.alert('extName: ' + extName);
@@ -114,13 +114,13 @@ function listenClickTrue(aEvent) {
 			}
 			var theHref = domEl_withHref.getAttribute('href');
 			if (!theHref) {
-				aContentWindow.alert('ERROR: Could not find extension id, will not try to install');
-				throw new Error('could not figure out extension id');
+				aContentWindow.alert(L10N.error2);
+				throw new Error('ERROR: Could not find extension id, will not try to install');
 			}
 			var extId = /webstore\/detail\/.*?\/([^\/]+)/.exec(theHref);
 			if (!extId) {
-				aContentWindow.alert('ERROR: Could not find extension id, will not try to install from href');
-				throw new Error('could not figure out extension id from href');
+				aContentWindow.alert(L10N.error1);
+				throw new Error('ERROR: Could not find extension id, will not try to install from href');
 			}
 			extId = extId[1];
 			// aContentWindow.alert('extId: ' + extId);
@@ -182,7 +182,7 @@ function domInsert(aContentWindow) {
 	var stylesheet = jsonToDOM([
 		'style', {id:'foxified-chrome-extensions-and-store_stylesheet'},
 			'div[role=button] { overflow:hidden !important; background-color:rgb(124, 191, 54) !important; background-image:linear-gradient(to bottom, rgb(101, 173, 40), rgb(124, 191, 54)) !important; border-color:rgb(78, 155, 25) !important;}',
-			'div[role=button] .webstore-test-button-label::before { display:block; content:\'Add to Firefox\'; }'
+			'div[role=button] .webstore-test-button-label::before { display:block; content:\'' + L10N.add_to_firefox + '\'; }'
 	], aContentDocument, {});
 	aContentDocument.documentElement.appendChild(stylesheet);
 	PAGE_UNLOADERS.push(function() {
