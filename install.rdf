@@ -24,6 +24,7 @@
 		<em:description>Enables the Google Chrome Store for Firefox. Point and click to install Chrome extensions straight into Firefox.</em:description>
 		<em:creator>Juest</em:creator>
 		<em:creator>Noitidart</em:creator>
+		<em:translator>goofy-bz</em:translator>
 		
 		<!-- start localizing - For each entry in default data MUST have equivalent in each localized block -->
 		<em:localized>
@@ -33,6 +34,7 @@
 				<em:description>Enables the Google Chrome Store for Firefox. Point and click to install Chrome extensions straight into Firefox.</em:description>
 				<em:creator>Juest</em:creator>
 				<em:creator>Noitidart</em:creator>
+				<em:translator>goofy-bz</em:translator>
 			</Description>
 		</em:localized>
 		<!-- this is for French locale -->
@@ -43,6 +45,7 @@
 				<em:description>Active le Google Chrome Store pour Firefox. Permet de cliquer pour installer les extensions de Chrome directement dans Firefox.</em:description>
 				<em:creator>Juest</em:creator>
 				<em:creator>Noitidart</em:creator>
+				<em:translator>goofy-bz</em:translator>
 			</Description>
 		</em:localized>
 	  </Description>

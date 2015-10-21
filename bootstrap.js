@@ -37,6 +37,7 @@ const core = {
 };
 
 const JETPACK_DIR_BASENAME = 'jetpack';
+const myPrefBranch = 'extensions.' + core.addon.id + '.';
 
 // Lazy Imports
 const myServices = {};
@@ -59,6 +60,18 @@ function uninstall(aData, aReason) {
 function startup(aData, aReason) {
 	// core.addon.aData = aData;
 	extendCore();
+	
+	// set preferences defaults
+	try {
+		Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save');
+	} catch(ex) {
+		Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.save', true);
+	}
+	try {
+		Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path');
+	} catch (ex) {
+		Services.prefs.setCharPref('extensions.chrome-store-foxified@jetpack.save-path', OS.Constants.Path.desktopDir);
+	}
 	
 	var aTimer = Cc['@mozilla.org/timer;1'].createInstance(Ci.nsITimer);
 	aTimer.initWithCallback({
@@ -144,7 +157,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 		} else {
 			tmpFileName = 'foxified-' + new Date().getTime()  + ' ' +  myServices.sb.GetStringFromName('xpi_suffix');
 		}
-		var tmpFilePath = OS.Path.join(OS.Constants.Path.desktopDir, tmpFileName + '.xpi');
+		var tmpFilePath = OS.Path.join(Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path'), tmpFileName + '.xpi');
 		
 		var crxBlob;
 		var xpi;
@@ -376,6 +389,30 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 				   }
 				   //alert(str.join('\n'));
 				   aInstall.removeListener(installListener);
+				   
+				   if (!Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save')) {
+					   // delete it
+					   console.log('ok deleting it');
+					   var promise_del = OS.File.remove(tmpFilePath);
+						promise_del.then(
+							function(aVal) {
+								console.log('Fullfilled - promise_del - ', aVal);
+								// start - do stuff here - promise_del
+								// end - do stuff here - promise_del
+							},
+							function(aReason) {
+								var rejObj = {name:'promise_del', aReason:aReason};
+								console.warn('Rejected - promise_del - ', rejObj);
+								// deferred_createProfile.reject(rejObj);
+							}
+						).catch(
+							function(aCaught) {
+								var rejObj = {name:'promise_del', aCaught:aCaught};
+								console.error('Caught - promise_del - ', rejObj);
+								// deferred_createProfile.reject(rejObj);
+							}
+						);
+				   }
 				   /*
 				   if (!aExtName) {
 					   console.error('ok will now try to rename to:', new Date().getTime()  + ' ' +  myServices.sb.GetStringFromName('xpi_suffix'));
