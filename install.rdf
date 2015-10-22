@@ -5,7 +5,7 @@
 	<RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:em="http://www.mozilla.org/2004/em-rdf#">
 	  <Description about="urn:mozilla:install-manifest">
 		<em:id>Chrome-Store-Foxified@jetpack</em:id>
-		<em:version>1.1</em:version>
+		<em:version>1.2-night</em:version>
 		<em:type>2</em:type>
 		<em:bootstrap>true</em:bootstrap>
 		
@@ -17,7 +17,16 @@
 				<em:maxVersion>44.0</em:maxVersion> <!-- the latest version i tested it in -->
 			</Description>
 		</em:targetApplication>
-		
+
+		<!-- Firefox for Android -->
+		<em:targetApplication>
+		  <Description>
+			<em:id>{aa3c5121-dab2-40e2-81ca-7ea25febc110}</em:id>
+			<em:minVersion>44.0</em:minVersion> <!-- guess based on firefox testing -->
+			<em:maxVersion>44.0</em:maxVersion> <!-- guess based on firefox testing -->
+		  </Description>
+		</em:targetApplication>
+
 		<!-- Front End MetaData -->
 		<!-- must provide default non-localized because It's used as a default on AMO. It's used as a default by the add-on manager, with the possibility of other locales overriding it. Failure to provide a non-localized name will lead to failed upload on AMO. -->
 		<em:name>Chrome Store Foxified</em:name>
