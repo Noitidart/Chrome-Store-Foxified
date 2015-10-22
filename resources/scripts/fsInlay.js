@@ -180,7 +180,10 @@ function domInsert(aContentWindow) {
 	
 	domEl_downloadGoogleChromeMainDiv.style.display = 'none';
 	PAGE_UNLOADERS.push(function() {
-		domEl_downloadGoogleChromeMainDiv.style.display = '';
+		// wrapped in try because im not removing these on page unload, so they will be dead compartments
+		try {
+			domEl_downloadGoogleChromeMainDiv.style.display = '';
+		} catch(ignore) {}
 	});
 
 	// put in stylesheet to change color of the buttons and give it "Add to Firefox" content
@@ -191,7 +194,10 @@ function domInsert(aContentWindow) {
 	], aContentDocument, {});
 	aContentDocument.documentElement.appendChild(stylesheet);
 	PAGE_UNLOADERS.push(function() {
-		stylesheet.parentNode.removeChild(stylesheet);
+		// wrapped in try because im not removing these on page unload, so they will be dead compartments
+		try {
+			stylesheet.parentNode.removeChild(stylesheet);
+		} catch(ignore) {}
 	});
 	
 	// add click listener
@@ -202,6 +208,7 @@ function domInsert(aContentWindow) {
 	aContentWindow.addEventListener('click', listenClickTrue, true);
 	// aContentWindow.addEventListener('mouseup', listenMouseUpTrue, true);
 	PAGE_UNLOADERS.push(function() {
+		// no need for try-ignore wrap here as aContentWindow is content
 		// aContentWindow.removeEventListener('mousedown', listenMouseDownFalse, false);
 		// aContentWindow.removeEventListener('click', listenClickFalse, false);
 		// aContentWindow.removeEventListener('mouseup', listenMouseUpFalse, false);
