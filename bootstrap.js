@@ -54,6 +54,12 @@ function install() {}
 function uninstall(aData, aReason) {
 	if (aReason == ADDON_UNINSTALL) {
 		// delete prefs
+		try {
+			Services.prefs.clearUserPref('extensions.chrome-store-foxified@jetpack.save');
+		} catch(ignore) {}
+		try {
+			Services.prefs.clearUserPref('extensions.chrome-store-foxified@jetpack.save-path');
+		} catch(ignore) {}
 	}
 }
 
