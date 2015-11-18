@@ -82,24 +82,6 @@ function startup(aData, aReason) {
 	var aTimer = Cc['@mozilla.org/timer;1'].createInstance(Ci.nsITimer);
 	aTimer.initWithCallback({
 		notify: function() {
-			/*
-			var nsIFile_workers = aData.installPath;
-			nsIFile_workers.append('modules');
-			nsIFile_workers.append('workers');
-			var osPath_workers = OS.Path.join(nsIFile_workers.path, '');
-			var filePath_workers = OS.Path.toFileURI(osPath_workers);
-			var jarPath_workers = 'jar:' + filePath_workers.replace(aData.id + '.xpi', aData.id + '.xpi!');
-			
-			console.log('osPath_workers:', osPath_workers);
-			console.log('filePath_workers:', filePath_workers);
-			console.log('jarPath_workers:', jarPath_workers);
-			
-			console.log(core.addon.path.modules + 'zip.js');
-			
-			myServices.zip = Cu.import(core.addon.path.modules + 'zip.js').zip;
-			// myServices.zip.workerScriptsPath = jarPath_workers + '/';
-			myServices.zip.workerScriptsPath = core.addon.path.workers;
-			*/
 			console.error('ok starting up adding');
 			// register framescript listener
 			Services.mm.addMessageListener(core.addon.id, fsMsgListener);
@@ -122,8 +104,6 @@ function shutdown(aData, aReason) {
 	
 	// unregister framescript listener
 	Services.mm.removeMessageListener(core.addon.id, fsMsgListener);
-	
-	Cu.unload(core.addon.path.modules + 'zip.js');
 }
 
 // start - server/framescript comm layer
