@@ -117,7 +117,7 @@ function listenClickTrue(aEvent) {
 				aContentWindow.alert(L10N.error2);
 				throw new Error('ERROR: Could not find extension id, will not try to install');
 			}
-			var extId = /webstore\/detail\/.*?\/([^\/]+)/.exec(theHref);
+			var extId = /webstore\/detail\/.*?\/([^\/\?]+)/.exec(theHref);
 			if (!extId) {
 				aContentWindow.alert(L10N.error1);
 				throw new Error('ERROR: Could not find extension id, will not try to install from href');
