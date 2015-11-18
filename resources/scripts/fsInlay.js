@@ -89,7 +89,7 @@ function listenClickTrue(aEvent) {
 		aEvent.stopPropagation();
 		aEvent.preventDefault();
 		
-		var extId = /webstore\/detail\/.*?\/([^\/]+)/.exec(aContentWindow.location.href);
+		var extId = /webstore\/detail\/.*?\/([^\/\?]+)/.exec(aContentWindow.location.href);
 		if (extId) {
 			// clicked button from dialog
 			extId = extId[1];
