@@ -151,6 +151,8 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 		var step1 = function() {
 			// fetch file
 			
+			console.log('aExtId:', aExtId);
+			console.info('full download url:', 'https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc');
 			var promise_xhr = xhr('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc', {
 				aResponseType: 'arraybuffer'
 			});
@@ -364,58 +366,70 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 			   }
 			};
 			if (Services.vc.compare('45.0a1', core.firefox.version) == 1) {
-				// meaning the current version is less than 45.0a1
-				Services.prefs.setBoolPref('xpinstall.signatures.required', false);
+				var doPre45_install = function() {
+					var installListener = {
+						onInstallEnded: function(aInstall, aAddon) {
+						   var str = [];
+						   //str.push('"' + aAddon.name + '" Install Ended!');
+						   // jsWin.addMsg('"' + aAddon.name + '" Install Ended...');
+						   if (aInstall.state != AddonManager.STATE_INSTALLED) {
+							   //str.push('aInstall.state: ' + aInstall.state)
+							   //jsWin.addMsg('aInstall.state: ' + aInstall.state);
+							   // jsWin.addMsg('<red>Addon Install Failed - Status Code: ' + aInstall.state);
+							   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-install-failed') + aInstall.state]);
+						   } else {
+							   //str.push('aInstall.state: Succesfully Installed')
+							   //jsWin.addMsg('aInstall.state: Succesfully Installed')
+							   // jsWin.addMsg('<green>Addon Succesfully Installed!');
+							   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed')]);
+						   }
+						   if (aAddon.appDisabled) {
+							   //str.push('appDisabled: ' + aAddon.appDisabled);
+							   // jsWin.addMsg('<red>Addon is disabled by application');
+							   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed-appdisabled')]);
+						   }
+						   if (aAddon.userDisabled) {
+							   //str.push('userDisabled: ' + aAddon.userDisabled);
+							   //jsWin.addMsg('userDisabled: ' + aAddon.userDisabled);
+							   // jsWin.addMsg('<orange>Addon is currently disabled - go to addon manager to enable it');
+							   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed-userdisabled')]);
+						   }
+						   if (aAddon.pendingOperations != AddonManager.PENDING_NONE) {
+							   //str.push('NEEDS RESTART: ' + aAddon.pendingOperations);
+							   //jsWin.addMsg('NEEDS RESTART: ' + aAddon.pendingOperations);
+							   // jsWin.addMsg('Needs to RESTART to complete install...');
+							   deferredMain_actOnExt.resolve([true, 'this should never happen, webexts are restartless']);
+						   }
+						   //alert(str.join('\n'));
+						   aInstall.removeListener(installListener);
+						   
+						   postInstallEnded();
+						},
+						onInstallStarted: function(aInstall) {
+							// jsWin.addMsg('"' + aInstall.addon.name + '" Install Started...');
+						}
+					};
 					
-				var installListener = {
-					onInstallEnded: function(aInstall, aAddon) {
-					   var str = [];
-					   //str.push('"' + aAddon.name + '" Install Ended!');
-					   // jsWin.addMsg('"' + aAddon.name + '" Install Ended...');
-					   if (aInstall.state != AddonManager.STATE_INSTALLED) {
-						   //str.push('aInstall.state: ' + aInstall.state)
-						   //jsWin.addMsg('aInstall.state: ' + aInstall.state);
-						   // jsWin.addMsg('<red>Addon Install Failed - Status Code: ' + aInstall.state);
-						   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-install-failed') + aInstall.state]);
-					   } else {
-						   //str.push('aInstall.state: Succesfully Installed')
-						   //jsWin.addMsg('aInstall.state: Succesfully Installed')
-						   // jsWin.addMsg('<green>Addon Succesfully Installed!');
-						   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed')]);
-					   }
-					   if (aAddon.appDisabled) {
-						   //str.push('appDisabled: ' + aAddon.appDisabled);
-						   // jsWin.addMsg('<red>Addon is disabled by application');
-						   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed-appdisabled')]);
-					   }
-					   if (aAddon.userDisabled) {
-						   //str.push('userDisabled: ' + aAddon.userDisabled);
-						   //jsWin.addMsg('userDisabled: ' + aAddon.userDisabled);
-						   // jsWin.addMsg('<orange>Addon is currently disabled - go to addon manager to enable it');
-						   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed-userdisabled')]);
-					   }
-					   if (aAddon.pendingOperations != AddonManager.PENDING_NONE) {
-						   //str.push('NEEDS RESTART: ' + aAddon.pendingOperations);
-						   //jsWin.addMsg('NEEDS RESTART: ' + aAddon.pendingOperations);
-						   // jsWin.addMsg('Needs to RESTART to complete install...');
-						   deferredMain_actOnExt.resolve([true, 'this should never happen, webexts are restartless']);
-					   }
-					   //alert(str.join('\n'));
-					   aInstall.removeListener(installListener);
-					   
-					   postInstallEnded();
-					},
-					onInstallStarted: function(aInstall) {
-						// jsWin.addMsg('"' + aInstall.addon.name + '" Install Started...');
-					}
+					AddonManager.getInstallForFile(xpi, function(aInstall) {
+					  // aInstall is an instance of AddonInstall
+						aInstall.addListener(installListener);
+						aInstall.install(); //does silent install
+						// AddonManager.installAddonsFromWebpage('application/x-xpinstall', Services.wm.getMostRecentWindow('navigator:browser').gBrowser.selectedBrowser, null, [aInstall]); //does regular popup install
+					}, 'application/x-xpinstall');
 				};
 				
-				AddonManager.getInstallForFile(xpi, function(aInstall) {
-				  // aInstall is an instance of AddonInstall
-					aInstall.addListener(installListener);
-					aInstall.install(); //does silent install
-					// AddonManager.installAddonsFromWebpage('application/x-xpinstall', Services.wm.getMostRecentWindow('navigator:browser').gBrowser.selectedBrowser, null, [aInstall]); //does regular popup install
-				}, 'application/x-xpinstall');
+				// meaning the current version is less than 45.0a1
+				if (Services.prefs.getBoolPref('xpinstall.signatures.required') == true) {
+					var rez_confirm = Services.prompt.confirm(Services.wm.getMostRecentWindow('navigator:browser'), myServices.sb.GetStringFromName('addon_name'), myServices.sb.GetStringFromName('request-pref-toggle'));
+					if (rez_confirm) {
+						Services.prefs.setBoolPref('xpinstall.signatures.required', false);
+						doPre45_install();
+					} else {
+						deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-install-failed-signatures')]);
+					}
+				} else {
+					doPre45_install();
+				}
 			} else {
 				try {
 					var promise_tempInstall = AddonManager.installTemporaryAddon(xpi);
