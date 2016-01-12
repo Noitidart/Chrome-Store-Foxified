@@ -338,103 +338,117 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 		
 		var step4 = function() {
 			// install to firefox
-			Services.prefs.setBoolPref('xpinstall.signatures.required', false);
-
-			var installListener = {
-				onInstallEnded: function(aInstall, aAddon) {
-				   var str = [];
-				   //str.push('"' + aAddon.name + '" Install Ended!');
-				   // jsWin.addMsg('"' + aAddon.name + '" Install Ended...');
-				   if (aInstall.state != AddonManager.STATE_INSTALLED) {
-					   //str.push('aInstall.state: ' + aInstall.state)
-					   //jsWin.addMsg('aInstall.state: ' + aInstall.state);
-					   // jsWin.addMsg('<red>Addon Install Failed - Status Code: ' + aInstall.state);
-					   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-install-failed') + aInstall.state]);
-				   } else {
-					   //str.push('aInstall.state: Succesfully Installed')
-					   //jsWin.addMsg('aInstall.state: Succesfully Installed')
-					   // jsWin.addMsg('<green>Addon Succesfully Installed!');
-					   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed')]);
-				   }
-				   if (aAddon.appDisabled) {
-					   //str.push('appDisabled: ' + aAddon.appDisabled);
-					   // jsWin.addMsg('<red>Addon is disabled by application');
-					   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed-appdisabled')]);
-				   }
-				   if (aAddon.userDisabled) {
-					   //str.push('userDisabled: ' + aAddon.userDisabled);
-					   //jsWin.addMsg('userDisabled: ' + aAddon.userDisabled);
-					   // jsWin.addMsg('<orange>Addon is currently disabled - go to addon manager to enable it');
-					   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed-userdisabled')]);
-				   }
-				   if (aAddon.pendingOperations != AddonManager.PENDING_NONE) {
-					   //str.push('NEEDS RESTART: ' + aAddon.pendingOperations);
-					   //jsWin.addMsg('NEEDS RESTART: ' + aAddon.pendingOperations);
-					   // jsWin.addMsg('Needs to RESTART to complete install...');
-					   deferredMain_actOnExt.resolve([true, 'this should never happen, webexts are restartless']);
-				   }
-				   //alert(str.join('\n'));
-				   aInstall.removeListener(installListener);
-				   
-				   if (!Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save')) {
-					   // delete it
-					   console.log('ok deleting it');
-					   var promise_del = OS.File.remove(tmpFilePath);
-						promise_del.then(
-							function(aVal) {
-								console.log('Fullfilled - promise_del - ', aVal);
-								// start - do stuff here - promise_del
-								// end - do stuff here - promise_del
-							},
-							function(aReason) {
-								var rejObj = {name:'promise_del', aReason:aReason};
-								console.warn('Rejected - promise_del - ', rejObj);
-								// deferred_createProfile.reject(rejObj);
-							}
-						).catch(
-							function(aCaught) {
-								var rejObj = {name:'promise_del', aCaught:aCaught};
-								console.error('Caught - promise_del - ', rejObj);
-								// deferred_createProfile.reject(rejObj);
-							}
-						);
-				   }
-				   /*
-				   if (!aExtName) {
-					   console.error('ok will now try to rename to:', new Date().getTime()  + ' ' +  myServices.sb.GetStringFromName('xpi_suffix'));
-					   var promise_rename = OS.File.move(tmpFilePath, OS.Path.join(OS.Constants.Path.desktopDir, new Date().getTime()  + ' ' +  myServices.sb.GetStringFromName('xpi_suffix') + '.xpi'));
-						promise_rename.then(
-							function(aVal) {
-								console.log('Fullfilled - promise_rename - ', aVal);
-								// start - do stuff here - promise_rename
-								// end - do stuff here - promise_rename
-							},
-							function(aReason) {
-								var rejObj = {name:'promise_rename', aReason:aReason};
-								console.warn('Rejected - promise_rename - ', rejObj);
-								// deferred_createProfile.reject(rejObj);
-							}
-						).catch(
-							function(aCaught) {
-								var rejObj = {name:'promise_rename', aCaught:aCaught};
-								console.error('Caught - promise_rename - ', rejObj);
-								// deferred_createProfile.reject(rejObj);
-							}
-						);
-				   }
-				   */
-				},
-				onInstallStarted: function(aInstall) {
-					// jsWin.addMsg('"' + aInstall.addon.name + '" Install Started...');
-				}
+			var postInstallEnded = function() {
+				if (!Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save')) {
+				   // delete it
+				   console.log('ok deleting it');
+				   var promise_del = OS.File.remove(tmpFilePath);
+					promise_del.then(
+						function(aVal) {
+							console.log('Fullfilled - promise_del - ', aVal);
+							// start - do stuff here - promise_del
+							// end - do stuff here - promise_del
+						},
+						function(aReason) {
+							var rejObj = {name:'promise_del', aReason:aReason};
+							console.warn('Rejected - promise_del - ', rejObj);
+							// deferred_createProfile.reject(rejObj);
+						}
+					).catch(
+						function(aCaught) {
+							var rejObj = {name:'promise_del', aCaught:aCaught};
+							console.error('Caught - promise_del - ', rejObj);
+							// deferred_createProfile.reject(rejObj);
+						}
+					);
+			   }
 			};
-			
-			AddonManager.getInstallForFile(xpi, function(aInstall) {
-			  // aInstall is an instance of AddonInstall
-				aInstall.addListener(installListener);
-				aInstall.install(); //does silent install
-				//AddonManager.installAddonsFromWebpage('application/x-xpinstall', gBrowser.contentWindow, null, [aInstall]); //does regular popup install
-			}, 'application/x-xpinstall');
+			if (Services.vc.compare('45.0a1', core.firefox.version) == 1) {
+				// meaning the current version is less than 45.0a1
+				Services.prefs.setBoolPref('xpinstall.signatures.required', false);
+					
+				var installListener = {
+					onInstallEnded: function(aInstall, aAddon) {
+					   var str = [];
+					   //str.push('"' + aAddon.name + '" Install Ended!');
+					   // jsWin.addMsg('"' + aAddon.name + '" Install Ended...');
+					   if (aInstall.state != AddonManager.STATE_INSTALLED) {
+						   //str.push('aInstall.state: ' + aInstall.state)
+						   //jsWin.addMsg('aInstall.state: ' + aInstall.state);
+						   // jsWin.addMsg('<red>Addon Install Failed - Status Code: ' + aInstall.state);
+						   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-install-failed') + aInstall.state]);
+					   } else {
+						   //str.push('aInstall.state: Succesfully Installed')
+						   //jsWin.addMsg('aInstall.state: Succesfully Installed')
+						   // jsWin.addMsg('<green>Addon Succesfully Installed!');
+						   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed')]);
+					   }
+					   if (aAddon.appDisabled) {
+						   //str.push('appDisabled: ' + aAddon.appDisabled);
+						   // jsWin.addMsg('<red>Addon is disabled by application');
+						   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed-appdisabled')]);
+					   }
+					   if (aAddon.userDisabled) {
+						   //str.push('userDisabled: ' + aAddon.userDisabled);
+						   //jsWin.addMsg('userDisabled: ' + aAddon.userDisabled);
+						   // jsWin.addMsg('<orange>Addon is currently disabled - go to addon manager to enable it');
+						   deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed-userdisabled')]);
+					   }
+					   if (aAddon.pendingOperations != AddonManager.PENDING_NONE) {
+						   //str.push('NEEDS RESTART: ' + aAddon.pendingOperations);
+						   //jsWin.addMsg('NEEDS RESTART: ' + aAddon.pendingOperations);
+						   // jsWin.addMsg('Needs to RESTART to complete install...');
+						   deferredMain_actOnExt.resolve([true, 'this should never happen, webexts are restartless']);
+					   }
+					   //alert(str.join('\n'));
+					   aInstall.removeListener(installListener);
+					   
+					   postInstallEnded();
+					},
+					onInstallStarted: function(aInstall) {
+						// jsWin.addMsg('"' + aInstall.addon.name + '" Install Started...');
+					}
+				};
+				
+				AddonManager.getInstallForFile(xpi, function(aInstall) {
+				  // aInstall is an instance of AddonInstall
+					aInstall.addListener(installListener);
+					aInstall.install(); //does silent install
+					// AddonManager.installAddonsFromWebpage('application/x-xpinstall', Services.wm.getMostRecentWindow('navigator:browser').gBrowser.selectedBrowser, null, [aInstall]); //does regular popup install
+				}, 'application/x-xpinstall');
+			} else {
+				try {
+					var promise_tempInstall = AddonManager.installTemporaryAddon(xpi);
+					promise_tempInstall.then(
+						function(aVal) {
+							console.log('Fullfilled - promise_tempInstall - ', aVal, 'arguments:', arguments);
+							deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed')]);
+							postInstallEnded();
+						},
+						function(aReason) {
+							var rejObj = {
+								name: 'promise_tempInstall',
+								aReason: aReason
+							};
+							console.error('Rejected - promise_tempInstall - ', rejObj);
+							deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-install-failed') + rejObj.aReason.message]);
+							postInstallEnded();
+						}
+					).catch(
+						function(aCaught) {
+							var rejObj = {
+								name: 'promise_tempInstall',
+								aCaught: aCaught
+							};
+							console.error('Caught - promise_tempInstall - ', rejObj);
+							Services.prompt.alert(null, 'Error', "devleoper error!!! Error while installing the addon: see browser console!!\n");
+						}
+					);
+				} catch (e) {
+					Services.prompt.alert(null, 'Error', "devleoper error!!! Error while installing the addon:\n" + e.message + "\n");
+					throw e;
+				}
+			}
 		};
 		
 		step1();
@@ -773,6 +787,26 @@ function getSafedForOSPath(aStr, useNonDefaultRepChar) {
 		default:
 		
 				return aStr.replace(_getSafedForOSPath_pattNIXMAC, useNonDefaultRepChar ? useNonDefaultRepChar : repCharForSafePath);
+	}
+}
+function genericReject(aPromiseName, aPromiseToReject, aReason) {
+	var rejObj = {
+		name: aPromiseName,
+		aReason: aReason
+	};
+	console.error('Rejected - ' + aPromiseName + ' - ', rejObj);
+	if (aPromiseToReject) {
+		aPromiseToReject.reject(rejObj);
+	}
+}
+function genericCatch(aPromiseName, aPromiseToReject, aCaught) {
+	var rejObj = {
+		name: aPromiseName,
+		aCaught: aCaught
+	};
+	console.error('Caught - ' + aPromiseName + ' - ', rejObj);
+	if (aPromiseToReject) {
+		aPromiseToReject.reject(rejObj);
 	}
 }
 // end - common helper functions
