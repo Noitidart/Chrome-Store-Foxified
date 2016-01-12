@@ -23,7 +23,7 @@ const core = {
 			modules: 'chrome://chrome-store-foxified/content/modules/',
 			workers: 'chrome://chrome-store-foxified/content/modules/workers/',
 		},
-		cache_key: Math.random() // set to version on release
+		cache_key: 'v1.4' // set to version on release
 	},
 	os: {
 		name: OS.Constants.Sys.Name.toLowerCase(),
@@ -82,7 +82,7 @@ function startup(aData, aReason) {
 	var aTimer = Cc['@mozilla.org/timer;1'].createInstance(Ci.nsITimer);
 	aTimer.initWithCallback({
 		notify: function() {
-			console.error('ok starting up adding');
+
 			// register framescript listener
 			Services.mm.addMessageListener(core.addon.id, fsMsgListener);
 			
@@ -112,14 +112,14 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 	requestInit: function(aMsgEvent) {
 		// start - l10n injection into fs
 		
-		console.error('in requestinit server side');
+
 		var l10n = {};
 		// get all the localized strings into ng
 		var l10ns = myServices.sb_ti.getSimpleEnumeration();
 		while (l10ns.hasMoreElements()) {
 			var l10nProp = l10ns.getNext();
 			var l10nPropEl = l10nProp.QueryInterface(Ci.nsIPropertyElement);
-			// doing console.log(propEl) shows the object has some fields that interest us
+
 
 			var l10nPropKey = l10nPropEl.key;
 			var l10nPropStr = l10nPropEl.value;
@@ -134,7 +134,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 		}];
 	},
 	actOnExt: function(aExtId, aExtName) {
-		console.log('in actOnExt server side, aExtId:', aExtId, 'aExtName:', aExtName);
+
 		var deferredMain_actOnExt = new Deferred();
 		
 		var tmpFileName;
@@ -151,27 +151,27 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 		var step1 = function() {
 			// fetch file
 			
-			console.log('aExtId:', aExtId);
-			console.info('full download url:', 'https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc');
+
+
 			var promise_xhr = xhr('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc', {
 				aResponseType: 'arraybuffer'
 			});
 			promise_xhr.then(
 				function(aVal) {
-					console.log('Fullfilled - promise_xhr - ', aVal);
+
 					// start - do stuff here - promise_xhr
 					step2(aVal.response);
 					// end - do stuff here - promise_xhr
 				},
 				function(aReason) {
 					var rejObj = {name:'promise_xhr', aReason:aReason};
-					console.warn('Rejected - promise_xhr - ', rejObj);
+
 					deferredMain_actOnExt.reject(rejObj);
 				}
 			).catch(
 				function(aCaught) {
 					var rejObj = {name:'promise_xhr', aCaught:aCaught};
-					console.error('Caught - promise_xhr - ', rejObj);
+
 					deferredMain_actOnExt.reject(rejObj);
 				}
 			);
@@ -185,32 +185,32 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 			step3();
 			*/
 			var locOfPk = new Uint8Array(aArrBuf.slice(0, 1000));
-			// console.log('locOfPk:', locOfPk);
+
 			for (var i=0; i<locOfPk.length; i++) {
 				if (locOfPk[i] == 80 && locOfPk[i+1] == 75 && locOfPk[i+2] == 3 && locOfPk[i+3] == 4) {
 					break;
 				}
 			}
-			console.log('pk found at:', i);
+
 			var promise_write = OS.File.writeAtomic(tmpFilePath, new Uint8Array(aArrBuf.slice(i)), {
 				tmpPath: tmpFilePath + '.tmp'
 			});
 			promise_write.then(
 				function(aVal) {
-					console.log('Fullfilled - promise_write - ', aVal);
+
 					// start - do stuff here - promise_write
 					step3();
 					// end - do stuff here - promise_write
 				},
 				function(aReason) {
 					var rejObj = {name:'promise_write', aReason:aReason};
-					console.warn('Rejected - promise_write - ', rejObj);
+
 					deferredMain_actOnExt.reject(rejObj);
 				}
 			).catch(
 				function(aCaught) {
 					var rejObj = {name:'promise_write', aCaught:aCaught};
-					console.error('Caught - promise_write - ', rejObj);
+
 					deferredMain_actOnExt.reject(rejObj);
 				}
 			);
@@ -229,16 +229,16 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 				try {
 					var entry = this.getEntry(name);
 					if (entry.isDirectory) {
-						console.log(name + ' is directory, no stream to read');
+
 						return false;
 					}
 					var stream = new ScriptableInputStream(this.getInputStream(name));
 					try {
 						// Use readBytes to get binary data, read to read a (null-terminated) string
 						var contents = stream.readBytes(entry.realSize);
-						console.log('Contents of ' + name, contents);
+
 						manifestJson = JSON.parse(contents.trim());
-						console.log('manifestJson:', manifestJson);
+
 
 						/*
 						if (manifestJson.name.indexOf('_MSG') > -1) {
@@ -255,7 +255,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 					}
 					return true;
 				} catch (ex) {
-					console.warn('Failed to read ' + name);
+
 				}
 				return false;
 			};
@@ -268,7 +268,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 					var name = entries.getNext();
 					if (name == 'manifest.json') {
 						if (handleEntry.call(reader, name)) {
-							console.log('Handled entry ' + name);
+
 							break;
 						}
 					}
@@ -278,21 +278,21 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 			}
 
 			
-			console.log('will now write, name:', name);
+
 			var writer = new ZipFileWriter(xpi, 0x04);
 			try {
-				console.log('removing entry');
+
 				writer.removeEntry(name, false);
-				console.log('removed');
+
 				var is = Cc["@mozilla.org/io/string-input-stream;1"].createInstance(Ci.nsIStringInputStream);
-				console.log('stringify it');
+
 				is.data = JSON.stringify(manifestJson);
-				console.log('stringified');
-				console.log('adding entry');
+
+
 				writer.addEntryStream(name, Date.now(), Ci.nsIZipWriter.COMPRESSION_FASTEST, is, false);
-				console.log('added');
+
 			} catch (ex) {
-				console.warn('ex:', ex);
+
 			} finally {
 				writer.close();
 			}
@@ -313,26 +313,26 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 									new myServices.zip.TextWriter(),
 									function(text) {
 										// text contains the entry data as a String
-										console.log(text);
+
 
 										// close the zip reader
 										reader.close(function() {
-											console.info('onclose callback');
+
 										});
 
 									},
 									function(current, total) {
-										console.info('onprogress callback', current, total);
+
 									}
 								);
 							} else {
-								console.error('no entries!');
+
 							}
 						}
 					);
 				},
 				function(error) {
-					console.error('onerror callback, error:', error);
+
 				}
 			);
 			*/
@@ -343,23 +343,23 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 			var postInstallEnded = function() {
 				if (!Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save')) {
 				   // delete it
-				   console.log('ok deleting it');
+
 				   var promise_del = OS.File.remove(tmpFilePath);
 					promise_del.then(
 						function(aVal) {
-							console.log('Fullfilled - promise_del - ', aVal);
+
 							// start - do stuff here - promise_del
 							// end - do stuff here - promise_del
 						},
 						function(aReason) {
 							var rejObj = {name:'promise_del', aReason:aReason};
-							console.warn('Rejected - promise_del - ', rejObj);
+
 							// deferred_createProfile.reject(rejObj);
 						}
 					).catch(
 						function(aCaught) {
 							var rejObj = {name:'promise_del', aCaught:aCaught};
-							console.error('Caught - promise_del - ', rejObj);
+
 							// deferred_createProfile.reject(rejObj);
 						}
 					);
@@ -435,7 +435,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 					var promise_tempInstall = AddonManager.installTemporaryAddon(xpi);
 					promise_tempInstall.then(
 						function(aVal) {
-							console.log('Fullfilled - promise_tempInstall - ', aVal, 'arguments:', arguments);
+
 							deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-installed')]);
 							postInstallEnded();
 						},
@@ -444,7 +444,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 								name: 'promise_tempInstall',
 								aReason: aReason
 							};
-							console.error('Rejected - promise_tempInstall - ', rejObj);
+
 							deferredMain_actOnExt.resolve([true, myServices.sb.GetStringFromName('addon-install-failed') + rejObj.aReason.message]);
 							postInstallEnded();
 						}
@@ -454,7 +454,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 								name: 'promise_tempInstall',
 								aCaught: aCaught
 							};
-							console.error('Caught - promise_tempInstall - ', rejObj);
+
 							Services.prompt.alert(null, 'Error', "devleoper error!!! Error while installing the addon: see browser console!!\n");
 						}
 					);
@@ -474,7 +474,7 @@ var fsMsgListener = {
 	funcScope: fsFuncs,
 	receiveMessage: function(aMsgEvent) {
 		var aMsgEventData = aMsgEvent.data;
-		console.log('fsMsgListener getting aMsgEventData:', aMsgEventData, 'aMsgEvent:', aMsgEvent);
+
 		// aMsgEvent.data should be an array, with first item being the unfction name in bootstrapCallbacks
 		
 		var callbackPendingId;
@@ -497,23 +497,23 @@ var fsMsgListener = {
 							aMsgEvent.target.messageManager.sendAsyncMessage(core.addon.id, [callbackPendingId, aVal]);
 						},
 						function(aReason) {
-							console.error('aReject:', aReason);
+
 							aMsgEvent.target.messageManager.sendAsyncMessage(core.addon.id, [callbackPendingId, ['promise_rejected', aReason]]);
 						}
 					).catch(
 						function(aCatch) {
-							console.error('aCatch:', aCatch);
+
 							aMsgEvent.target.messageManager.sendAsyncMessage(core.addon.id, [callbackPendingId, ['promise_rejected', aCatch]]);
 						}
 					);
 				} else {
 					// assume array
-					console.warn('ok responding to callback id:', callbackPendingId, aMsgEvent.target);
+
 					aMsgEvent.target.messageManager.sendAsyncMessage(core.addon.id, [callbackPendingId, rez_parentscript_call]);
 				}
 			}
 		}
-		else { console.warn('funcName', funcName, 'not in scope of this.funcScope') } // else is intentionally on same line with console. so on finde replace all console. lines on release it will take this out
+
 		
 	}
 };
@@ -549,7 +549,7 @@ function Deferred() {
 		}.bind(this));
 		Object.freeze(this);
 	} catch (ex) {
-		console.error('Promise not available!', ex);
+
 		throw new Error('Promise not available!');
 	}
 }
@@ -673,7 +673,7 @@ function xhr(aStr, aOptions={}) {
 	// Note: When using XMLHttpRequest to access a file:// URL the request.status is not properly set to 200 to indicate success. In such cases, request.readyState == 4, request.status == 0 and request.response will evaluate to true.
 	
 	var deferredMain_xhr = new Deferred();
-	console.log('here222');
+
 	var xhr = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance(Ci.nsIXMLHttpRequest);
 
 	var handler = ev => {
@@ -771,7 +771,7 @@ function xhr(aStr, aOptions={}) {
 			for (var pd in aOptions.aPostData) {
 				aPostStr.push(pd + '=' + encodeURIComponent(aOptions.aPostData[pd])); // :todo: figure out if should encodeURIComponent `pd` also figure out if encodeURIComponent is the right way to do this
 			}
-			console.info('aPostStr:', aPostStr.join('&'));
+
 			xhr.send(aPostStr.join('&'));
 		} else {
 			xhr.send(aOptions.aPostData);
@@ -808,7 +808,7 @@ function genericReject(aPromiseName, aPromiseToReject, aReason) {
 		name: aPromiseName,
 		aReason: aReason
 	};
-	console.error('Rejected - ' + aPromiseName + ' - ', rejObj);
+
 	if (aPromiseToReject) {
 		aPromiseToReject.reject(rejObj);
 	}
@@ -818,7 +818,7 @@ function genericCatch(aPromiseName, aPromiseToReject, aCaught) {
 		name: aPromiseName,
 		aCaught: aCaught
 	};
-	console.error('Caught - ' + aPromiseName + ' - ', rejObj);
+
 	if (aPromiseToReject) {
 		aPromiseToReject.reject(rejObj);
 	}
