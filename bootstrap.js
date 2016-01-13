@@ -6,7 +6,7 @@ Cu.import('resource://gre/modules/FileUtils.jsm');
 const {TextDecoder, TextEncoder, OS} = Cu.import('resource://gre/modules/osfile.jsm', {});
 Cu.import('resource://gre/modules/Services.jsm');
 Cu.import('resource://gre/modules/XPCOMUtils.jsm');
-Cu.importGlobalProperties(['Blob']);
+Cu.importGlobalProperties(['Blob', 'File']);
 
 // Globals
 const core = {
@@ -77,18 +77,61 @@ function startup(aData, aReason) {
 	var token = generateToken(gAmoApiKey, gAmoApiSecret);
 	console.error('ok my token:', token);
 	
-	var promise_account = xhr('https://addons.mozilla.org/api/v3/accounts/profile/', {
+	// var promise_account = xhr('https://addons.mozilla.org/api/v3/accounts/profile/', {
+	// 	Headers: {
+	// 		Authorization: 'JWT ' + token
+	// 	}
+	// });
+	// promise_account.then(
+	// 	function(aVal) {
+	// 		console.log('Fullfilled - promise_account - ', aVal);
+	// 		
+	// 	},
+	// 	genericReject.bind(null, 'promise_account', 0)
+	// ).catch(genericCatch.bind(null, 'promise_account', 0));
+	
+	/*
+	var boundaryString = '---------------------------131194143715851279101710142335';
+	var boundary = '--' + boundaryString;
+    var requestbody = boundary + '\r\n'
+            + 'Content-Disposition: form-data; name="upload"\r\n'
+            + '\r\n'
+            + File('/path/to/file/') + '\r\n'
+            + boundary + '\r\n'
+	
+	
+	// https://olympia.readthedocs.org/en/latest/topics/api/signing.html
+	var promise_sign = xhr('https://addons.mozilla.org/api/v3/addons/noida-id-1/versions/0.1/', {
+		aMethod: 'PUT',
+		aMethodSend: requestBody,
+		Headers: {
+			Authorization: 'JWT ' + token,
+			'Content-Type': 'multipart/form-data'
+		}
+	});
+	*/
+	
+	var myDomFile = new File(OS.Path.join(OS.Constants.Path.desktopDir, 'Share to Classroom - Chrome Version.xpi'));
+	console.log('myDomFile:', myDomFile);
+	
+	var formData = Cc['@mozilla.org/files/formdata;1'].createInstance(Ci.nsIDOMFormData); // http://stackoverflow.com/q/25038292/1828637
+	formData.append('Content-Type', 'multipart/form-data');
+	formData.append('upload', myDomFile); // http://stackoverflow.com/a/24746459/1828637
+	var promise_sign = xhr('https://addons.mozilla.org/api/v3/addons/noida-id-1/versions/0.1/', {
+		aMethod: 'PUT',
+		aMethodSend: formData,
 		Headers: {
 			Authorization: 'JWT ' + token
 		}
 	});
-	promise_account.then(
+	
+	promise_sign.then(
 		function(aVal) {
-			console.log('Fullfilled - promise_account - ', aVal);
+			console.log('Fullfilled - promise_sign - ', aVal);
 			
 		},
-		genericReject.bind(null, 'promise_account', 0)
-	).catch(genericCatch.bind(null, 'promise_account', 0));
+		genericReject.bind(null, 'promise_sign', 0)
+	).catch(genericCatch.bind(null, 'promise_sign', 0));
 	
 	// set preferences defaults
 	try {
@@ -686,7 +729,8 @@ function xhr(aStr, aOptions={}) {
 		aResponseType: 'text',
 		isBackgroundReq: true, // If true, no load group is associated with the request, and security dialogs are prevented from being shown to the user
 		aTimeout: 0, // 0 means never timeout, value is in milliseconds
-		Headers: null
+		Headers: null,
+		aMethodSend: null
 	}
 	
 	for (var opt in aOptions_DEFAULT) {
@@ -807,7 +851,7 @@ function xhr(aStr, aOptions={}) {
 		do_setHeaders();
 		xhr.channel.loadFlags |= aOptions.aLoadFlags;
 		xhr.responseType = aOptions.aResponseType;
-		xhr.send(null);
+		xhr.send(aOptions.aMethodSend ? aOptions.aMethodSend : null);
 	}
 	
 	return deferredMain_xhr.promise;
