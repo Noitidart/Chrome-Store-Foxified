@@ -74,12 +74,9 @@ function startup(aData, aReason) {
 	
 	Services.scriptloader.loadSubScript(core.addon.path.content + 'modules/jsonwebtoken.js', bootstrap);
 	
-	var token = generateToken(gAmoApiKey, gAmoApiSecret);
-	console.error('ok my token:', token);
-	
 	// var promise_account = xhr('https://addons.mozilla.org/api/v3/accounts/profile/', {
 	// 	Headers: {
-	// 		Authorization: 'JWT ' + token
+	// 		Authorization: 'JWT ' + generateToken(gAmoApiKey, gAmoApiSecret)
 	// 	}
 	// });
 	// promise_account.then(
@@ -121,7 +118,7 @@ function startup(aData, aReason) {
 		method: 'PUT',
 		data: formData,
 		headers: {
-			Authorization: 'JWT ' + token
+			Authorization: 'JWT ' + generateToken(gAmoApiKey, gAmoApiSecret)
 		}
 	});
 	
