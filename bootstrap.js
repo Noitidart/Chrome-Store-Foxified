@@ -73,63 +73,69 @@ function startup(aData, aReason) {
 	extendCore();
 	
 	Services.scriptloader.loadSubScript(core.addon.path.content + 'modules/jsonwebtoken.js', bootstrap);
+
+	var myDomFile = new File(OS.Path.join(OS.Constants.Path.desktopDir, 'nsitimer.xpi'));
+	console.log('myDomFile:', myDomFile);
 	
-	// var promise_account = xhr('https://addons.mozilla.org/api/v3/accounts/profile/', {
-	// 	Headers: {
+	// var formData = Cc['@mozilla.org/files/formdata;1'].createInstance(Ci.nsIDOMFormData); // http://stackoverflow.com/q/25038292/1828637
+	// formData.append('Content-Type', 'multipart/form-data');
+	// formData.append('upload', myDomFile); // http://stackoverflow.com/a/24746459/1828637
+	// 
+	// var promise_sign = xhr('https://addons.mozilla.org/api/v3/addons/' + encodeURIComponent('nsitimer@jetpack') + '/versions/initial/', { // this ```' + encodeURIComponent('nsitimer@jetpack') + '``` can be anything you want
+	// 	method: 'PUT',
+	// 	data: formData,
+	//	responseType: 'json',
+	// 	headers: {
 	// 		Authorization: 'JWT ' + generateToken(gAmoApiKey, gAmoApiSecret)
 	// 	}
 	// });
-	// promise_account.then(
+	// 
+	// promise_sign.then(
 	// 	function(aVal) {
-	// 		console.log('Fullfilled - promise_account - ', aVal);
+	// 		console.log('Fullfilled - promise_sign - ', aVal);
 	// 		
 	// 	},
-	// 	genericReject.bind(null, 'promise_account', 0)
-	// ).catch(genericCatch.bind(null, 'promise_account', 0));
+	// 	genericReject.bind(null, 'promise_sign', 0)
+	// ).catch(genericCatch.bind(null, 'promise_sign', 0));
 	
-	/*
-	var boundaryString = '---------------------------131194143715851279101710142335';
-	var boundary = '--' + boundaryString;
-    var requestbody = boundary + '\r\n'
-            + 'Content-Disposition: form-data; name="upload"\r\n'
-            + '\r\n'
-            + File('/path/to/file/') + '\r\n'
-            + boundary + '\r\n'
-	
-	
-	// https://olympia.readthedocs.org/en/latest/topics/api/signing.html
-	var promise_sign = xhr('https://addons.mozilla.org/api/v3/addons/noida-id-1/versions/0.1/', {
-		method: 'PUT',
-		data: requestBody,
-		headers: {
-			Authorization: 'JWT ' + token,
-			'Content-Type': 'multipart/form-data'
-		}
-	});
-	*/
-	
-	var myDomFile = new File(OS.Path.join(OS.Constants.Path.desktopDir, 'Share to Classroom - Chrome Version.xpi'));
-	console.log('myDomFile:', myDomFile);
-	
-	var formData = Cc['@mozilla.org/files/formdata;1'].createInstance(Ci.nsIDOMFormData); // http://stackoverflow.com/q/25038292/1828637
-	formData.append('Content-Type', 'multipart/form-data');
-	formData.append('upload', myDomFile); // http://stackoverflow.com/a/24746459/1828637
-	var promise_sign = xhr('https://addons.mozilla.org/api/v3/addons/noida-id-1/versions/0.1/', {
-		method: 'PUT',
-		data: formData,
+	// this url is also available in json of promise_sign as .url. that url contains the .pk if you dont want to build it yourself then use the format ``` GET /api/v3/addons/[string:add-on-id]/versions/[string:version]/(uploads/[string:upload-pk]/)``` and put .pk from above
+	// var promise_signStatus = xhr('https://addons.mozilla.org/api/v3/addons/Bootstrap-nsITimer%40jetpack/versions/initial/uploads/d4f3cbf85260474eacf44448cb006a10/', {
+	//	responseType: 'json',
+	// 	headers: {
+	// 		Authorization: 'JWT ' + generateToken(gAmoApiKey, gAmoApiSecret)
+	// 	}
+	// });
+	// promise_signStatus.then(
+	// 	function(aVal) {
+	// 		console.log('Fullfilled - promise_signStatus - ', aVal);
+	// 		
+	// 	},
+	// 	genericReject.bind(null, 'promise_signStatus', 0)
+	// ).catch(genericCatch.bind(null, 'promise_signStatus', 0));
+
+	var promise_downloadSigned = xhr('https://addons.mozilla.org/api/v3/file/385718/bootstrap_nsitimer-initial-fx.xpi?src=api', {
+		responseType: 'arraybuffer',
 		headers: {
 			Authorization: 'JWT ' + generateToken(gAmoApiKey, gAmoApiSecret)
 		}
 	});
-	
-	promise_sign.then(
+	promise_downloadSigned.then(
 		function(aVal) {
-			console.log('Fullfilled - promise_sign - ', aVal);
-			
+			console.log('Fullfilled - promise_downloadSigned - ', aVal);
+			var xpiFileName = 'https://addons.mozilla.org/api/v3/file/385718/bootstrap_nsitimer-initial-fx.xpi?src=api';
+			xpiFileName = xpiFileName.substring(xpiFileName.lastIndexOf('/') + 1, xpiFileName.indexOf('?src=api'));
+			var promise_saveXpi = OS.File.writeAtomic(OS.Path.join(OS.Constants.Path.desktopDir, xpiFileName), new Uint8Array(aVal.response));
+			promise_saveXpi.then(
+				function(aVal) {
+					console.log('Fullfilled - promise_saveXpi - ', aVal);
+					
+				},
+				genericReject.bind(null, 'promise_saveXpi', 0)
+			).catch(genericCatch.bind(null, 'promise_saveXpi', 0));
 		},
-		genericReject.bind(null, 'promise_sign', 0)
-	).catch(genericCatch.bind(null, 'promise_sign', 0));
-	
+		genericReject.bind(null, 'promise_downloadSigned', 0)
+	).catch(genericCatch.bind(null, 'promise_downloadSigned', 0));
+
 	// set preferences defaults
 	try {
 		Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save');
