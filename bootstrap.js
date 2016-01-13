@@ -77,6 +77,19 @@ function startup(aData, aReason) {
 	var token = generateToken(gAmoApiKey, gAmoApiSecret);
 	console.error('ok my token:', token);
 	
+	var promise_account = xhr('https://addons.mozilla.org/api/v3/accounts/profile/', {
+		Headers: {
+			Authorization: 'JWT ' + token
+		}
+	});
+	promise_account.then(
+		function(aVal) {
+			console.log('Fullfilled - promise_account - ', aVal);
+			
+		},
+		genericReject.bind(null, 'promise_account', 0)
+	).catch(genericCatch.bind(null, 'promise_account', 0));
+	
 	// set preferences defaults
 	try {
 		Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save');
@@ -644,7 +657,9 @@ function extendCore() {
 	
 
 }
+// https://gist.github.com/Noitidart/30e44f6d88423bf5096e - rev6
 function xhr(aStr, aOptions={}) {
+	// update 011316 - added in the timeout thing from https://gist.github.com/Noitidart/30e44f6d88423bf5096e rev5
 	// update 092315 - added support for aMethod when posting data, so like we can use PUT and still post data
 	// update 092315 - also am now testing if aOptions.aPostData is a key value pair by testing aOptions.aPostData.consturctor.name == 'Object'. if its Object then i assume its key  value pair, else its a blob or something so i just do xhr.send with it
 	// update 072615 - added support for aOptions.aMethod
@@ -744,16 +759,17 @@ function xhr(aStr, aOptions={}) {
 		}
 	};
 
-	var evf = f => ['load', 'error', 'abort'].forEach(f);
+	var evf = f => ['load', 'error', 'abort', 'timeout'].forEach(f);
 	evf(m => xhr.addEventListener(m, handler, false));
 
 	if (aOptions.isBackgroundReq) {
 		xhr.mozBackgroundRequest = true;
 	}
-	
-	if (aOptions.aTimeout) {
-		xhr.timeout
-	}
+
+    if (aOptions.aTimeout) {
+        console.error('setting timeout to:', aOptions.aTimeout)
+        xhr.timeout = aOptions.aTimeout;
+    }
 	
 	var do_setHeaders = function() {
 		if (aOptions.Headers) {
