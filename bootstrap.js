@@ -39,6 +39,11 @@ const core = {
 const JETPACK_DIR_BASENAME = 'jetpack';
 const myPrefBranch = 'extensions.' + core.addon.id + '.';
 
+const gAmoApiKey = 'user:5457039:387';
+const gAmoApiSecret = 'bf65a053f9fb64b8910cc7eafcb8454dc41b5b0b5747c561977410fbde0ad6df';
+
+var bootstrap;
+
 // Lazy Imports
 const myServices = {};
 XPCOMUtils.defineLazyGetter(myServices, 'hph', function () { return Cc['@mozilla.org/network/protocol;1?name=http'].getService(Ci.nsIHttpProtocolHandler); });
@@ -66,6 +71,11 @@ function uninstall(aData, aReason) {
 function startup(aData, aReason) {
 	// core.addon.aData = aData;
 	extendCore();
+	
+	Services.scriptloader.loadSubScript(core.addon.path.content + 'modules/jsonwebtoken.js', bootstrap);
+	
+	var token = generateToken(gAmoApiKey, gAmoApiSecret);
+	console.error('ok my token:', token);
 	
 	// set preferences defaults
 	try {
