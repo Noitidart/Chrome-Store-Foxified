@@ -102,9 +102,9 @@ function startup(aData, aReason) {
 	
 	// https://olympia.readthedocs.org/en/latest/topics/api/signing.html
 	var promise_sign = xhr('https://addons.mozilla.org/api/v3/addons/noida-id-1/versions/0.1/', {
-		aMethod: 'PUT',
-		aMethodSend: requestBody,
-		Headers: {
+		method: 'PUT',
+		data: requestBody,
+		headers: {
 			Authorization: 'JWT ' + token,
 			'Content-Type': 'multipart/form-data'
 		}
@@ -118,9 +118,9 @@ function startup(aData, aReason) {
 	formData.append('Content-Type', 'multipart/form-data');
 	formData.append('upload', myDomFile); // http://stackoverflow.com/a/24746459/1828637
 	var promise_sign = xhr('https://addons.mozilla.org/api/v3/addons/noida-id-1/versions/0.1/', {
-		aMethod: 'PUT',
-		aMethodSend: formData,
-		Headers: {
+		method: 'PUT',
+		data: formData,
+		headers: {
 			Authorization: 'JWT ' + token
 		}
 	});
@@ -219,28 +219,16 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 			
 			console.log('aExtId:', aExtId);
 			console.info('full download url:', 'https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc');
-			var promise_xhr = xhr('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc', {
-				aResponseType: 'arraybuffer'
+			var promise_downloadCrx = xhr('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc', {
+				responseType: 'arraybuffer'
 			});
-			promise_xhr.then(
+			promise_downloadCrx.then(
 				function(aVal) {
-					console.log('Fullfilled - promise_xhr - ', aVal);
-					// start - do stuff here - promise_xhr
+					console.log('Fullfilled - promise_downloadCrx - ', aVal);
 					step2(aVal.response);
-					// end - do stuff here - promise_xhr
 				},
-				function(aReason) {
-					var rejObj = {name:'promise_xhr', aReason:aReason};
-					console.warn('Rejected - promise_xhr - ', rejObj);
-					deferredMain_actOnExt.reject(rejObj);
-				}
-			).catch(
-				function(aCaught) {
-					var rejObj = {name:'promise_xhr', aCaught:aCaught};
-					console.error('Caught - promise_xhr - ', rejObj);
-					deferredMain_actOnExt.reject(rejObj);
-				}
-			);
+				genericReject.bind(null, 'promise_downloadCrx', deferredMain_actOnExt)
+			).catch(genericCatch.bind(null, 'promise_downloadCrx', deferredMain_actOnExt));
 		};
 		
 		var step2 = function(aArrBuf) {
@@ -700,49 +688,31 @@ function extendCore() {
 	
 
 }
-// https://gist.github.com/Noitidart/30e44f6d88423bf5096e - rev6
-function xhr(aStr, aOptions={}) {
-	// update 011316 - added in the timeout thing from https://gist.github.com/Noitidart/30e44f6d88423bf5096e rev5
-	// update 092315 - added support for aMethod when posting data, so like we can use PUT and still post data
-	// update 092315 - also am now testing if aOptions.aPostData is a key value pair by testing aOptions.aPostData.consturctor.name == 'Object'. if its Object then i assume its key  value pair, else its a blob or something so i just do xhr.send with it
-	// update 072615 - added support for aOptions.aMethod
-	// currently only setup to support GET and POST
+
+// rev8 - https://gist.github.com/Noitidart/30e44f6d88423bf5096e
+function xhr(aUrlOrFileUri, aOptions={}) {
 	// does an async request
-	// aStr is either a string of a FileURI such as `OS.Path.toFileURI(OS.Path.join(OS.Constants.Path.desktopDir, 'test.png'));` or a URL such as `http://github.com/wet-boew/wet-boew/archive/master.zip`
+	// aUrlOrFileUri is either a string of a FileURI such as `OS.Path.toFileURI(OS.Path.join(OS.Constants.Path.desktopDir, 'test.png'));` or a URL such as `http://github.com/wet-boew/wet-boew/archive/master.zip`
+		// :note: When using XMLHttpRequest to access a file:// URL the request.status is not properly set to 200 to indicate success. In such cases, request.readyState == 4, request.status == 0 and request.response will evaluate to true.
 	// Returns a promise
 		// resolves with xhr object
 		// rejects with object holding property "xhr" which holds the xhr object
 	
-	/*** aOptions
-	{
-		aLoadFlags: flags, // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/NsIRequest#Constants
-		aTiemout: integer (ms)
-		isBackgroundReq: boolean, // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest#Non-standard_properties
-		aResponseType: string, // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest#Browser_Compatibility
-		aPostData: string
-	}
-	*/
+	var aOptionsDefaults = {
+		loadFlags: Ci.nsIRequest.LOAD_ANONYMOUS | Ci.nsIRequest.LOAD_BYPASS_CACHE | Ci.nsIRequest.INHIBIT_PERSISTENT_CACHING, // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/NsIRequest#Constants
+		// aPostData: null, // discontinued, if you want to post, then set options {method:'POST', data:jQLike.serialize({a:'true',b:'false'})}
+		responseType: 'text',
+		bgRequest: true, // boolean. If true, no load group is associated with the request, and security dialogs are prevented from being shown to the user
+		timeout: 0, // integer, milliseconds, 0 means never timeout, value is in milliseconds
+		headers: null, // make it an object of key value pairs
+		method: 'GET', // string
+		data: null // make it whatever you want (formdata, null, etc), but follow the rules, like if aMethod is 'GET' then this must be null
+	};
 	
-	var aOptions_DEFAULT = {
-		aLoadFlags: Ci.nsIRequest.LOAD_ANONYMOUS | Ci.nsIRequest.LOAD_BYPASS_CACHE | Ci.nsIRequest.INHIBIT_PERSISTENT_CACHING,
-		aPostData: null,
-		aResponseType: 'text',
-		isBackgroundReq: true, // If true, no load group is associated with the request, and security dialogs are prevented from being shown to the user
-		aTimeout: 0, // 0 means never timeout, value is in milliseconds
-		Headers: null,
-		aMethodSend: null
-	}
-	
-	for (var opt in aOptions_DEFAULT) {
-		if (!(opt in aOptions)) {
-			aOptions[opt] = aOptions_DEFAULT[opt];
-		}
-	}
-	
-	// Note: When using XMLHttpRequest to access a file:// URL the request.status is not properly set to 200 to indicate success. In such cases, request.readyState == 4, request.status == 0 and request.response will evaluate to true.
+	validateOptionsObj(aOptions, aOptionsDefaults);
 	
 	var deferredMain_xhr = new Deferred();
-	console.log('here222');
+	
 	var xhr = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance(Ci.nsIXMLHttpRequest);
 
 	var handler = ev => {
@@ -751,32 +721,33 @@ function xhr(aStr, aOptions={}) {
 		switch (ev.type) {
 			case 'load':
 			
-					if (xhr.readyState == 4) {
-						if (xhr.status == 200) {
-							deferredMain_xhr.resolve(xhr);
-						} else {
-							var rejObj = {
-								name: 'deferredMain_xhr.promise',
-								aReason: 'Load Not Success', // loaded but status is not success status
-								xhr: xhr,
-								message: xhr.statusText + ' [' + ev.type + ':' + xhr.status + ']'
-							};
-							deferredMain_xhr.reject(rejObj);
-						}
-					} else if (xhr.readyState == 0) {
-						var uritest = Services.io.newURI(aStr, null, null);
-						if (uritest.schemeIs('file')) {
-							deferredMain_xhr.resolve(xhr);
-						} else {
-							var rejObj = {
-								name: 'deferredMain_xhr.promise',
-								aReason: 'Load Failed', // didnt even load
-								xhr: xhr,
-								message: xhr.statusText + ' [' + ev.type + ':' + xhr.status + ']'
-							};
-							deferredMain_xhr.reject(rejObj);
-						}
-					}
+					deferredMain_xhr.resolve(xhr);
+					// if (xhr.readyState == 4) {
+					// 	if (xhr.status == 200) {
+					// 		deferredMain_xhr.resolve(xhr);
+					// 	} else {
+					// 		var rejObj = {
+					// 			name: 'deferredMain_xhr.promise',
+					// 			aReason: 'Load Not Success', // loaded but status is not success status
+					// 			xhr: xhr,
+					// 			message: xhr.statusText + ' [' + ev.type + ':' + xhr.status + ']'
+					// 		};
+					// 		deferredMain_xhr.reject(rejObj);
+					// 	}
+					// } else if (xhr.readyState == 0) {
+					// 	var uritest = Services.io.newURI(aStr, null, null);
+					// 	if (uritest.schemeIs('file')) {
+					// 		deferredMain_xhr.resolve(xhr);
+					// 	} else {
+					// 		var rejObj = {
+					// 			name: 'deferredMain_xhr.promise',
+					// 			aReason: 'Load Failed', // didnt even load
+					// 			xhr: xhr,
+					// 			message: xhr.statusText + ' [' + ev.type + ':' + xhr.status + ']'
+					// 		};
+					// 		deferredMain_xhr.reject(rejObj);
+					// 	}
+					// }
 					
 				break;
 			case 'abort':
@@ -785,7 +756,7 @@ function xhr(aStr, aOptions={}) {
 				
 					var rejObj = {
 						name: 'deferredMain_xhr.promise',
-						aReason: ev.type[0].toUpperCase() + ev.type.substr(1),
+						aReason: ev.type,
 						xhr: xhr,
 						message: xhr.statusText + ' [' + ev.type + ':' + xhr.status + ']'
 					};
@@ -795,7 +766,7 @@ function xhr(aStr, aOptions={}) {
 			default:
 				var rejObj = {
 					name: 'deferredMain_xhr.promise',
-					aReason: 'Unknown',
+					aReason: 'Unknown: ' + ev.type,
 					xhr: xhr,
 					message: xhr.statusText + ' [' + ev.type + ':' + xhr.status + ']'
 				};
@@ -806,56 +777,69 @@ function xhr(aStr, aOptions={}) {
 	var evf = f => ['load', 'error', 'abort', 'timeout'].forEach(f);
 	evf(m => xhr.addEventListener(m, handler, false));
 
-	if (aOptions.isBackgroundReq) {
+	if (aOptions.bgRequest) {
 		xhr.mozBackgroundRequest = true;
 	}
 
-    if (aOptions.aTimeout) {
-        console.error('setting timeout to:', aOptions.aTimeout)
-        xhr.timeout = aOptions.aTimeout;
+    if (aOptions.timeout) {
+		// set time to timeout after, in ms
+        xhr.timeout = aOptions.timeout;
     }
 	
 	var do_setHeaders = function() {
-		if (aOptions.Headers) {
-			for (var h in aOptions.Headers) {
-				xhr.setRequestHeader(h, aOptions.Headers[h]);
+		if (aOptions.headers) {
+			for (var h in aOptions.headers) {
+				xhr.setRequestHeader(h, aOptions.headers[h]);
 			}
 		}
 	};
 	
-	if (aOptions.aPostData) {
-		xhr.open(aOptions.aMethod ? aOptions.aMethod : 'POST', aStr, true);
-		do_setHeaders();
-		xhr.channel.loadFlags |= aOptions.aLoadFlags;
-		xhr.responseType = aOptions.aResponseType;
-		
-		/*
-		var aFormData = Cc['@mozilla.org/files/formdata;1'].createInstance(Ci.nsIDOMFormData);
-		for (var pd in aOptions.aPostData) {
-			aFormData.append(pd, aOptions.aPostData[pd]);
-		}
-		xhr.send(aFormData);
-		*/
-		if (aOptions.aPostData.constructor.name == 'Object') {
-			var aPostStr = [];
-			for (var pd in aOptions.aPostData) {
-				aPostStr.push(pd + '=' + encodeURIComponent(aOptions.aPostData[pd])); // :todo: figure out if should encodeURIComponent `pd` also figure out if encodeURIComponent is the right way to do this
-			}
-			console.info('aPostStr:', aPostStr.join('&'));
-			xhr.send(aPostStr.join('&'));
-		} else {
-			xhr.send(aOptions.aPostData);
-		}
-	} else {
-		xhr.open(aOptions.aMethod ? aOptions.aMethod : 'GET', aStr, true);
-		do_setHeaders();
-		xhr.channel.loadFlags |= aOptions.aLoadFlags;
-		xhr.responseType = aOptions.aResponseType;
-		xhr.send(aOptions.aMethodSend ? aOptions.aMethodSend : null);
-	}
+	xhr.open(aOptions.method, aUrlOrFileUri, true);
+	do_setHeaders();
+	xhr.channel.loadFlags = aOptions.loadFlags;
+	xhr.responseType = aOptions.responseType;
+	xhr.send(aOptions.data);
 	
 	return deferredMain_xhr.promise;
 }
+
+
+// rev1 - https://gist.github.com/Noitidart/c4ab4ca10ff5861c720b
+var jQLike = { // my stand alone jquery like functions
+	serialize: function(aSerializeObject) {
+		// https://api.jquery.com/serialize/
+
+		// verified this by testing
+			// http://www.w3schools.com/jquery/tryit.asp?filename=tryjquery_ajax_serialize
+			// http://www.the-art-of-web.com/javascript/escape/
+
+		var serializedStrArr = [];
+		for (var cSerializeKey in aSerializeObject) {
+			serializedStrArr.push(encodeURIComponent(cSerializeKey) + '=' + encodeURIComponent(aSerializeObject[cSerializeKey]));
+		}
+		return serializedStrArr.join('&');
+	}
+};
+
+// rev1 - https://gist.github.com/Noitidart/c4ab4ca10ff5861c720b
+function validateOptionsObj(aOptions, aOptionsDefaults) {
+	// ensures no invalid keys are found in aOptions, any key found in aOptions not having a key in aOptionsDefaults causes throw new Error as invalid option
+	for (var aOptKey in aOptions) {
+		if (!(aOptKey in aOptionsDefaults)) {
+			console.error('aOptKey of ' + aOptKey + ' is an invalid key, as it has no default value, aOptionsDefaults:', aOptionsDefaults, 'aOptions:', aOptions);
+			throw new Error('aOptKey of ' + aOptKey + ' is an invalid key, as it has no default value');
+		}
+	}
+	
+	// if a key is not found in aOptions, but is found in aOptionsDefaults, it sets the key in aOptions to the default value
+	for (var aOptKey in aOptionsDefaults) {
+		if (!(aOptKey in aOptions)) {
+			aOptions[aOptKey] = aOptionsDefaults[aOptKey];
+		}
+	}
+}
+
+
 var _getSafedForOSPath_pattWIN = /([\\*:?<>|\/\"])/g;
 var _getSafedForOSPath_pattNIXMAC = /\//g;
 const repCharForSafePath = '-';
