@@ -95,63 +95,110 @@ function jpmSign(aPlatformPathToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofr
 		promise_sign.then(
 			function(aVal) {
 				console.log('Fullfilled - promise_sign - ', aVal);
+				if (aVal.statusText == 'UNAUTHORIZED') {
+					console.error('stupid thing got invalid credentials, so retry');
+					xpcomSetTimeout(cJpmSignTimer, 1500, submitXpi);
+					return;
+				}
 				if (aVal.response.error) {
-					deferredMain_jpmSign.reject('AMO Submit API Error - ' + aVal.response.error);
+					// check if this version is already upload, and if it is, then download it
+					checkPrexisting();
+					// deferredMain_jpmSign.reject('AMO Submit API Error - ' + aVal.response.error);
 				} else {
-					checkSignStatus(aVal.response.url, cMsToWaitBefore_FirstStatusCheck);
+					if (aVal.response.detail == 'Incorrect authentication credentials.') {
+						console.error('wtf wrong credentials??? try again');
+						deferredMain_jpmSign.reject('AMO Submit API Error - ' + aVal.response.detail);
+					} else {
+						xpcomSetTimeout(cJpmSignTimer, cMsToWaitBefore_FirstStatusCheck, function() { checkSignStatus((aVal.response.url)) });
+					}
 				}
 			},
 			genericReject.bind(null, 'promise_sign', deferredMain_jpmSign)
 		).catch(genericCatch.bind(null, 'promise_sign', deferredMain_jpmSign));
 	};
 	
-	var checkSignStatus = function(aCheckSignedURL, aMsToWait) {
-		// this url is also available in json of promise_sign as .url. that url contains the .pk if you dont want to build it yourself then use the format ``` GET /api/v3/addons/[string:add-on-id]/versions/[string:version]/(uploads/[string:upload-pk]/)``` and put .pk from above
-		cJpmSignTimer.initWithCallback({
-			notify: function() {
-				var promise_signStatus = xhr(aCheckSignedURL, {
-					responseType: 'json',
-					headers: {
-						Authorization: 'JWT ' + generateToken(aAmoApiKey, aAmoApiSecret)
-					}
-				});
-				promise_signStatus.then(
-					function(aVal) {
-						console.log('Fullfilled - promise_signStatus - ', aVal);
-						if (aVal.response.processed) {
-							if (!aVal.response.reviewed) {
-								// file:///C:/Users/Mercurius/Pictures/Screenshot%20-%20Wednesday,%20January%2013,%202016%206-09-53%20PM.png
-								// submission went through, but auto review not yet completed, so file are not ready
-								checkSignStatus(aCheckSignedURL, cMsToWaitAfter_FirstStatusCheck);
-							} else {
-								if (aVal.response.files.length > 0) {
-									// files ready
-									// C:\Users\Mercurius\Documents\jpm sign status when its good - after ready - with details showing on arr.png
-									downloadSigned(aVal.response.files[0].download_url);
-								} else {
-									deferredMain_jpmSign.reject('AMO Review API Error - The submission was reviewed (json.reviewed:true) however no files were given, so maybe it failed review (passed_reivew != true)?');
-									console.error('AMO Review API Error - The submission was reviewed (json.reviewed:true) however no files were given, so maybe it failed review (passed_reivew != true)?', 'response.json:', aVal.response);
-									// actually never mind this block here i dont think it happens
-									// // THIS CAN HAPPEN!! weird that it can be reviewed:true, but files are not yet ready
-									// // files not yet ready - but validation passed - so we know for sure file will come soon - so keep checking
-									// // file:///C:/Users/Mercurius/Documents/jpm%20sign%20status%20when%20its%20good%20-%20because%20i%20saw%20on%20amo%20-%20but%20files%20not%20yet%20ready.png
-									// checkSignStatus(aCheckSignedURL, cMsToWaitAfter_FirstStatusCheck);
-								}
-							}
-						} else {
-							// so keep checking as yet processed so dont know result
-							// file:///C:/Users/Mercurius/Documents/jpm%20sign%20status%20when%20not%20yet%20processed.png
-							checkSignStatus(aVal.response.url, cMsToWaitAfter_FirstStatusCheck);
-						}
-					},
-					genericReject.bind(null, 'promise_signStatus', deferredMain_jpmSign)
-				).catch(genericCatch.bind(null, 'promise_signStatus', deferredMain_jpmSign));
+	var checkPrexisting = function() {
+		var promise_findPrexist = xhr('https://addons.mozilla.org/api/v3/addons/' + encodeURIComponent(aAddonIdInXpi) + '/versions/' + aAddonVersionInXpi + '/', {
+			responseType: 'json',
+			headers: {
+				Authorization: 'JWT ' + generateToken(aAmoApiKey, aAmoApiSecret)
 			}
-		}, aMsToWait, Ci.nsITimer.TYPE_ONE_SHOT);
+		});
+		promise_findPrexist.then(
+			function(aVal) {
+				console.log('Fullfilled - promise_findPrexist - ', aVal);
+				if (aVal.statusText == 'UNAUTHORIZED') {
+					console.error('stupid thing got invalid credentials, so retry');
+					xpcomSetTimeout(cJpmSignTimer, 1500, checkPrexisting);
+					return;
+				}
+				if (aVal.response.error) {
+					if (aVal.response.error == 'No uploaded file for that addon and version.') {
+						// it probably == 'No uploaded file for that addon and version.'
+						deferredMain_jpmSign.reject('AMO Submit API errored, and prexisting does not exist!');
+					} else {
+						deferredMain_jpmSign.reject('AMO Submit API errored, and check for prexisting returned - ' + aVal.response.error);
+					}
+				} else {
+					if (aVal.response.files && aVal.response.files.length > 0) {
+						console.log('ok GOOOOOOD found a that this addon id and version was already pre-existing so lets download that');
+						downloadSigned(aVal.response.files[0].download_url);
+					} else {
+						deferredMain_jpmSign.reject('AMO Submit API errored, and check for prexisting returned NO ERROR - BUT there are no files in response json! json: ' + JSON.stringify(aVal.response));
+					}
+				}
+			},
+			genericReject.bind(null, 'promise_findPrexist', deferredMain_jpmSign)
+		).catch(genericCatch.bind(null, 'promise_findPrexist', deferredMain_jpmSign));
+	};
+	
+	var checkSignStatus = function(aCheckSignedURL) {
+		// this url is also available in json of promise_sign as .url. that url contains the .pk if you dont want to build it yourself then use the format ``` GET /api/v3/addons/[string:add-on-id]/versions/[string:version]/(uploads/[string:upload-pk]/)``` and put .pk from above
+		var promise_signStatus = xhr(aCheckSignedURL, {
+			responseType: 'json',
+			headers: {
+				Authorization: 'JWT ' + generateToken(aAmoApiKey, aAmoApiSecret)
+			}
+		});
+		promise_signStatus.then(
+			function(aVal) {
+				console.log('Fullfilled - promise_signStatus - ', aVal);
+				if (aVal.statusText == 'UNAUTHORIZED') {
+					console.error('stupid thing got invalid credentials, so retry');
+					xpcomSetTimeout(cJpmSignTimer, 1500, function() { checkSignStatus(aCheckSignedURL) });
+					return;
+				}
+				if (aVal.response.processed) {
+					if (!aVal.response.reviewed) {
+						// file:///C:/Users/Mercurius/Pictures/Screenshot%20-%20Wednesday,%20January%2013,%202016%206-09-53%20PM.png
+						// submission went through, but auto review not yet completed, so file are not ready
+						xpcomSetTimeout(cJpmSignTimer, cMsToWaitAfter_FirstStatusCheck, function() { checkSignStatus(aCheckSignedURL) });
+					} else {
+						if (aVal.response.files && aVal.response.files.length > 0) {
+							// files ready
+							// C:\Users\Mercurius\Documents\jpm sign status when its good - after ready - with details showing on arr.png
+							downloadSigned(aVal.response.files[0].download_url);
+						} else {
+							deferredMain_jpmSign.reject('AMO Review API Error - The submission was reviewed (json.reviewed:true) however no files were given, so maybe it failed review (passed_reivew != true)?');
+							console.error('AMO Review API Error - The submission was reviewed (json.reviewed:true) however no files were given, so maybe it failed review (passed_reivew != true)?', 'response.json:', aVal.response);
+							// actually never mind this block here i dont think it happens
+							// // THIS CAN HAPPEN!! weird that it can be reviewed:true, but files are not yet ready
+							// // files not yet ready - but validation passed - so we know for sure file will come soon - so keep checking
+							// // file:///C:/Users/Mercurius/Documents/jpm%20sign%20status%20when%20its%20good%20-%20because%20i%20saw%20on%20amo%20-%20but%20files%20not%20yet%20ready.png
+							// checkSignStatus(aCheckSignedURL, cMsToWaitAfter_FirstStatusCheck);
+						}
+					}
+				} else {
+					// so keep checking as yet processed so dont know result
+					// file:///C:/Users/Mercurius/Documents/jpm%20sign%20status%20when%20not%20yet%20processed.png
+					checkSignStatus(aVal.response.url, cMsToWaitAfter_FirstStatusCheck);
+				}
+			},
+			genericReject.bind(null, 'promise_signStatus', deferredMain_jpmSign)
+		).catch(genericCatch.bind(null, 'promise_signStatus', deferredMain_jpmSign));
 	};
 	
 	var downloadSigned = function(aDownloadSignedURL) {
-		cJpmSignTimer = null;
 		var signedXpiFileName = aDownloadSignedURL.substring(aDownloadSignedURL.lastIndexOf('/') + 1, aDownloadSignedURL.indexOf('?src=api'));
 		
 		var promise_downloadSigned = xhr(aDownloadSignedURL, {
@@ -163,6 +210,12 @@ function jpmSign(aPlatformPathToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofr
 		promise_downloadSigned.then(
 			function(aVal) {
 				console.log('Fullfilled - promise_downloadSigned - ', aVal);
+				if (aVal.statusText == 'UNAUTHORIZED') {
+					console.error('stupid thing got invalid credentials, so retry');
+					xpcomSetTimeout(cJpmSignTimer, 1500, function() { downloadSigned(aDownloadSignedURL) });
+					return;
+				}
+
 				saveSignedToDisk(signedXpiFileName, aVal.response);
 			},
 			genericReject.bind(null, 'promise_downloadSigned', deferredMain_jpmSign)
@@ -170,6 +223,7 @@ function jpmSign(aPlatformPathToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofr
 	};
 	
 	var saveSignedToDisk = function(aSignedXpiFileName, aSignedXpiArrBuf) {
+		cJpmSignTimer = null;
 		var platformPathToSignedXpi = OS.Path.join(aPlatofrmPathToDownloaDir, aSignedXpiFileName);
 		var promise_saveXpi = OS.File.writeAtomic(platformPathToSignedXpi, new Uint8Array(aSignedXpiArrBuf));
 		promise_saveXpi.then(
@@ -975,5 +1029,14 @@ function genericCatch(aPromiseName, aPromiseToReject, aCaught) {
 	if (aPromiseToReject) {
 		aPromiseToReject.reject(rejObj);
 	}
+}
+
+// rev1 - https://gist.github.com/Noitidart/7943f34cffc602a17e3e
+function xpcomSetTimeout(aNsiTimer, aDelayTimerMS, aTimerCallback) {
+	aNsiTimer.initWithCallback({
+		notify: function() {
+			aTimerCallback();
+		}
+	}, aDelayTimerMS, Ci.nsITimer.TYPE_ONE_SHOT);
 }
 // end - common helper functions
