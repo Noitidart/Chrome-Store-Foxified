@@ -39,8 +39,8 @@ const core = {
 const JETPACK_DIR_BASENAME = 'jetpack';
 const myPrefBranch = 'extensions.' + core.addon.id + '.';
 
-const gAmoApiKey = 'user:5457039:387';
-const gAmoApiSecret = 'bf65a053f9fb64b8910cc7eafcb8454dc41b5b0b5747c561977410fbde0ad6df';
+const gAmoApiKey = 'user:12084162:454';
+const gAmoApiSecret = '47cd24d68dcd01f8a3854696ba0b2adc81d440db5f457a8bfe78ebfde2c0ebfa';
 
 var bootstrap = this;
 
