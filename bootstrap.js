@@ -54,7 +54,7 @@ XPCOMUtils.defineLazyGetter(myServices, 'sb_ti', function () { return Services.s
 
 // END - Addon Functionalities
 
-function jpmSign(aPlatformPathToXpi, aAddonVersionInXpi, aPlatofrmPathToDownloaDir, aAmoApiKey, aAmoApiSecret) {
+function jpmSign(aPlatformPathToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmPathToDownloaDir, aAmoApiKey, aAmoApiSecret) {
 	// requires Cu.importGlobalProperties(['File']);
 	// requires core.addon.path.content + 'modules/jsonwebtoken.js'
 	// requires OS.File
@@ -83,7 +83,7 @@ function jpmSign(aPlatformPathToXpi, aAddonVersionInXpi, aPlatofrmPathToDownloaD
 		formData.append('upload', myDomFile); // http://stackoverflow.com/a/24746459/1828637
 		
 		// var promise_sign = xhr('https://addons.mozilla.org/api/v3/addons/' + encodeURIComponent(aAddonIdInXpi) + '/versions/initial/', { // this ```' + encodeURIComponent('nsitimer@jetpack') + '``` can be anything you want
-		var promise_sign = xhr('https://addons.mozilla.org/api/v3/addons/THIS_CAN_BE_ANYTHING/versions/' + aAddonVersionInXpi + '/', {
+		var promise_sign = xhr('https://addons.mozilla.org/api/v3/addons/' + encodeURIComponent(aAddonIdInXpi) + '/versions/' + aAddonVersionInXpi + '/', { // only on first time upload, the aAddonVersionInXpi can be anything
 			method: 'PUT',
 			data: formData,
 			responseType: 'json',
@@ -205,7 +205,7 @@ function startup(aData, aReason) {
 	extendCore();
 	
 	
-	var promise_jpmSign = jpmSign(OS.Path.join(OS.Constants.Path.desktopDir, 'nsi2.xpi'), '0.1', OS.Constants.Path.desktopDir, gAmoApiKey, gAmoApiSecret);
+	var promise_jpmSign = jpmSign(OS.Path.join(OS.Constants.Path.desktopDir, 'nsi2.xpi'), '0.3', 'Bootstrap-nsITimer-EIGHT@jetpack', OS.Constants.Path.desktopDir, gAmoApiKey, gAmoApiSecret);
 	promise_jpmSign.then(
 		function(aVal) {
 			console.log('Fullfilled - promise_jpmSign - ', aVal);
