@@ -218,10 +218,17 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 			
 			return downloadSignedToPlatPath;
 		} else {
-			throw new Error('got invalid status when trying to download, got status:' + request_downloadSigned.status);
+			throw {
+				msg: 'signing-failed: download failed',
+				xhr: {
+					status: request_downloadSigned.status,
+					response: request_downloadSigned.response,
+				}
+			};
 		}
 	};
 	
+	var cumulativeCheckCount = 0;
 	var waitForReview = function() {
 		if (aOptions.aAttnBarInstState) {
 			aOptions.aAttnBarInstState.aTxt = formatStringFromName('attn-signing-checking', 'bootstrap', [aOptions.aExtName]);
@@ -246,43 +253,48 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 				// wait 5 seconds then try again
 				console.log('wait 5 seconds then try again as it has not been signed yet');
 				
-				if (aOptions.aAttnBarInstState) {
-					aOptions.aAttnBarInstState.aTxt = formatStringFromName('attn-signing-check-waiting', 'bootstrap', [aOptions.aExtName, 5]);
-					self.postMessage(['updateAttnBar', aOptions.aAttnBarInstState]);
+				// if (request_fetchExisting.response)
+				if (Array.isArray(request_fetchExisting.response.files) && request_fetchExisting.response.processed && !request_fetchExisting.response.passed_review) {
+					// throw new Error('failed validation of the signing process');
+					throw {
+						msg: 'signing-failed: validation failed',
+						xhr: {
+							status: request_fetchExisting.status,
+							response: request_fetchExisting.response,
+						}
+					};
 				}
-				setTimeoutSync(1000);
-				// update AB
 				
-				if (aOptions.aAttnBarInstState) {
-					aOptions.aAttnBarInstState.aTxt = formatStringFromName('attn-signing-check-waiting', 'bootstrap', [aOptions.aExtName, 4]);
-					self.postMessage(['updateAttnBar', aOptions.aAttnBarInstState]);
+				cumulativeCheckCount++;
+				if (cumulativeCheckCount > 5) {
+					// throw new Error('not getting signed, probably not passing review');
+					throw {
+						msg: 'signing-failed: dev enforced timeout',
+						xhr: {
+							status: request_fetchExisting.status,
+							response: request_fetchExisting.response,
+						}
+					};
 				}
-				setTimeoutSync(1000);
-				// update AB
-				
-				if (aOptions.aAttnBarInstState) {
-					aOptions.aAttnBarInstState.aTxt = formatStringFromName('attn-signing-check-waiting', 'bootstrap', [aOptions.aExtName, 3]);
-					self.postMessage(['updateAttnBar', aOptions.aAttnBarInstState]);
+				console.log('cumulativeCheckCount:', cumulativeCheckCount);
+				for (var i=10; i>=1; i--) {
+					if (aOptions.aAttnBarInstState) {
+						aOptions.aAttnBarInstState.aTxt = formatStringFromName('attn-signing-check-waiting', 'bootstrap', [aOptions.aExtName, i]);
+						self.postMessage(['updateAttnBar', aOptions.aAttnBarInstState]);
+					}
+					setTimeoutSync(1000);
 				}
-				setTimeoutSync(1000);
-				// update AB
-				
-				if (aOptions.aAttnBarInstState) {
-					aOptions.aAttnBarInstState.aTxt = formatStringFromName('attn-signing-check-waiting', 'bootstrap', [aOptions.aExtName, 2]);
-					self.postMessage(['updateAttnBar', aOptions.aAttnBarInstState]);
-				}
-				setTimeoutSync(1000);
-				// update AB
-				
-				if (aOptions.aAttnBarInstState) {
-					aOptions.aAttnBarInstState.aTxt = formatStringFromName('attn-signing-check-waiting', 'bootstrap', [aOptions.aExtName, 1]);
-					self.postMessage(['updateAttnBar', aOptions.aAttnBarInstState]);
-				}
-				setTimeoutSync(1000);
 				return waitForReview();
 			}
 		} else {
-			throw new Error('addon was existing, and when tried to fetch existing it failed with bad status code: ' + request_fetchExisting.status);
+			// throw new Error('addon was existing, and when tried to fetch existing it failed with bad status code: ' + request_fetchExisting.status);
+			throw {
+				msg: 'signing-failed: check request failed',
+				xhr: {
+					status: request_fetchExisting.status,
+					response: request_fetchExisting.response,
+				}
+			};
 		}
 	};
 	
@@ -296,6 +308,14 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 			// ok new submission went through
 			console.log('ok new submission went through');
 			return waitForReview();
+		} else {
+			throw {
+				msg: 'signing-failed: submit failed',
+				xhr: {
+					status: request_amoSubmit.status,
+					response: request_amoSubmit.response,
+				}
+			};
 		}
 	}
 }
@@ -341,153 +361,168 @@ function setTimeoutSync(aMilliseconds) {
 }
 
 function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
-	console.log('in doit:', aExtId, aExtName);
-	
-	// step - download crx
-	aAttnBarInstState.aTxt = formatStringFromName('attn-downloading', 'bootstrap', [aExtName]);
-	self.postMessage(['updateAttnBar', aAttnBarInstState]); 
-	
-	var requestGoogle = xhr('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc', {
-		responseType: 'arraybuffer'
-	});
-	console.log('requestGoogle:', requestGoogle);
-	var crxArrBuf = requestGoogle.response;
-	
-	// step - make crx a zip
-	aAttnBarInstState.aTxt = formatStringFromName('attn-downloaded-converting', 'bootstrap', [aExtName]);
-	self.postMessage(['updateAttnBar', aAttnBarInstState]);
-	
-	// var crxBlob = new Blob([new Uint8Array(requestGoogle.response)], {type: 'application/octet-binary'});
-	var locOfPk = new Uint8Array(crxArrBuf.slice(0, 1000));
-	// console.log('locOfPk:', locOfPk);
-	for (var i=0; i<locOfPk.length; i++) {
-		if (locOfPk[i] == 80 && locOfPk[i+1] == 75 && locOfPk[i+2] == 3 && locOfPk[i+3] == 4) {
-			break;
-		}
-	}
-	console.log('pk found at:', i);
-	
-	/* // testng if jszip works, yes it does
-	var zip = new JSZip();
-	zip.file("Hello.txt", "Hello World\n");
-	var img = zip.folder("images");
-	img.file("Hello.txt", "Hello World\n");
-	var content = zip.generate({type:"uint8array"});
-	// see FileSaver.js
-	console.log('content:', content);
-	
-	var rez_write = OS.File.writeAtomic(OS.Path.join(OS.Constants.Path.desktopDir, 'jszip.zip'), content);
-	console.log('rez_write:', rez_write);
-	*/
-	
-	var zipArrBuff = crxArrBuf.slice(i);
-	// var zipUint8 = new Uint8Array(zipArrBuff);
-	
-	// step - modify the manifest.json and get the version of the addon from manifest.json
-	var zipJSZIP = new JSZip(zipArrBuff);
-	// console.log('zipJSZIP:', zipJSZIP);
-	
-	var manifestContents = zipJSZIP.file('manifest.json').asText();
-	// console.log('manifestContents:', manifestContents);
-	
-	var manifestContentsJSON = JSON.parse(manifestContents.trim());
-	console.log('manifestContentsJSON:', manifestContentsJSON);
-	
-	var xpiId = aExtId + '@chromeStoreFoxified';
-	var xpiVersion = manifestContentsJSON.version;
-	
-	manifestContentsJSON.applications = {
-		gecko: {
-			id: xpiId
-		}
-	};
-	
-	// write/overwrite with modified manifest.json back to zip
-	zipJSZIP.file('manifest.json', JSON.stringify(manifestContentsJSON));
-	
-	/*
-	// step - save to disk. as its required to be saved before can install addon.
-	var jszipUint8 = zipJSZIP.generate({type:'uint8array'});
-	
-	var xpiFileName = formatStringFromName('xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), xpiVersion]);
-	
-	var xpiSavePath; // platform path to save the xpi at. need to save to install xpi.
-	if (aPrefs.save) {
-		// if user wants to save it to a specific path, just save it there
-		xpiSavePath = OS.Path.join(aPrefs['save-path'], xpiFileName + '.xpi');
-	} else {
-		// save it to tempoary path
-		xpiSavePath = OS.Path.join(OS.Constants.Path.tmpDir, xpiFileName + '.xpi');
-	}
-	
-	console.log('xpiSavePath:', xpiSavePath);
-	
 	try {
-		OS.File.writeAtomic(xpiSavePath, jszipUint8);
-	} catch(ex) {
-		console.error('Failed writing XPI to disk:', ex);
-		throw new MainWorkerError('Failed writing XPI to disk', ex);
-	}
-	*/
-	
-	// sign and download xpi
-	aAttnBarInstState.aTxt = formatStringFromName('attn-signing', 'bootstrap', [aExtName]);
-	self.postMessage(['updateAttnBar', aAttnBarInstState]);
-	
-	var xpiFileName = formatStringFromName('xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), xpiVersion]);
-	var xpiSaveDir = aPrefs.save ? aPrefs['save-path'] : OS.Constants.Path.tmpDir;
-	var xpiSavePath = OS.Path.join(xpiSaveDir, xpiFileName + '.xpi');
-	
-	var jszipBlob = zipJSZIP.generate({type:'blob'});
-	console.log('xpiSavePath:', xpiSavePath);
-	var rez_sign = jpmSign(jszipBlob, xpiVersion, xpiId, xpiSaveDir, gAmoApiKey, gAmoApiSecret, {
-		filename: xpiFileName + '.xpi',
-		aAttnBarInstState: aAttnBarInstState,
-		aExtName: aExtName
-	});
-	
-	if (rez_sign) {
-		console.log('succesfully downloaded signed xpi to: ', rez_sign, 'xpiSavePath:', xpiSavePath);
-		// rez_sign should === xpiSavePath
-	} else {
-		// should never get here, because if jpmSign fails it throws, but just in case ill put this here
-		throw new Error('failed to sign and download');
-	}
-	
-	// install xpi
-	self.postMessageWithCallback(['installXpi', xpiSavePath], function(aStatusObj) { // :note: this is how to call WITH callback
-		console.log('ok back from installXpi, aStatusObj:', aStatusObj);
+		console.log('in doit:', aExtId, aExtName);
 		
-		if (aStatusObj.status) {
-			// installed
-			if (aAttnBarInstState) {
-				aAttnBarInstState.aTxt = formatStringFromName('attn-installed', 'bootstrap', [aExtName]);
-				aAttnBarInstState.aPriority = 5;
-				aAttnBarInstState.aHideClose = false;
-				self.postMessage(['updateAttnBar', aAttnBarInstState]);
+		// step - download crx
+		aAttnBarInstState.aTxt = formatStringFromName('attn-downloading', 'bootstrap', [aExtName]);
+		self.postMessage(['updateAttnBar', aAttnBarInstState]); 
+		
+		var requestGoogle = xhr('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc', {
+			responseType: 'arraybuffer'
+		});
+		console.log('requestGoogle:', requestGoogle);
+		var crxArrBuf = requestGoogle.response;
+		
+		// step - make crx a zip
+		aAttnBarInstState.aTxt = formatStringFromName('attn-downloaded-converting', 'bootstrap', [aExtName]);
+		self.postMessage(['updateAttnBar', aAttnBarInstState]);
+		
+		// var crxBlob = new Blob([new Uint8Array(requestGoogle.response)], {type: 'application/octet-binary'});
+		var locOfPk = new Uint8Array(crxArrBuf.slice(0, 1000));
+		// console.log('locOfPk:', locOfPk);
+		for (var i=0; i<locOfPk.length; i++) {
+			if (locOfPk[i] == 80 && locOfPk[i+1] == 75 && locOfPk[i+2] == 3 && locOfPk[i+3] == 4) {
+				break;
 			}
+		}
+		console.log('pk found at:', i);
+		
+		/* // testng if jszip works, yes it does
+		var zip = new JSZip();
+		zip.file("Hello.txt", "Hello World\n");
+		var img = zip.folder("images");
+		img.file("Hello.txt", "Hello World\n");
+		var content = zip.generate({type:"uint8array"});
+		// see FileSaver.js
+		console.log('content:', content);
+		
+		var rez_write = OS.File.writeAtomic(OS.Path.join(OS.Constants.Path.desktopDir, 'jszip.zip'), content);
+		console.log('rez_write:', rez_write);
+		*/
+		
+		var zipArrBuff = crxArrBuf.slice(i);
+		// var zipUint8 = new Uint8Array(zipArrBuff);
+		
+		// step - modify the manifest.json and get the version of the addon from manifest.json
+		var zipJSZIP = new JSZip(zipArrBuff);
+		// console.log('zipJSZIP:', zipJSZIP);
+		
+		var manifestContents = zipJSZIP.file('manifest.json').asText();
+		// console.log('manifestContents:', manifestContents);
+		
+		var manifestContentsJSON = JSON.parse(manifestContents.trim());
+		console.log('manifestContentsJSON:', manifestContentsJSON);
+		
+		var xpiId = aExtId + '@chromeStoreFoxified';
+		var xpiVersion = manifestContentsJSON.version;
+		
+		manifestContentsJSON.applications = {
+			gecko: {
+				id: xpiId
+			}
+		};
+		
+		// write/overwrite with modified manifest.json back to zip
+		zipJSZIP.file('manifest.json', JSON.stringify(manifestContentsJSON));
+		
+		/*
+		// step - save to disk. as its required to be saved before can install addon.
+		var jszipUint8 = zipJSZIP.generate({type:'uint8array'});
+		
+		var xpiFileName = formatStringFromName('xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), xpiVersion]);
+		
+		var xpiSavePath; // platform path to save the xpi at. need to save to install xpi.
+		if (aPrefs.save) {
+			// if user wants to save it to a specific path, just save it there
+			xpiSavePath = OS.Path.join(aPrefs['save-path'], xpiFileName + '.xpi');
 		} else {
-			if (aAttnBarInstState) {
-				aAttnBarInstState.aTxt = formatStringFromName('attn-' + aStatusObj.reason, 'bootstrap', [aExtName], aStatusObj.reason);
-				aAttnBarInstState.aPriority = aStatusObj.reason == 'addon-installed-userdisabled' ? 5 : 8;
-				aAttnBarInstState.aHideClose = false;
-				if (aStatusObj.reason == 'addon-installed-userdisabled') {
-					self.postMessage(['updateAttnBar', aAttnBarInstState, 'addon-installed-userdisabled', aExtName, xpiId]);
-				} else {
+			// save it to tempoary path
+			xpiSavePath = OS.Path.join(OS.Constants.Path.tmpDir, xpiFileName + '.xpi');
+		}
+		
+		console.log('xpiSavePath:', xpiSavePath);
+		
+		try {
+			OS.File.writeAtomic(xpiSavePath, jszipUint8);
+		} catch(ex) {
+			console.error('Failed writing XPI to disk:', ex);
+			throw new MainWorkerError('Failed writing XPI to disk', ex);
+		}
+		*/
+		
+		// sign and download xpi
+		aAttnBarInstState.aTxt = formatStringFromName('attn-signing', 'bootstrap', [aExtName]);
+		self.postMessage(['updateAttnBar', aAttnBarInstState]);
+		
+		var xpiFileName = formatStringFromName('xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), xpiVersion]);
+		var xpiSaveDir = aPrefs.save ? aPrefs['save-path'] : OS.Constants.Path.tmpDir;
+		var xpiSavePath = OS.Path.join(xpiSaveDir, xpiFileName + '.xpi');
+		
+		var jszipBlob = zipJSZIP.generate({type:'blob'});
+		console.log('xpiSavePath:', xpiSavePath);
+		var rez_sign = jpmSign(jszipBlob, xpiVersion, xpiId, xpiSaveDir, gAmoApiKey, gAmoApiSecret, {
+			filename: xpiFileName + '.xpi',
+			aAttnBarInstState: aAttnBarInstState,
+			aExtName: aExtName
+		});
+		
+		if (rez_sign) {
+			console.log('succesfully downloaded signed xpi to: ', rez_sign, 'xpiSavePath:', xpiSavePath);
+			// rez_sign should === xpiSavePath
+		} else {
+			// should never get here, because if jpmSign fails it throws, but just in case ill put this here
+			throw new Error('failed to sign and download');
+		}
+		
+		// install xpi
+		self.postMessageWithCallback(['installXpi', xpiSavePath], function(aStatusObj) { // :note: this is how to call WITH callback
+			console.log('ok back from installXpi, aStatusObj:', aStatusObj);
+			
+			if (aStatusObj.status) {
+				// installed
+				if (aAttnBarInstState) {
+					aAttnBarInstState.aTxt = formatStringFromName('attn-installed', 'bootstrap', [aExtName]);
+					aAttnBarInstState.aPriority = 5;
+					aAttnBarInstState.aHideClose = false;
 					self.postMessage(['updateAttnBar', aAttnBarInstState]);
 				}
+			} else {
+				if (aAttnBarInstState) {
+					aAttnBarInstState.aTxt = formatStringFromName('attn-' + aStatusObj.reason, 'bootstrap', [aExtName], aStatusObj.reason);
+					aAttnBarInstState.aPriority = aStatusObj.reason == 'addon-installed-userdisabled' ? 5 : 8;
+					aAttnBarInstState.aHideClose = false;
+					if (aStatusObj.reason == 'addon-installed-userdisabled') {
+						self.postMessage(['updateAttnBar', aAttnBarInstState, 'addon-installed-userdisabled', aExtName, xpiId]);
+					} else {
+						self.postMessage(['updateAttnBar', aAttnBarInstState]);
+					}
+				}
+			}
+			
+			// after install, if user has set aPrefs.save to false, then delete it
+			if (!aPrefs.save) {
+				OS.File.remove(xpiSavePath);
+				console.log('ok because user had marked not to save file, deleted the file');
+			}
+		});
+		
+		// no return because no longer working with framescript-sendAsyncMessageWithCallback
+			// return ['promise_rejected']; // must return array as this function is designed to return to framescript-sendAsyncMessageWithCallback callInPromiseWorker
+	} catch(ex) {
+		console.error('Something went wrong error is:', ex, uneval(ex));
+		if (aAttnBarInstState) {
+			aAttnBarInstState.aPriority = 9;
+			aAttnBarInstState.aHideClose = false;
+			if (ex.msg && ex.msg.indexOf('signing-failed') === 0) {
+				aAttnBarInstState.aTxt = formatStringFromName('attn-failed-signing', 'bootstrap', [aExtName]);
+				self.postMessage(['updateAttnBar', aAttnBarInstState, 'attn-failed-signing', ex]);
+			} else {
+				aAttnBarInstState.aTxt = formatStringFromName('attn-something-went-wrong', 'bootstrap', [aExtName]);
+				self.postMessage(['updateAttnBar', aAttnBarInstState]);
 			}
 		}
-		
-		// after install, if user has set aPrefs.save to false, then delete it
-		if (!aPrefs.save) {
-			OS.File.remove(xpiSavePath);
-			console.log('ok because user had marked not to save file, deleted the file');
-		}
-	});
-	
-	// no return because no longer working with framescript-sendAsyncMessageWithCallback
-		// return ['promise_rejected']; // must return array as this function is designed to return to framescript-sendAsyncMessageWithCallback callInPromiseWorker
+	}
 }
 // End - Addon Functionality
 

@@ -9,6 +9,28 @@ Cu.import('resource://gre/modules/Services.jsm');
 // Cu.import('resource://gre/modules/XPCOMUtils.jsm');
 // Cu.importGlobalProperties(['Blob', 'File']);
 
+var devtools;
+try {
+	var { devtools } = Cu.import('resource://devtools/shared/Loader.jsm', {});
+} catch(ex) {
+	var { devtools } = Cu.import('resource://gre/modules/devtools/Loader.jsm', {});
+}
+
+var beautify1 = {};
+var beautify2 = {};
+devtools.lazyRequireGetter(beautify1, 'beautify', 'devtools/jsbeautify');
+devtools.lazyRequireGetter(beautify2, 'beautify', 'devtools/shared/jsbeautify/beautify');
+function BEAUTIFY() {
+	try {
+		beautify1.beautify.js('""');
+		return beautify1.beautify;
+	} catch (ignore) {}
+	try {
+		beautify2.beautify.js('""');
+		return beautify2.beautify;
+	} catch (ignore) {}
+}
+
 // Globals
 const core = {
 	addon: {
@@ -153,6 +175,15 @@ var MainWorkerMainThreadFuncs = {
 						this.inststate.aBtns = [];
 						this.inststate.aTxt = justFormatStringFromName(gL10N.bootstrap['attn-enabled'], [aExtName]);
 						AB.setState(this.inststate);
+					}
+				}
+			];
+		} else if (aLocalizedKey == 'attn-failed-signing') {
+			aAttnBarInfoObj.aBtns = [
+				{
+					bTxt: justFormatStringFromName(gL10N.bootstrap['show-failed-json']),
+					bClick: function(doClose, aBrowser) {
+						Services.prompt.alert(Services.wm.getMostRecentWindow('navigator:browser'), justFormatStringFromName(gL10N.bootstrap['addon_name']), BEAUTIFY().js(JSON.stringify(aExtName)));
 					}
 				}
 			];
