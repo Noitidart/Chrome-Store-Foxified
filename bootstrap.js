@@ -40,8 +40,6 @@ const core = {
 const JETPACK_DIR_BASENAME = 'jetpack';
 const myPrefBranch = 'extensions.' + core.addon.id + '.';
 
-const gAmoApiKey = 'user:12084162:454';
-const gAmoApiSecret = '47cd24d68dcd01f8a3854696ba0b2adc81d440db5f457a8bfe78ebfde2c0ebfa';
 var gL10N = {};
 
 var bootstrap = this;
@@ -158,6 +156,12 @@ function shutdown(aData, aReason) {
 	
 	// unregister framescript listener
 	Services.mm.removeMessageListener(core.addon.id, fsMsgListener);
+	
+	// terminate worker
+	if (typeof(MainWorker) != 'undefined') {
+		MainWorker._worker.terminate();
+		console.log('ok terminated worker');
+	}
 }
 
 // start - server/framescript comm layer
@@ -181,6 +185,30 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 		if (returnToFramescript) {
 			var mainDeferred_callInPromiseWorker = new Deferred();
 		}
+		
+		// start - chrome store foxified specific stuff
+		var cPrefs = {};
+		
+		// save pref
+		try {
+			cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save');
+		} catch(ex) {
+			// set default avlue as apparently pref is not existing
+			Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.save', true);
+			cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save');
+		}
+		
+		// save-path pref
+		try {
+			cPrefs['save-path'] = Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path');
+		} catch (ex) {
+			// set default avlue as apparently pref is not existing
+			Services.prefs.setCharPref('extensions.chrome-store-foxified@jetpack.save-path', OS.Constants.Path.desktopDir);
+			cPrefs['save-path'] = Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path');
+		}
+		
+		aArrOfWorker_FuncnameThenArgs.push(cPrefs);
+		// end - chrome store foxified specific stuff
 		
 		var rez_pwcall = MainWorker.post(aArrOfWorker_FuncnameThenArgs.shift(), aArrOfWorker_FuncnameThenArgs);
 		rez_pwcall.then(

@@ -4,8 +4,9 @@ var generateToken;
 	
 	var jwt = require('jsonwebtoken');
 
-	generateToken = function(yourApiKey, yourApiSecret) {
-		var issuedAt = Math.floor(Date.now() / 1000);
+	generateToken = function(yourApiKey, yourApiSecret, yourDate) {
+		// your date should be Date.now()
+		var issuedAt = Math.floor(yourDate / 1000);
 		var payload = {
 		  iss: yourApiKey,
 		  jti: Math.random().toString(),

@@ -14,6 +14,9 @@ var core = { // have to set up the main keys that you want when aCore is merged 
 	}
 };
 
+const gAmoApiKey = 'user:12084162:454';
+const gAmoApiSecret = '47cd24d68dcd01f8a3854696ba0b2adc81d440db5f457a8bfe78ebfde2c0ebfa';
+
 var OSStuff = {}; // global vars populated by init, based on OS
 
 // Imports that use stuff defined in chrome
@@ -22,6 +25,7 @@ var OSStuff = {}; // global vars populated by init, based on OS
 // importScripts(core.addon.path.modules + 'cutils.jsm');
 // importScripts(core.addon.path.modules + 'ctypes_math.jsm');
 importScripts(core.addon.path.modules + 'jsonwebtoken.js');
+importScripts(core.addon.path.modules + 'jszip.min.js');
 
 // Setup PromiseWorker
 // SIPWorker - rev2 - https://gist.github.com/Noitidart/92e55a3f7761ed60f14c
@@ -133,7 +137,99 @@ function init(objCore) { // function name init required for SIPWorker
 }
 
 // Start - Addon Functionality
-function jpmSign(aPlatformPathToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmPathToDownloaDir, aAmoApiKey, aAmoApiSecret) {
+function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmPathToDownloaDir, aAmoApiKey, aAmoApiSecret) {
+	// synhronus version for Workers
+	// aPathOrBlobToXpi is a platform path to the xpi file on disk. OR an array buffer
+	
+	// create File instance
+	var fileXpi;
+	if (typeof(aPathOrBlobToXpi) == 'string') {
+		// asume its a platform path
+		fileXpi = new File(aPathOrBlobToXpi);
+	} else {
+		// assume its blob
+		fileXpi = aPathOrBlobToXpi; // doing = new File(aBlob) is not working, the xhr response is coming from amo saying "key of `upload` is missing"
+	}
+	console.log('fileXpi:', fileXpi);
+	
+	// create form data
+	var formData = new FormData(); // Cc['@mozilla.org/files/formdata;1'].createInstance(Ci.nsIDOMFormData); // http://stackoverflow.com/q/25038292/1828637
+	formData.append('Content-Type', 'multipart/form-data');
+	formData.append('upload', fileXpi); // http://stackoverflow.com/a/24746459/1828637
+	
+	var request_amoSubmit = xhr('https://addons.mozilla.org/api/v3/addons/' + encodeURIComponent(aAddonIdInXpi) + '/versions/' + aAddonVersionInXpi + '/', { // only on first time upload, the aAddonVersionInXpi can be anything
+		method: 'PUT',
+		data: formData,
+		responseType: 'json',
+		headers: {
+			Authorization: 'JWT ' + generateToken(aAmoApiKey, aAmoApiSecret, getNowDateFromServer())
+		}
+	});
+	
+	if (request_amoSubmit.status == 409) {
+		// the version already exists
+		console.log('version already exists');
+		var request_fetchExisting = xhr('https://addons.mozilla.org/api/v3/addons/' + encodeURIComponent(aAddonIdInXpi) + '/versions/' + aAddonVersionInXpi + '/', {
+			responseType: 'json',
+			headers: {
+				Authorization: 'JWT ' + generateToken(aAmoApiKey, aAmoApiSecret)
+			}
+		});
+		
+		console.log('request_fetchExisting.status:', request_fetchExisting.status);
+		console.log('request_fetchExisting.response:', request_fetchExisting.response);
+		
+	} else {
+		if (request_amoSubmit.status == 201 || request_amoSubmit.status == 202) {
+			// ok new submission went through
+			
+		}
+	}
+	console.log('request_amoSubmit.status:', request_amoSubmit.status, 'request_amoSubmit.response:', request_amoSubmit.response);
+}
+
+function getNowDateFromServer() {
+	var requestStartDate = Date.now();
+	
+	var requestUnixNow = xhr('http://currenttimestamp.com/');
+
+	var requestDuration = Date.now() - requestStartDate;
+	
+	console.log('request took:', requestDuration, 'ms');
+	
+	if (requestUnixNow.status != 200) {
+		console.log('response status was bad, will wait 5 sec then try again');
+		setTimeoutSync(5000);
+		console.log('ok waitied, will now try');
+		return getNowDateFromServer();
+	}
+	
+	console.log('requestUnixNow.status:', requestUnixNow.status);
+	// console.log('requestUnixNow.response:', requestUnixNow.response);
+	
+	var nowDateServerMatch = /current_time = (\d+);/.exec(requestUnixNow.response);
+	if (!nowDateServerMatch) {
+		throw new Error('failed to get now date from server');
+	}
+	console.log('nowDateServerMatch:', nowDateServerMatch);
+	
+	var nowDateServerUncompensated = parseInt(nowDateServerMatch[1]) * 1000;
+	console.log('nowDateServerUncompensated:', nowDateServerUncompensated);
+	
+	var nowDateServer = nowDateServerUncompensated - requestDuration;
+	
+	console.log('nowDateServer:', nowDateServer);
+	
+	return nowDateServer;
+}
+
+function setTimeoutSync(aMilliseconds) {
+	var breakDate = Date.now() + aMilliseconds;
+	while (Date.now() < breakDate) {}
+}
+
+function jpmSignAsync(aPlatformPathToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmPathToDownloaDir, aAmoApiKey, aAmoApiSecret) {
+	// for use on main thread
 	// requires Cu.importGlobalProperties(['File']);
 	// requires core.addon.path.content + 'modules/jsonwebtoken.js'
 	// requires OS.File
@@ -328,8 +424,102 @@ function jpmSign(aPlatformPathToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofr
 		// genericReject.bind(null, 'promise_jpmSign', 0)
 	// ).catch(genericCatch.bind(null, 'promise_jpmSign', 0));
 
-function doit(aExtId, aExtName) {
+function doit(aExtId, aExtName, aPrefs) {
 	console.log('in doit:', aExtId, aExtName);
+	
+	// step - download crx
+	var requestGoogle = xhr('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc', {
+		responseType: 'arraybuffer'
+	});
+	console.log('requestGoogle:', requestGoogle);
+	var crxArrBuf = requestGoogle.response;
+	
+	// step - make crx a zip
+	// var crxBlob = new Blob([new Uint8Array(requestGoogle.response)], {type: 'application/octet-binary'});
+	var locOfPk = new Uint8Array(crxArrBuf.slice(0, 1000));
+	// console.log('locOfPk:', locOfPk);
+	for (var i=0; i<locOfPk.length; i++) {
+		if (locOfPk[i] == 80 && locOfPk[i+1] == 75 && locOfPk[i+2] == 3 && locOfPk[i+3] == 4) {
+			break;
+		}
+	}
+	console.log('pk found at:', i);
+	
+	/* // testng if jszip works, yes it does
+	var zip = new JSZip();
+	zip.file("Hello.txt", "Hello World\n");
+	var img = zip.folder("images");
+	img.file("Hello.txt", "Hello World\n");
+	var content = zip.generate({type:"uint8array"});
+	// see FileSaver.js
+	console.log('content:', content);
+	
+	var rez_write = OS.File.writeAtomic(OS.Path.join(OS.Constants.Path.desktopDir, 'jszip.zip'), content);
+	console.log('rez_write:', rez_write);
+	*/
+	
+	var zipArrBuff = crxArrBuf.slice(i);
+	// var zipUint8 = new Uint8Array(zipArrBuff);
+	
+	// step - modify the manifest.json and get the version of the addon from manifest.json
+	var zipJSZIP = new JSZip(zipArrBuff);
+	// console.log('zipJSZIP:', zipJSZIP);
+	
+	var manifestContents = zipJSZIP.file('manifest.json').asText();
+	// console.log('manifestContents:', manifestContents);
+	
+	var manifestContentsJSON = JSON.parse(manifestContents.trim());
+	console.log('manifestContentsJSON:', manifestContentsJSON);
+	
+	var xpiId = aExtId + '@chromeStoreFoxified';
+	var xpiVersion = manifestContentsJSON.version;
+	
+	manifestContentsJSON.applications = {
+		gecko: {
+			id: xpiId
+		}
+	};
+	
+	zipJSZIP.file('manifest.json', JSON.stringify(manifestContentsJSON));
+	
+	/*
+	// step - save to disk. as its required to be saved before can install addon.
+	var jszipUint8 = zipJSZIP.generate({type:'uint8array'});
+	
+	var xpiFileName = formatStringFromName('xpi-filename-template', [safedForPlatFS(aExtName), xpiVersion], 'bootstrap');
+	
+	var xpiSavePath; // platform path to save the xpi at. need to save to install xpi.
+	if (aPrefs.save) {
+		// if user wants to save it to a specific path, just save it there
+		xpiSavePath = OS.Path.join(aPrefs['save-path'], xpiFileName + '.xpi');
+	} else {
+		// save it to tempoary path
+		xpiSavePath = OS.Path.join(OS.Constants.Path.tmpDir, xpiFileName + '.xpi');
+	}
+	
+	console.log('xpiSavePath:', xpiSavePath);
+	
+	try {
+		var promise_writeScript = OS.File.writeAtomic(xpiSavePath, jszipUint8);
+	} catch(ex) {
+		console.error('Failed writing XPI to disk:', ex);
+		throw new MainWorkerError('Failed writing XPI to disk', ex);
+	}
+	*/
+	
+	// sign and download xpi
+	var xpiFileName = formatStringFromName('xpi-filename-template', [safedForPlatFS(aExtName), xpiVersion], 'bootstrap');
+	var xpiSaveDir = aPrefs.save ? aPrefs['save-path'] : OS.Constants.Path.tmpDir;
+	var xpiSavePath = OS.Path.join(xpiSaveDir, xpiFileName + '.xpi');
+	
+	var jszipBlob = zipJSZIP.generate({type:'blob'});
+	console.log('xpiSavePath:', xpiSavePath);
+	var rez_sign = jpmSign(jszipBlob, xpiVersion, xpiId, xpiSaveDir, gAmoApiKey, gAmoApiSecret, {
+		filename: xpiFileName + '.xpi'
+	});
+	
+	// install xpi
+	
 	
 	return ['promise_rejected']; // must return array as this function is designed to return to callInPromiseWorker
 }
