@@ -382,6 +382,9 @@ var AB = { // AB stands for attention bar
 			// end - orig block link181888888
 		};
 		
+		// have to do this, because if i call setState with a new object, one that is not AB.Insts[aId] then it wont get updated, and when loadInstancesIntoWindow it will not have the updated one
+		AB.Insts[aInstState.aId].state = aInstState;
+		
 		var DOMWindows = Services.wm.getEnumerator(null);
 		while (DOMWindows.hasMoreElements()) {
 			var aDOMWindow = DOMWindows.getNext();
