@@ -1,5 +1,5 @@
 // FRAMESCRIPT
-const {classes: Cc, interfaces: Ci, results: Cr, utils: Cu} = Components;
+const {interfaces: Ci} = Components;
 
 // Globals
 var core = {
@@ -16,7 +16,8 @@ var core = {
 const NS_HTML = 'http://www.w3.org/1999/xhtml';
 const CHROMESTORE_HOSTNAME = 'chrome.google.com';
 
-var L10N = {};
+var gL10N = {};
+
 var FS_UNLOADERS = [];
 var PAGE_UNLOADERS = [];
 
@@ -31,19 +32,33 @@ function doPageUnloaders() {
 }
 
 function actOnExt(aExtId, aExtName) {
-	sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['actOnExt', aExtId, aExtName], bootstrapMsgListener.funcScope, function(aStatus, aStatusInfo) {
-		if (aStatus == 'promise_rejected') {
-			content.alert(L10N.failed_install + '\n\n' + JSON.stringify(aStatusInfo));
-			console.error(aStatusInfo);
-			throw new Error(aStatusInfo);
-		} else {
-			content.alert(aStatusInfo);
-			// if (aStatusInfo) {
-				// content.alert('Success message was:\n\n' + aStatusInfo);
-			// }
-		}
-	});
-	content.alert(L10N.starting);
+	// sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['actOnExt', aExtId, aExtName], bootstrapMsgListener.funcScope, function(aStatus, aStatusInfo) {
+	// 	if (aStatus == 'promise_rejected') {
+	// 		content.alert(gL10N.inlay.failed_install + '\n\n' + JSON.stringify(aStatusInfo));
+	// 		console.error(aStatusInfo);
+	// 		throw new Error(aStatusInfo);
+	// 	} else {
+	// 		content.alert(aStatusInfo);
+	// 		// if (aStatusInfo) {
+	// 			// content.alert('Success message was:\n\n' + aStatusInfo);
+	// 		// }
+	// 	}
+	// });
+	// content.alert(gL10N.inlay.starting);
+	
+	contentMMFromContentWindow_Method2(content).sendAsyncMessage(core.addon.id, ['callInPromiseWorker', false, ['doit', aExtId, aExtName]]);
+	// sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['callInPromiseWorker', ['doit', aExtId, aExtName]], bootstrapMsgListener.funcScope, function(aStatus, aStatusInfo) {
+	// 	if (aStatus == 'promise_rejected') {
+	// 		content.alert(gL10N.inlay.failed_install + '\n\n' + JSON.stringify(aStatusInfo));
+	// 		console.error(aStatusInfo);
+	// 		throw new Error(aStatusInfo);
+	// 	} else {
+	// 		content.alert(aStatusInfo);
+	// 		// if (aStatusInfo) {
+	// 			// content.alert('Success message was:\n\n' + aStatusInfo);
+	// 		// }
+	// 	}
+	// });
 }
 
 function listenMouseDownFalse(aEvent) {
@@ -100,7 +115,7 @@ function listenClickTrue(aEvent) {
 				domEl_dialog = domEl_dialog.parentNode;
 			}
 			if (!domEl_dialog.getAttribute('role') || domEl_dialog.getAttribute('role') != 'dialog') {
-				aContentWindow.alert(L10N.error1);
+				aContentWindow.alert(gL10N.inlay.error1);
 				throw new Error('ERROR: Could not find extension id, will not try to install from href');
 			}
 			var extName = domEl_dialog.querySelector('h1').textContent;
@@ -114,12 +129,12 @@ function listenClickTrue(aEvent) {
 			}
 			var theHref = domEl_withHref.getAttribute('href');
 			if (!theHref) {
-				aContentWindow.alert(L10N.error2);
+				aContentWindow.alert(gL10N.inlay.error2);
 				throw new Error('ERROR: Could not find extension id, will not try to install');
 			}
 			var extId = /webstore\/detail\/.*?\/([^\/\?]+)/.exec(theHref);
 			if (!extId) {
-				aContentWindow.alert(L10N.error1);
+				aContentWindow.alert(gL10N.inlay.error1);
 				throw new Error('ERROR: Could not find extension id, will not try to install from href');
 			}
 			extId = extId[1];
@@ -190,7 +205,7 @@ function domInsert(aContentWindow) {
 	var stylesheet = jsonToDOM([
 		'style', {id:'chrome-store-foxified_stylesheet'},
 			'div[role=button] { overflow:hidden !important; background-color:rgb(124, 191, 54) !important; background-image:linear-gradient(to bottom, rgb(101, 173, 40), rgb(124, 191, 54)) !important; border-color:rgb(78, 155, 25) !important;}',
-			'div[role=button] .webstore-test-button-label::before { display:block; content:\'' + L10N.add_to_firefox + '\'; }'
+			'div[role=button] .webstore-test-button-label::before { display:block; content:\'' + gL10N.inlay.add_to_firefox + '\'; }'
 	], aContentDocument, {});
 	aContentDocument.documentElement.appendChild(stylesheet);
 	PAGE_UNLOADERS.push(function() {
@@ -508,15 +523,15 @@ function init() {
 		contentMMFromContentWindow_Method2(content).addMessageListener(core.addon.id, bootstrapMsgListener);
 		FS_UNLOADERS.push(function() {
 			contentMMFromContentWindow_Method2(content).removeMessageListener(core.addon.id, bootstrapMsgListener);
-			L10N = null;
+			gL10N = null;
 			core = null;
 		});
 		
 		sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['requestInit'], bootstrapMsgListener.funcScope, function(aData) {
 			// core = aData.aCore;
 			console.error('back in callback', aData, content.location.href);
-			L10N = aData.aL10n
-			console.error('set L10N to:', aData.aL10n, content.location.href)
+			gL10N = aData.aL10n;
+			console.error('set gL10N to:', aData.aL10n, content.location.href)
 			
 			addEventListener('unload', fsUnloaded, false);
 			FS_UNLOADERS.push(function() {
