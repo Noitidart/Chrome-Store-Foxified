@@ -74,25 +74,6 @@ var MainWorkerMainThreadFuncs = {
 			onInstallEnded: function(aInstall, aAddon) {
 			   var str = [];
 			   //str.push('"' + aAddon.name + '" Install Ended!');
-			   if (aInstall.state != AddonManager.STATE_INSTALLED) {
-				   //str.push('aInstall.state: ' + aInstall.state)
-				   //jsWin.addMsg('aInstall.state: ' + aInstall.state);
-				   // jsWin.addMsg('<red>Addon Install Failed - Status Code: ' + aInstall.state);
-				   // deferredMain_installXpi.resolve([true, myServices.sb.GetStringFromName('addon-install-failed') + aInstall.state]);
-				   deferredMain_installXpi.resolve([{
-					   status: false, // false for fail
-					   reason: 'addon-install-failed'
-				   }]);
-			   } else {
-				   //str.push('aInstall.state: Succesfully Installed')
-				   //jsWin.addMsg('aInstall.state: Succesfully Installed')
-				   // jsWin.addMsg('<green>Addon Succesfully Installed!');
-				   // deferredMain_installXpi.resolve([true, myServices.sb.GetStringFromName('addon-installed')]);
-				   deferredMain_installXpi.resolve([{
-					   status: true, // true for success
-					   reason: 'addon-installed'
-				   }]);
-			   }
 			   if (aAddon.appDisabled) {
 				   //str.push('appDisabled: ' + aAddon.appDisabled);
 				   // jsWin.addMsg('<red>Addon is disabled by application');
@@ -120,6 +101,25 @@ var MainWorkerMainThreadFuncs = {
 				   deferredMain_installXpi.resolve([{
 					   status: false, // false for fail
 					   reason: 'addons-installed-needsrestart'
+				   }]);
+			   }
+			   if (aInstall.state != AddonManager.STATE_INSTALLED) {
+				   //str.push('aInstall.state: ' + aInstall.state)
+				   //jsWin.addMsg('aInstall.state: ' + aInstall.state);
+				   // jsWin.addMsg('<red>Addon Install Failed - Status Code: ' + aInstall.state);
+				   // deferredMain_installXpi.resolve([true, myServices.sb.GetStringFromName('addon-install-failed') + aInstall.state]);
+				   deferredMain_installXpi.resolve([{
+					   status: false, // false for fail
+					   reason: 'addon-install-failed'
+				   }]);
+			   } else {
+				   //str.push('aInstall.state: Succesfully Installed')
+				   //jsWin.addMsg('aInstall.state: Succesfully Installed')
+				   // jsWin.addMsg('<green>Addon Succesfully Installed!');
+				   // deferredMain_installXpi.resolve([true, myServices.sb.GetStringFromName('addon-installed')]);
+				   deferredMain_installXpi.resolve([{
+					   status: true, // true for success
+					   reason: 'addon-installed'
 				   }]);
 			   }
 			   //alert(str.join('\n'));
