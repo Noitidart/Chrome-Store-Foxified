@@ -1,8 +1,8 @@
 // Imports
 const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
-// Cu.import('resource://gre/modules/AddonManager.jsm');
-// Cu.import('resource://gre/modules/FileUtils.jsm');
+Cu.import('resource://gre/modules/AddonManager.jsm');
+Cu.import('resource://gre/modules/FileUtils.jsm');
 Cu.import('resource://gre/modules/osfile.jsm');
 const PromiseWorker = Cu.import('resource://gre/modules/PromiseWorker.jsm').BasePromiseWorker;
 Cu.import('resource://gre/modules/Services.jsm');
@@ -66,7 +66,81 @@ function setupMainWorkerCustomErrors() {
 }
 
 var MainWorkerMainThreadFuncs = {
-	
+	installXpi: function(aXpiPlatPath) {
+		
+		var deferredMain_installXpi = new Deferred();
+		
+		var installListener = {
+			onInstallEnded: function(aInstall, aAddon) {
+			   var str = [];
+			   //str.push('"' + aAddon.name + '" Install Ended!');
+			   if (aInstall.state != AddonManager.STATE_INSTALLED) {
+				   //str.push('aInstall.state: ' + aInstall.state)
+				   //jsWin.addMsg('aInstall.state: ' + aInstall.state);
+				   // jsWin.addMsg('<red>Addon Install Failed - Status Code: ' + aInstall.state);
+				   // deferredMain_installXpi.resolve([true, myServices.sb.GetStringFromName('addon-install-failed') + aInstall.state]);
+				   deferredMain_installXpi.resolve([{
+					   status: false, // false for fail
+					   reason: 'addon-install-failed'
+				   }]);
+			   } else {
+				   //str.push('aInstall.state: Succesfully Installed')
+				   //jsWin.addMsg('aInstall.state: Succesfully Installed')
+				   // jsWin.addMsg('<green>Addon Succesfully Installed!');
+				   // deferredMain_installXpi.resolve([true, myServices.sb.GetStringFromName('addon-installed')]);
+				   deferredMain_installXpi.resolve([{
+					   status: true, // true for success
+					   reason: 'addon-installed'
+				   }]);
+			   }
+			   if (aAddon.appDisabled) {
+				   //str.push('appDisabled: ' + aAddon.appDisabled);
+				   // jsWin.addMsg('<red>Addon is disabled by application');
+				   // deferredMain_installXpi.resolve([true, myServices.sb.GetStringFromName('addon-installed-appdisabled')]);
+				   deferredMain_installXpi.resolve([{
+					   status: false, // false for fail
+					   reason: 'addon-installed-appdisabled'
+				   }]);
+			   }
+			   if (aAddon.userDisabled) {
+				   //str.push('userDisabled: ' + aAddon.userDisabled);
+				   //jsWin.addMsg('userDisabled: ' + aAddon.userDisabled);
+				   // jsWin.addMsg('<orange>Addon is currently disabled - go to addon manager to enable it');
+				   // deferredMain_installXpi.resolve([true, myServices.sb.GetStringFromName('addon-installed-userdisabled')]);
+				   deferredMain_installXpi.resolve([{
+					   status: false, // false for fail
+					   reason: 'addon-installed-userdisabled'
+				   }]);
+			   }
+			   if (aAddon.pendingOperations != AddonManager.PENDING_NONE) {
+				   //str.push('NEEDS RESTART: ' + aAddon.pendingOperations);
+				   //jsWin.addMsg('NEEDS RESTART: ' + aAddon.pendingOperations);
+				   // jsWin.addMsg('Needs to RESTART to complete install...');
+				   // deferredMain_installXpi.resolve([true, 'this should never happen, webexts are restartless']);
+				   deferredMain_installXpi.resolve([{
+					   status: false, // false for fail
+					   reason: 'addons-installed-needsrestart'
+				   }]);
+			   }
+			   //alert(str.join('\n'));
+			   aInstall.removeListener(installListener);
+			},
+			onInstallStarted: function(aInstall) {
+				// jsWin.addMsg('"' + aInstall.addon.name + '" Install Started...');
+			}
+		};
+		
+		var xpiNsiFile = new FileUtils.File(aXpiPlatPath);
+		AddonManager.getInstallForFile(xpiNsiFile, function(aInstall) {
+		  // aInstall is an instance of AddonInstall
+			aInstall.addListener(installListener);
+			aInstall.install(); //does silent install
+			// AddonManager.installAddonsFromWebpage('application/x-xpinstall', Services.wm.getMostRecentWindow('navigator:browser').gBrowser.selectedBrowser, null, [aInstall]); //does regular popup install
+		}, 'application/x-xpinstall');
+					
+		return deferredMain_installXpi.promise;
+		
+	}
 };
 
 function install() {}
@@ -458,7 +532,7 @@ function genericCatch(aPromiseName, aPromiseToReject, aCaught) {
 	}
 }
 
-// SIPWorker - rev3 - https://gist.github.com/Noitidart/92e55a3f7761ed60f14c
+// SIPWorker - rev4 - https://gist.github.com/Noitidart/92e55a3f7761ed60f14c
 const SIP_CB_PREFIX = '_a_gen_cb_';
 const SIP_TRANS_WORD = '_a_gen_trans_';
 var sip_last_cb_id = -1;
@@ -491,7 +565,7 @@ function SIPWorker(workerScopeName, aPath, aCore=core, aFuncExecScope) {
 					console.log('promsieworker is trying to execute function in mainthread');
 					
 					var callbackPendingId;
-					if (typeof aMsgEventData[aMsgEventData.length-1] == 'string' && aMsgEventData[aMsgEventData.length-1].indexOf(SIC_CB_PREFIX) == 0) {
+					if (typeof aMsgEventData[aMsgEventData.length-1] == 'string' && aMsgEventData[aMsgEventData.length-1].indexOf(SIP_CB_PREFIX) == 0) {
 						callbackPendingId = aMsgEventData.pop();
 					}
 					
@@ -503,8 +577,8 @@ function SIPWorker(workerScopeName, aPath, aCore=core, aFuncExecScope) {
 							if (rez_mainthread_call.constructor.name == 'Promise') {
 								rez_mainthread_call.then(
 									function(aVal) {
-										if (aVal.length >= 2 && aVal[aVal.length-1] == SIC_TRANS_WORD && Array.isArray(aVal[aVal.length-2])) {
-											// to transfer in callback, set last element in arr to SIC_TRANS_WORD and 2nd to last element an array of the transferables									// cannot transfer on promise reject, well can, but i didnt set it up as probably makes sense not to
+										if (aVal.length >= 2 && aVal[aVal.length-1] == SIP_TRANS_WORD && Array.isArray(aVal[aVal.length-2])) {
+											// to transfer in callback, set last element in arr to SIP_TRANS_WORD and 2nd to last element an array of the transferables									// cannot transfer on promise reject, well can, but i didnt set it up as probably makes sense not to
 											console.error('doing transferrrrr');
 											aVal.pop();
 											bootstrap[workerScopeName]._worker.postMessage([callbackPendingId, aVal], aVal.pop());
@@ -524,8 +598,8 @@ function SIPWorker(workerScopeName, aPath, aCore=core, aFuncExecScope) {
 								);
 							} else {
 								// assume array
-								if (rez_mainthread_call.length > 2 && rez_mainthread_call[rez_mainthread_call.length-1] == SIC_TRANS_WORD && Array.isArray(rez_mainthread_call[rez_mainthread_call.length-2])) {
-									// to transfer in callback, set last element in arr to SIC_TRANS_WORD and 2nd to last element an array of the transferables									// cannot transfer on promise reject, well can, but i didnt set it up as probably makes sense not to
+								if (rez_mainthread_call.length > 2 && rez_mainthread_call[rez_mainthread_call.length-1] == SIP_TRANS_WORD && Array.isArray(rez_mainthread_call[rez_mainthread_call.length-2])) {
+									// to transfer in callback, set last element in arr to SIP_TRANS_WORD and 2nd to last element an array of the transferables									// cannot transfer on promise reject, well can, but i didnt set it up as probably makes sense not to
 									rez_mainthread_call.pop();
 									bootstrap[workerScopeName]._worker.postMessage([callbackPendingId, rez_mainthread_call], rez_mainthread_call.pop());
 								} else {
