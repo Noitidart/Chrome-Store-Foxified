@@ -46,7 +46,7 @@ const core = {
 			modules: 'chrome://chrome-store-foxified/content/modules/',
 			workers: 'chrome://chrome-store-foxified/content/modules/workers/',
 		},
-		cache_key: Math.random() // set to version on release
+		cache_key: 'v1.5' // set to version on release
 	},
 	os: {
 		name: OS.Constants.Sys.Name.toLowerCase(),
@@ -234,7 +234,7 @@ var AB = { // AB stands for attention bar
 			if (winAB) {
 				if (aInstId in winAB.Insts) {
 					// unmount this
-					console.error('aInstId:', aInstId, 'notificationbox-' + aInstId + '--' + AB.domIdPrefix);
+
 					var cNotificationBox = aDOMWindow.document.getElementById('notificationbox-' + aInstId + '--' + AB.domIdPrefix);
 					aDOMWindow.ReactDOM.unmountComponentAtNode(cNotificationBox);
 					cNotificationBox.parentNode.removeChild(cNotificationBox);
@@ -367,7 +367,7 @@ var AB = { // AB stands for attention bar
 				aDOMWindow[core.addon.id + '-AB'].Insts[aInstState.aId].state = aDOMWindow.JSON.parse(aDOMWindow.JSON.stringify(aInstState));
 				var cDeck = aDOMWindow.document.getElementById('content-deck');
 				var cNotificationBox = aDOMWindow.document.createElementNS('http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul', 'notificationbox');
-				console.error('inserting', 'notificationbox-' + aInstState.aId + '--' + AB.domIdPrefix);
+
 				cNotificationBox.setAttribute('id', 'notificationbox-' + aInstState.aId + '--' + AB.domIdPrefix);
 				if (!aInstState.aPos) {
 					cDeck.parentNode.appendChild(cNotificationBox);
@@ -429,19 +429,19 @@ var AB = { // AB stands for attention bar
 		if (!aDOMWindow[core.addon.id + '-AB']) {
 			return;
 		}
-		console.error('doing uninit from window');
+
 		// start - original block link77728110
 		var winAB = aDOMWindow[core.addon.id + '-AB'];
 		for (var aInstsId in winAB.Insts) {
 			// unmount this
-			console.error('aInstsId:', aInstsId, 'notificationbox-' + aInstsId + '--' + AB.domIdPrefix);
+
 			var cNotificationBox = aDOMWindow.document.getElementById('notificationbox-' + aInstsId + '--' + AB.domIdPrefix);
 			aDOMWindow.ReactDOM.unmountComponentAtNode(cNotificationBox);
 			cNotificationBox.parentNode.removeChild(cNotificationBox);
 		}
 		// end - original block link77728110
 		delete aDOMWindow[core.addon.id + '-AB'];
-		console.error('done uninit');
+
 	},
 	ensureInitedIntoWindow: function(aDOMWindow) {
 		// dont run this yoruself, ensureInstancesToWindow runs this. so if you want to run yourself, then run ensureInstancesToWindow(aDOMWindow)
@@ -451,11 +451,11 @@ var AB = { // AB stands for attention bar
 				domIdPrefix: AB.domIdPrefix
 			}; // ab stands for attention bar
 			if (!aDOMWindow.React) {
-				console.error('WILL NOW LOAD IN REACT');
+
 				Services.scriptloader.loadSubScript(core.addon.path.scripts + 'react.js?' + core.addon.cache_key, aDOMWindow); // even if i load it into aDOMWindow.blah and .blah is an object, it goes into global, so i just do aDOMWindow now
 			}
 			if (!aDOMWindow.ReactDOM) {
-				console.error('WILL NOW LOAD IN REACTDOM');
+
 				Services.scriptloader.loadSubScript(core.addon.path.scripts + 'react-dom.js?' + core.addon.cache_key, aDOMWindow);
 			}
 			Services.scriptloader.loadSubScript(core.addon.path.scripts + 'ab-react-components.js?' + core.addon.cache_key, aDOMWindow);
@@ -487,7 +487,7 @@ var AB = { // AB stands for attention bar
 	msgListener: {
 		receiveMessage: function(aMsgEvent) {
 			var aMsgEventData = aMsgEvent.data;
-			console.error('getting aMsgEvent, data:', aMsgEventData);
+
 			// this means trigger a callback with id aMsgEventData
 			var cCallbackId = aMsgEventData;
 			var cBrowser = aMsgEvent.target;
@@ -522,7 +522,7 @@ var AB = { // AB stands for attention bar
 			for (var aInstId in AB.Insts) {
 				var aInstState = AB.Insts[aInstId].state;
 				if (aInstState.aId in aDOMWindow[core.addon.id + '-AB'].Insts) {
-					console.error('this is really weird, it should never happen, as i only call this function when a new window opens');
+
 					aDOMWindow[core.addon.id + '-AB'].Insts[aInstState.aId].state = aDOMWindow.JSON.parse(aDOMWindow.JSON.stringify(aInstState));
 					aDOMWindow[core.addon.id + '-AB'].Insts[aInstState.aId].setState(JSON.parse(JSON.stringify(aInstState)));
 				} else {
@@ -531,7 +531,7 @@ var AB = { // AB stands for attention bar
 					aDOMWindow[core.addon.id + '-AB'].Insts[aInstState.aId].state = aDOMWindow.JSON.parse(aDOMWindow.JSON.stringify(aInstState));
 					var cDeck = aDOMWindow.document.getElementById('content-deck');
 					var cNotificationBox = aDOMWindow.document.createElementNS('http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul', 'notificationbox');
-					console.error('inserting', 'notificationbox-' + aInstState.aId + '--' + AB.domIdPrefix);
+
 					cNotificationBox.setAttribute('id', 'notificationbox-' + aInstState.aId + '--' + AB.domIdPrefix);
 					if (!aInstState.aPos) {
 						cDeck.parentNode.appendChild(cNotificationBox);
@@ -609,7 +609,7 @@ function startup(aData, aReason) {
 		var aTimer = Cc['@mozilla.org/timer;1'].createInstance(Ci.nsITimer);
 		aTimer.initWithCallback({
 			notify: function() {
-				console.error('ok starting up adding');
+
 				// register framescript listener
 				Services.mm.addMessageListener(core.addon.id, fsMsgListener);
 				
@@ -623,7 +623,7 @@ function startup(aData, aReason) {
 	var promise_initMainWorker = SIPWorker('MainWorker', core.addon.path.modules + 'MainWorker/MainWorker.js?' + core.addon.cache_key, core, MainWorkerMainThreadFuncs);
 	promise_initMainWorker.then(
 		function(aInitObj) {
-			console.log('Fullfilled - promise_initMainWorker - ', aInitObj);
+
 			// start - do stuff here - promise_initMainWorker
 			setupMainWorkerCustomErrors();
 			afterWorker(aInitObj);
@@ -634,7 +634,7 @@ function startup(aData, aReason) {
 				name: 'promise_initMainWorker',
 				aReason: aReason
 			};
-			console.warn('Rejected - promise_initMainWorker - ', rejObj);
+
 		}
 	).catch(
 		function(aCaught) {
@@ -642,7 +642,7 @@ function startup(aData, aReason) {
 				name: 'promise_initMainWorker',
 				aCaught: aCaught
 			};
-			console.error('Caught - promise_initMainWorker - ', rejObj);
+
 		}
 	);
 	
@@ -665,7 +665,7 @@ function shutdown(aData, aReason) {
 	// terminate worker
 	if (typeof(MainWorker) != 'undefined') {
 		MainWorker._worker.terminate();
-		console.log('ok terminated worker');
+
 	}
 }
 
@@ -675,7 +675,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 	requestInit: function(aMsgEvent) {
 		// start - l10n injection into fs
 		
-		console.error('in requestinit server side');
+
 		
 		return [{
 			aCore: core,
@@ -726,7 +726,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 		var rez_pwcall = MainWorker.post(aArrOfWorker_FuncnameThenArgs.shift(), aArrOfWorker_FuncnameThenArgs);
 		rez_pwcall.then(
 			function(aVal) {
-				console.log('Fullfilled - rez_pwcall - ', aVal);
+
 				if (returnToFramescript) {
 					if (Array.isArray(aVal)) {
 						mainDeferred_callInPromiseWorker.resolve(aVal);
@@ -740,7 +740,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 					name: 'rez_pwcall',
 					aReason: aReason
 				};
-				console.error('Rejected - rez_pwcall - ', rejObj);
+
 				if (returnToFramescript) {
 					mainDeferred_callInPromiseWorker.resolve([rejObj]);
 				}
@@ -751,7 +751,7 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 					name: 'rez_pwcall',
 					aCaught: aCaught
 				};
-				console.error('Caught - rez_pwcall - ', rejObj);
+
 				if (returnToFramescript) {
 					mainDeferred_callInPromiseWorker.resolve([rejObj]);
 				}
@@ -767,7 +767,7 @@ var fsMsgListener = {
 	funcScope: fsFuncs,
 	receiveMessage: function(aMsgEvent) {
 		var aMsgEventData = aMsgEvent.data;
-		console.log('fsMsgListener getting aMsgEventData:', aMsgEventData, 'aMsgEvent:', aMsgEvent);
+
 		// aMsgEvent.data should be an array, with first item being the unfction name in bootstrapCallbacks
 		
 		var callbackPendingId;
@@ -790,23 +790,23 @@ var fsMsgListener = {
 							aMsgEvent.target.messageManager.sendAsyncMessage(core.addon.id, [callbackPendingId, aVal]);
 						},
 						function(aReason) {
-							console.error('aReject:', aReason);
+
 							aMsgEvent.target.messageManager.sendAsyncMessage(core.addon.id, [callbackPendingId, ['promise_rejected', aReason]]);
 						}
 					).catch(
 						function(aCatch) {
-							console.error('aCatch:', aCatch);
+
 							aMsgEvent.target.messageManager.sendAsyncMessage(core.addon.id, [callbackPendingId, ['promise_rejected', aCatch]]);
 						}
 					);
 				} else {
 					// assume array
-					console.warn('ok responding to callback id:', callbackPendingId, aMsgEvent.target);
+
 					aMsgEvent.target.messageManager.sendAsyncMessage(core.addon.id, [callbackPendingId, rez_parentscript_call]);
 				}
 			}
 		}
-		else { console.warn('funcName', funcName, 'not in scope of this.funcScope') } // else is intentionally on same line with console. so on finde replace all console. lines on release it will take this out
+
 		
 	}
 };
@@ -900,7 +900,7 @@ function validateOptionsObj(aOptions, aOptionsDefaults) {
 	// ensures no invalid keys are found in aOptions, any key found in aOptions not having a key in aOptionsDefaults causes throw new Error as invalid option
 	for (var aOptKey in aOptions) {
 		if (!(aOptKey in aOptionsDefaults)) {
-			console.error('aOptKey of ' + aOptKey + ' is an invalid key, as it has no default value, aOptionsDefaults:', aOptionsDefaults, 'aOptions:', aOptions);
+
 			throw new Error('aOptKey of ' + aOptKey + ' is an invalid key, as it has no default value');
 		}
 	}
@@ -955,7 +955,7 @@ function genericReject(aPromiseName, aPromiseToReject, aReason) {
 		name: aPromiseName,
 		aReason: aReason
 	};
-	console.error('Rejected - ' + aPromiseName + ' - ', rejObj);
+
 	if (aPromiseToReject) {
 		aPromiseToReject.reject(rejObj);
 	}
@@ -965,7 +965,7 @@ function genericCatch(aPromiseName, aPromiseToReject, aCaught) {
 		name: aPromiseName,
 		aCaught: aCaught
 	};
-	console.error('Caught - ' + aPromiseName + ' - ', rejObj);
+
 	if (aPromiseToReject) {
 		aPromiseToReject.reject(rejObj);
 	}
@@ -998,10 +998,10 @@ function SIPWorker(workerScopeName, aPath, aCore=core, aFuncExecScope) {
 			bootstrap[workerScopeName]._worker.onmessage = function(aMsgEvent) {
 				////// start - my custom stuff
 				var aMsgEventData = aMsgEvent.data;
-				console.log('promiseworker receiving msg:', aMsgEventData);
+
 				if (Array.isArray(aMsgEventData)) {
 					// my custom stuff, PromiseWorker did self.postMessage to call a function from here
-					console.log('promsieworker is trying to execute function in mainthread');
+
 					
 					var callbackPendingId;
 					if (typeof aMsgEventData[aMsgEventData.length-1] == 'string' && aMsgEventData[aMsgEventData.length-1].indexOf(SIP_CB_PREFIX) == 0) {
@@ -1018,7 +1018,7 @@ function SIPWorker(workerScopeName, aPath, aCore=core, aFuncExecScope) {
 									function(aVal) {
 										if (aVal.length >= 2 && aVal[aVal.length-1] == SIP_TRANS_WORD && Array.isArray(aVal[aVal.length-2])) {
 											// to transfer in callback, set last element in arr to SIP_TRANS_WORD and 2nd to last element an array of the transferables									// cannot transfer on promise reject, well can, but i didnt set it up as probably makes sense not to
-											console.error('doing transferrrrr');
+
 											aVal.pop();
 											bootstrap[workerScopeName]._worker.postMessage([callbackPendingId, aVal], aVal.pop());
 										} else {
@@ -1026,12 +1026,12 @@ function SIPWorker(workerScopeName, aPath, aCore=core, aFuncExecScope) {
 										}
 									},
 									function(aReason) {
-										console.error('aReject:', aReason);
+
 										bootstrap[workerScopeName]._worker.postMessage([callbackPendingId, ['promise_rejected', aReason]]);
 									}
 								).catch(
 									function(aCatch) {
-										console.error('aCatch:', aCatch);
+
 										bootstrap[workerScopeName]._worker.postMessage([callbackPendingId, ['promise_rejected', aCatch]]);
 									}
 								);
@@ -1047,7 +1047,7 @@ function SIPWorker(workerScopeName, aPath, aCore=core, aFuncExecScope) {
 							}
 						}
 					}
-					else { console.error('funcName', funcName, 'not in scope of aFuncExecScope') } // else is intentionally on same line with console. so on finde replace all console. lines on release it will take this out
+
 					////// end - my custom stuff
 				} else {
 					origOnmessage(aMsgEvent);
@@ -1063,20 +1063,20 @@ function SIPWorker(workerScopeName, aPath, aCore=core, aFuncExecScope) {
 		var promise_initWorker = bootstrap[workerScopeName].post('init', [aCore]);
 		promise_initWorker.then(
 			function(aVal) {
-				console.log('Fullfilled - promise_initWorker - ', aVal);
+
 				// start - do stuff here - promise_initWorker
 				deferredMain_SIPWorker.resolve(aVal);
 				// end - do stuff here - promise_initWorker
 			},
 			function(aReason) {
 				var rejObj = {name:'promise_initWorker', aReason:aReason};
-				console.warn('Rejected - promise_initWorker - ', rejObj);
+
 				deferredMain_SIPWorker.reject(rejObj);
 			}
 		).catch(
 			function(aCaught) {
 				var rejObj = {name:'promise_initWorker', aCaught:aCaught};
-				console.error('Caught - promise_initWorker - ', rejObj);
+
 				deferredMain_SIPWorker.reject(rejObj);
 			}
 		);

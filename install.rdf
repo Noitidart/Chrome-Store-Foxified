@@ -5,7 +5,7 @@
 	<RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:em="http://www.mozilla.org/2004/em-rdf#">
 	  <Description about="urn:mozilla:install-manifest">
 		<em:id>Chrome-Store-Foxified@jetpack</em:id>
-		<em:version>1.5-night</em:version>
+		<em:version>1.5</em:version>
 		<em:type>2</em:type>
 		<em:bootstrap>true</em:bootstrap>
 		
@@ -14,7 +14,7 @@
 			<Description>
 				<em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
 				<em:minVersion>42.0</em:minVersion> <!-- due to options page -->
-				<em:maxVersion>46.0a1</em:maxVersion> <!-- the latest version i tested it in -->
+				<em:maxVersion>44.0</em:maxVersion> <!-- the latest version i tested it in -->
 			</Description>
 		</em:targetApplication>
 
