@@ -139,8 +139,13 @@ function listenClickTrue(aEvent) {
 			}
 			extId = extId[1];
 			// aContentWindow.alert('extId: ' + extId);
-			var extName = domEl_withHref.querySelector('div:nth-of-type(3) > div:nth-of-type(3) > div:nth-of-type(1)').textContent;
-			// aContentWindow.alert('extName: ' + extName);
+			console.log('domEl_withHref:', domEl_withHref);
+			// var extName = domEl_withHref.querySelector('div:nth-of-type(3) > div:nth-of-type(3) > div:nth-of-type(1)').textContent;
+			console.log('query selector string:', ('a[href="' + theHref + '"]'));
+			var aWithHref = domEl_withHref.parentNode.querySelectorAll('a[href="' + theHref + '"]');
+			console.log('aWithHref:', aWithHref);
+			var extName = aWithHref[1].textContent.trim();
+			aContentWindow.alert('extName: ' + extName);
 			actOnExt(extId, extName);
 		}
 	}
