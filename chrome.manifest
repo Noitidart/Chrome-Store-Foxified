@@ -1,4 +1,3 @@
 content chrome-store-foxified ./
 locale chrome-store-foxified en-US locale/en-US/
-locale chrome-store-foxified fr locale/fr/
 content chrome-store-foxified-content-accessible ./resources/content-accessible/ contentaccessible=true

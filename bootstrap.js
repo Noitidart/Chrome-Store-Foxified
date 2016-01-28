@@ -183,7 +183,9 @@ var MainWorkerMainThreadFuncs = {
 				{
 					bTxt: justFormatStringFromName(gL10N.bootstrap['show-failed-json']),
 					bClick: function(doClose, aBrowser) {
-						Services.prompt.alert(Services.wm.getMostRecentWindow('navigator:browser'), justFormatStringFromName(gL10N.bootstrap['addon_name']), BEAUTIFY().js(JSON.stringify(aExtName)));
+						var jsonObj = aXpiId;
+						// Services.prompt.alert(Services.wm.getMostRecentWindow('navigator:browser'), justFormatStringFromName(gL10N.bootstrap['addon_name']), BEAUTIFY().js(JSON.stringify(aExtName)));
+						aBrowser.ownerDocument.defaultView.gBrowser.loadOneTab('data:text/plain,' + BEAUTIFY().js(JSON.stringify(jsonObj)).replace(/\n/g, '%0A'), {inBackground:false, relatedToCurrent:true});
 					}
 				}
 			];

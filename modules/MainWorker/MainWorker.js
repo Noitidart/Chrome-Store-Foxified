@@ -266,7 +266,7 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 				}
 				
 				cumulativeCheckCount++;
-				if (cumulativeCheckCount > 5) {
+				if (cumulativeCheckCount >= 12) {
 					// throw new Error('not getting signed, probably not passing review');
 					throw {
 						msg: 'signing-failed: dev enforced timeout',
@@ -516,7 +516,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 			aAttnBarInstState.aHideClose = false;
 			if (ex.msg && ex.msg.indexOf('signing-failed') === 0) {
 				aAttnBarInstState.aTxt = formatStringFromName('attn-failed-signing', 'bootstrap', [aExtName]);
-				self.postMessage(['updateAttnBar', aAttnBarInstState, 'attn-failed-signing', ex]);
+				self.postMessage(['updateAttnBar', aAttnBarInstState, 'attn-failed-signing', aExtName, ex]);
 			} else {
 				aAttnBarInstState.aTxt = formatStringFromName('attn-something-went-wrong', 'bootstrap', [aExtName]);
 				self.postMessage(['updateAttnBar', aAttnBarInstState]);
