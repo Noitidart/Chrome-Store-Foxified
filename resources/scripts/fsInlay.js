@@ -151,7 +151,7 @@ function listenClickTrue(aEvent) {
 	}
 }
 
-var firstNonFind = 0;
+// var firstNonFind = 0;
 function domInsert(aContentWindow) {
 	var aContentDocument = aContentWindow.document;
 	
@@ -167,6 +167,7 @@ function domInsert(aContentWindow) {
 		return;
 	}
 	
+	/*
 	// find and remove warning
 	var domEl_downloadGoogleChrome = aContentDocument.querySelector('a[href*="www.google.com/chrome"]');
 	if (!domEl_downloadGoogleChrome) {
@@ -208,12 +209,14 @@ function domInsert(aContentWindow) {
 			domEl_downloadGoogleChromeMainDiv.style.display = '';
 		} catch(ignore) {}
 	});
-
+	*/
 	// put in stylesheet to change color of the buttons and give it "Add to Firefox" content
 	var stylesheet = jsonToDOM([
 		'style', {id:'chrome-store-foxified_stylesheet'},
 			'div[role=button] { overflow:hidden !important; background-color:rgb(124, 191, 54) !important; background-image:linear-gradient(to bottom, rgb(101, 173, 40), rgb(124, 191, 54)) !important; border-color:rgb(78, 155, 25) !important;}',
-			'div[role=button] .webstore-test-button-label::before { display:block; content:\'' + gL10N.inlay.add_to_firefox + '\'; }'
+			'div[role=button] .webstore-test-button-label::before { display:block; content:\'' + gL10N.inlay.add_to_firefox + '\'; }',
+			'body > div:last-of-type > div:nth-of-type(2) { display: none }', // targeting download div
+			'.h-Yb-wa.Yb-wa { display: none }' // alt target download div
 	], aContentDocument, {});
 	aContentDocument.documentElement.appendChild(stylesheet);
 	PAGE_UNLOADERS.push(function() {
