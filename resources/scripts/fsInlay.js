@@ -151,7 +151,7 @@ function listenClickTrue(aEvent) {
 	}
 }
 
-var firstNonFind = true;
+var firstNonFind = 0;
 function domInsert(aContentWindow) {
 	var aContentDocument = aContentWindow.document;
 	
@@ -170,16 +170,17 @@ function domInsert(aContentWindow) {
 	// find and remove warning
 	var domEl_downloadGoogleChrome = aContentDocument.querySelector('a[href*="www.google.com/chrome"]');
 	if (!domEl_downloadGoogleChrome) {
-		if (firstNonFind) {
-			firstNonFind = false;
+		if (firstNonFind <= 10) {
+			firstNonFind++;
 			content.setTimeout(function() {
 				domInsert(aContentWindow);
 			}, 300);
 			return;
 		} else {
-			firstNonFind = true;
+			firstNonFind = 0;
 			console.error('warning, could not find download gchrome link!');
-			throw new Error('warning, could not find download gchrome link!');
+			// throw new Error('warning, could not find download gchrome link!');
+			return;
 		}
 	}
 	// find the mainDiv, which will be the position fixed div
@@ -195,7 +196,9 @@ function domInsert(aContentWindow) {
 	}
 	
 	if (aContentWindow.getComputedStyle(domEl_downloadGoogleChromeMainDiv).position != 'fixed') {
-		throw new Error('warning, could not find download gchrome link main container!');
+		console.error('warning, could not find download gchrome link main container!');
+		// throw new Error('warning, could not find download gchrome link main container!');
+		return;
 	}
 	
 	domEl_downloadGoogleChromeMainDiv.style.display = 'none';
