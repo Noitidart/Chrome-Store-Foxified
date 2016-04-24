@@ -496,7 +496,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 			}
 		}
 		
-		var xpiId = aExtId + '@chromeStoreFoxified' + (aPrefs.donotsign ? '' : '-' + gAmoApiKey.replace(/:/g, '-')); // if i dont unique it per user then if two users try to upload same addon, the second will never be able to download it
+		var xpiId = aExtId + '@chromeStoreFoxified' + (aPrefs.donotsign ? '' : '-' + gAmoApiKey.replace(/:/g, '-')); // if i dont unique it per user then if two users try to upload same addon, the second will never be able to download it // i have to replace colon with - as if colon then xpi wont install it says its corrupt
 		var xpiVersion = manifestContentsJSON.version;
 		
 		manifestContentsJSON.applications = {
