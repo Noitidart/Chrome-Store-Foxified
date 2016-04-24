@@ -14,8 +14,8 @@ var core = { // have to set up the main keys that you want when aCore is merged 
 	}
 };
 
-const gAmoApiKey = 'user:12084162:454';
-const gAmoApiSecret = '47cd24d68dcd01f8a3854696ba0b2adc81d440db5f457a8bfe78ebfde2c0ebfa';
+var gAmoApiKey; // 'user:12084162:454';
+var gAmoApiSecret; //` '47cd24d68dcd01f8a3854696ba0b2adc81d440db5f457a8bfe78ebfde2c0ebfa';
 
 var OSStuff = {}; // global vars populated by init, based on OS
 
@@ -190,7 +190,7 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 		var request_downloadSigned = xhr(aDownloadSignedURL, {
 			responseType: 'arraybuffer',
 			headers: {
-				Authorization: 'JWT ' + generateToken(gAmoApiKey, gAmoApiSecret, getNowDateFromServer())
+				Authorization: 'JWT ' + generateToken(aAmoApiKey, aAmoApiSecret, getNowDateFromServer())
 			}
 		});
 		
@@ -452,9 +452,6 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		*/
 		
 		// sign and download xpi
-		aAttnBarInstState.aTxt = formatStringFromName('attn-signing', 'bootstrap', [aExtName]);
-		self.postMessage(['updateAttnBar', aAttnBarInstState]);
-		
 		var xpiFileName = formatStringFromName('xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), xpiVersion]);
 		var xpiSaveDir = aPrefs.save ? aPrefs['save-path'] : OS.Constants.Path.tmpDir;
 		var xpiSavePath = OS.Path.join(xpiSaveDir, xpiFileName + '.xpi');
@@ -462,6 +459,88 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		console.error('aPrefs.donotsign:', aPrefs.donotsign);
 		
 		if (!aPrefs.donotsign) {
+			if (!gAmoApiKey) {
+				aAttnBarInstState.aTxt = formatStringFromName('requesting-keys', 'bootstrap');
+				self.postMessage(['updateAttnBar', aAttnBarInstState]);
+				
+				// get key and secret first
+				var xhrUrl = 'https://addons.mozilla.org/en-US/developers/addon/api/key/';
+				var xhrOpts = {
+					method: 'GET'
+				};
+				var loopXhr = 1;
+				while (loopXhr < 3) {
+					loopXhr++;
+					console.log('xhrUrl:', xhrUrl, 'xhrOpts:', xhrOpts);
+					var reqAmoKeys = xhr(xhrUrl, xhrOpts);
+					
+					console.log('reqAmoKeys.response:', reqAmoKeys.response);
+					
+					if (reqAmoKeys.response.indexOf('accept-agreement') > -1) {
+						var fieldTokenHtml = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(reqAmoKeys.response);
+						console.log('fieldTokenHtml:', fieldTokenHtml);
+						var token = /value=["']?(.*?)["' \/<]/i.exec(fieldTokenHtml)[1];
+						console.log('token:', token);
+						
+						xhrUrl = 'https://addons.mozilla.org/en-US/developers/addon/submit/agreement/';
+						xhrOpts.method = 'POST';
+						xhrOpts.data = jQLike.serialize({
+							csrfmiddlewaretoken: token
+						});
+						xhrOpts.headers = {
+							Referer: xhrUrl,
+							'Content-Type': 'application/x-www-form-urlencoded'
+						};
+						
+						// loopXhr = true;
+					} else if (reqAmoKeys.response.indexOf('firefox/users/edit') == -1) {
+						console.error('you are not logged in');
+						throw {
+							msg: 'signing-failed:not logged in'
+						};
+						break;
+					} else {
+						var fieldKeyHtml = /input[^<]+jwtkey[^>]+/i.exec(reqAmoKeys.response);
+						var fieldSecretHtml = /input[^<]+jwtsecret[^>]+/i.exec(reqAmoKeys.response);
+						
+						console.log('fieldKeyHtml:', fieldKeyHtml);
+						console.log('fieldSecretHtml:', fieldSecretHtml);
+						
+						if (!fieldKeyHtml) {
+							// keys are not there, need to generate
+							var fieldTokenHtml = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(reqAmoKeys.response);
+							console.log('fieldTokenHtml:', fieldTokenHtml);
+							var token = /value=["']?(.*?)["' \/<]/i.exec(fieldTokenHtml)[1];
+							console.log('token:', token);
+							
+							xhrUrl = 'https://addons.mozilla.org/en-US/developers/addon/api/key/';
+							xhrOpts.method = 'POST';
+							xhrOpts.data = jQLike.serialize({
+								csrfmiddlewaretoken: token
+							});
+							xhrOpts.headers = {
+								Referer: xhrUrl,
+								'Content-Type': 'application/x-www-form-urlencoded'
+							};
+							
+							continue;
+						}
+						
+						gAmoApiKey = /value=["']?(.*?)["' \/<]/i.exec(fieldKeyHtml)[1];
+						gAmoApiSecret = /value=["']?(.*?)["' \/<]/i.exec(fieldSecretHtml)[1];
+						
+						console.log('gAmoApiKey:', gAmoApiKey);
+						console.log('gAmoApiSecret:', gAmoApiSecret);
+						
+						break;
+					}
+				}
+				return;
+			}
+			
+			aAttnBarInstState.aTxt = formatStringFromName('attn-signing', 'bootstrap', [aExtName]);
+			self.postMessage(['updateAttnBar', aAttnBarInstState]);
+			
 			var jszipBlob = zipJSZIP.generate({type:'blob'});
 			console.log('xpiSavePath:', xpiSavePath);
 			var rez_sign = jpmSign(jszipBlob, xpiVersion, xpiId, xpiSaveDir, gAmoApiKey, gAmoApiSecret, {
@@ -542,12 +621,19 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 			} else if (ex.msg && ex.msg.indexOf('signing-failed') === 0) {
 				aAttnBarInstState.aPriority = 9;
 				aAttnBarInstState.aHideClose = false;
-				aAttnBarInstState.aTxt = formatStringFromName('attn-failed-signing', 'bootstrap', [aExtName]);
+				var aLocalizedKey;
+				if (ex.msg == 'signing-failed:not logged in') {
+					aLocalizedKey = 'attn-failed-signing-not-logged-in';
+					aAttnBarInstState.aTxt = formatStringFromName('attn-failed-signing-not-logged-in', 'bootstrap', [aExtName]);
+				} else {
+					aLocalizedKey = 'attn-failed-signing';
+					aAttnBarInstState.aTxt = formatStringFromName('attn-failed-signing', 'bootstrap', [aExtName]);
+				}
 				var transferList;
 				if (dataForInstallAsTemp.byteLength) {
 					transferList = [dataForInstallAsTemp];
 				}
-				self.postMessage(['updateAttnBar', aAttnBarInstState, 'attn-failed-signing', aExtName, ex, dataForInstallAsTemp], transferList);
+				self.postMessage(['updateAttnBar', aAttnBarInstState, aLocalizedKey, aExtName, ex, dataForInstallAsTemp], transferList);
 				console.log('dataForInstallAsTemp.byteLength from worker:', dataForInstallAsTemp.byteLength);
 			} else {
 				aAttnBarInstState.aPriority = 9;

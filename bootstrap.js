@@ -178,55 +178,66 @@ var MainWorkerMainThreadFuncs = {
 					}
 				}
 			];
-		} else if (aLocalizedKey == 'attn-failed-signing') {
-			aAttnBarInfoObj.aBtns = [
-				{
-					bTxt: justFormatStringFromName(gL10N.bootstrap['install-as-temp']),
-					bClick: function(doClose, aBrowser) {
-						var dataForInstallAsTemp = aExtra;
-						// installAsTemp(osPathToXpi, aAttnBarInfoObj);
-						
-						var cPrefs = {};
-		
-						// save pref
-						try {
-							cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save');
-						} catch(ex) {
-							// set default avlue as apparently pref is not existing
-							Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.save', true);
-							cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save');
-						}
-						
-						// save-path pref
-						try {
-							cPrefs['save-path'] = Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path');
-						} catch (ex) {
-							// set default avlue as apparently pref is not existing
-							Services.prefs.setCharPref('extensions.chrome-store-foxified@jetpack.save-path', OS.Constants.Path.desktopDir);
-							cPrefs['save-path'] = Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path');
-						}
-						
-						// save donotsign
-						try {
-							cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.donotsign');
-						} catch(ex) {
-							// set default avlue as apparently pref is not existing
-							Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.donotsign', false);
-							cPrefs.donotsign = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.donotsign');
-						}
-						
-						MainWorker.post('installAsTempAddon', [aExtName, dataForInstallAsTemp, cPrefs, aAttnBarInfoObj]);
+		} else if (aLocalizedKey == 'attn-failed-signing' || aLocalizedKey == 'attn-failed-signing-not-logged-in') {
+			aAttnBarInfoObj.aBtns = [];
+			aAttnBarInfoObj.aBtns.push({
+				bTxt: justFormatStringFromName(gL10N.bootstrap['install-as-temp']),
+				bClick: function(doClose, aBrowser) {
+					var dataForInstallAsTemp = aExtra;
+					// installAsTemp(osPathToXpi, aAttnBarInfoObj);
+					
+					var cPrefs = {};
+	
+					// save pref
+					try {
+						cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save');
+					} catch(ex) {
+						// set default avlue as apparently pref is not existing
+						Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.save', true);
+						cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save');
 					}
-				},
-				{
+					
+					// save-path pref
+					try {
+						cPrefs['save-path'] = Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path');
+					} catch (ex) {
+						// set default avlue as apparently pref is not existing
+						Services.prefs.setCharPref('extensions.chrome-store-foxified@jetpack.save-path', OS.Constants.Path.desktopDir);
+						cPrefs['save-path'] = Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path');
+					}
+					
+					// save donotsign
+					try {
+						cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.donotsign');
+					} catch(ex) {
+						// set default avlue as apparently pref is not existing
+						Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.donotsign', false);
+						cPrefs.donotsign = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.donotsign');
+					}
+					
+					MainWorker.post('installAsTempAddon', [aExtName, dataForInstallAsTemp, cPrefs, aAttnBarInfoObj]);
+				}
+			});
+			
+			if (aLocalizedKey == 'attn-failed-signing') {
+				aAttnBarInfoObj.aBtns.push({
 					bTxt: justFormatStringFromName(gL10N.bootstrap['show-failed-json']),
 					bClick: function(doClose, aBrowser) {
 						var jsonObj = aXpiId;
 						// Services.prompt.alert(Services.wm.getMostRecentWindow('navigator:browser'), justFormatStringFromName(gL10N.bootstrap['addon_name']), BEAUTIFY().js(JSON.stringify(aExtName)));
 						aBrowser.ownerDocument.defaultView.gBrowser.loadOneTab('data:text/plain,' + BEAUTIFY().js(JSON.stringify(jsonObj)).replace(/\n/g, '%0A'), {inBackground:false, relatedToCurrent:true});
 					}
-				}
-			];
+				});
+			}
+			
+			if (aLocalizedKey == 'attn-failed-signing-not-logged-in') {
+				aAttnBarInfoObj.aBtns.push({
+					bTxt: justFormatStringFromName(gL10N.bootstrap['open-amo']),
+					bClick: function(doClose, aBrowser) {
+						aBrowser.ownerDocument.defaultView.gBrowser.loadOneTab('https://addons.mozilla.org/en-US/firefox/users/login?to=%2Fen-US%2Ffirefox%2F', {inBackground:false, relatedToCurrent:true});
+					}
+				});
+			}
 		}
 		AB.setState(aAttnBarInfoObj);
 	},
