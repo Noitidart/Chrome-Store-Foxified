@@ -254,7 +254,7 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 				console.log('wait 5 seconds then try again as it has not been signed yet');
 				
 				// if (request_fetchExisting.response)
-				if (Array.isArray(request_fetchExisting.response.files) && request_fetchExisting.response.processed && !request_fetchExisting.response.passed_review) {
+				if (Array.isArray(request_fetchExisting.response.files) && request_fetchExisting.response.reviewed && !request_fetchExisting.response.passed_review) {
 					// throw new Error('failed validation of the signing process');
 					throw {
 						msg: 'signing-failed: validation failed',
@@ -266,7 +266,8 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 				}
 				
 				cumulativeCheckCount++;
-				if (cumulativeCheckCount >= 12) {
+				var maxCumCheckCount = 10;
+				if (cumulativeCheckCount >= maxCumCheckCount) {
 					// throw new Error('not getting signed, probably not passing review');
 					throw {
 						msg: 'signing-failed: dev enforced timeout',
@@ -279,7 +280,7 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 				console.log('cumulativeCheckCount:', cumulativeCheckCount);
 				for (var i=10; i>=1; i--) {
 					if (aOptions.aAttnBarInstState) {
-						aOptions.aAttnBarInstState.aTxt = formatStringFromName('attn-signing-check-waiting', 'bootstrap', [aOptions.aExtName, i]);
+						aOptions.aAttnBarInstState.aTxt = formatStringFromName('attn-signing-check-waiting', 'bootstrap', [aOptions.aExtName, i, cumulativeCheckCount, maxCumCheckCount]);
 						self.postMessage(['updateAttnBar', aOptions.aAttnBarInstState]);
 					}
 					setTimeoutSync(1000);
@@ -414,50 +415,6 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		var manifestContentsJSON = JSON.parse(manifestContents.trim());
 		console.log('manifestContentsJSON:', manifestContentsJSON);
 		
-		var xpiId = aExtId + '@chromeStoreFoxified';
-		var xpiVersion = manifestContentsJSON.version;
-		
-		manifestContentsJSON.applications = {
-			gecko: {
-				id: xpiId
-			}
-		};
-		
-		// write/overwrite with modified manifest.json back to zip
-		zipJSZIP.file('manifest.json', JSON.stringify(manifestContentsJSON));
-		
-		/*
-		// step - save to disk. as its required to be saved before can install addon.
-		var jszipUint8 = zipJSZIP.generate({type:'uint8array'});
-		
-		var xpiFileName = formatStringFromName('xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), xpiVersion]);
-		
-		var xpiSavePath; // platform path to save the xpi at. need to save to install xpi.
-		if (aPrefs.save) {
-			// if user wants to save it to a specific path, just save it there
-			xpiSavePath = OS.Path.join(aPrefs['save-path'], xpiFileName + '.xpi');
-		} else {
-			// save it to tempoary path
-			xpiSavePath = OS.Path.join(OS.Constants.Path.tmpDir, xpiFileName + '.xpi');
-		}
-		
-		console.log('xpiSavePath:', xpiSavePath);
-		
-		try {
-			OS.File.writeAtomic(xpiSavePath, jszipUint8, {noOverwrite:false});
-		} catch(ex) {
-			console.error('Failed writing XPI to disk:', ex);
-			throw new MainWorkerError('Failed writing XPI to disk', ex);
-		}
-		*/
-		
-		// sign and download xpi
-		var xpiFileName = formatStringFromName('xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), xpiVersion]);
-		var xpiSaveDir = aPrefs.save ? aPrefs['save-path'] : OS.Constants.Path.tmpDir;
-		var xpiSavePath = OS.Path.join(xpiSaveDir, xpiFileName + '.xpi');
-		
-		console.error('aPrefs.donotsign:', aPrefs.donotsign);
-		
 		if (!aPrefs.donotsign) {
 			if (!gAmoApiKey) {
 				aAttnBarInstState.aTxt = formatStringFromName('requesting-keys', 'bootstrap');
@@ -468,8 +425,8 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 				var xhrOpts = {
 					method: 'GET'
 				};
-				var loopXhr = 1;
-				while (loopXhr < 3) {
+				var loopXhr = 0;
+				while (loopXhr < 3) { // 3 because max times needed is 3 xhr's.
 					loopXhr++;
 					console.log('xhrUrl:', xhrUrl, 'xhrOpts:', xhrOpts);
 					var reqAmoKeys = xhr(xhrUrl, xhrOpts);
@@ -535,9 +492,55 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 						break;
 					}
 				}
-				return;
+				// return; // :debug:
 			}
-			
+		}
+		
+		var xpiId = aExtId + '@chromeStoreFoxified' + (aPrefs.donotsign ? '' : '-' + gAmoApiKey.replace(/:/g, '-')); // if i dont unique it per user then if two users try to upload same addon, the second will never be able to download it
+		var xpiVersion = manifestContentsJSON.version;
+		
+		manifestContentsJSON.applications = {
+			gecko: {
+				id: xpiId
+			}
+		};
+		
+		// write/overwrite with modified manifest.json back to zip
+		zipJSZIP.file('manifest.json', JSON.stringify(manifestContentsJSON));
+		
+		/*
+		// step - save to disk. as its required to be saved before can install addon.
+		var jszipUint8 = zipJSZIP.generate({type:'uint8array'});
+		
+		var xpiFileName = formatStringFromName('xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), xpiVersion]);
+		
+		var xpiSavePath; // platform path to save the xpi at. need to save to install xpi.
+		if (aPrefs.save) {
+			// if user wants to save it to a specific path, just save it there
+			xpiSavePath = OS.Path.join(aPrefs['save-path'], xpiFileName + '.xpi');
+		} else {
+			// save it to tempoary path
+			xpiSavePath = OS.Path.join(OS.Constants.Path.tmpDir, xpiFileName + '.xpi');
+		}
+		
+		console.log('xpiSavePath:', xpiSavePath);
+		
+		try {
+			OS.File.writeAtomic(xpiSavePath, jszipUint8, {noOverwrite:false});
+		} catch(ex) {
+			console.error('Failed writing XPI to disk:', ex);
+			throw new MainWorkerError('Failed writing XPI to disk', ex);
+		}
+		*/
+		
+		// sign and download xpi
+		var xpiFileName = formatStringFromName('xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), xpiVersion]);
+		var xpiSaveDir = aPrefs.save ? aPrefs['save-path'] : OS.Constants.Path.tmpDir;
+		var xpiSavePath = OS.Path.join(xpiSaveDir, xpiFileName + '.xpi');
+		
+		console.error('aPrefs.donotsign:', aPrefs.donotsign);
+		
+		if (!aPrefs.donotsign) {			
 			aAttnBarInstState.aTxt = formatStringFromName('attn-signing', 'bootstrap', [aExtName]);
 			self.postMessage(['updateAttnBar', aAttnBarInstState]);
 			

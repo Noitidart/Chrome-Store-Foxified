@@ -95,6 +95,7 @@ var MainWorkerMainThreadFuncs = {
 		var installListener = {
 			onInstallEnded: function(aInstall, aAddon) {
 			   var str = [];
+			   console.log('ok install ended');
 			   //str.push('"' + aAddon.name + '" Install Ended!');
 			   if (aAddon.appDisabled) {
 				   //str.push('appDisabled: ' + aAddon.appDisabled);
@@ -104,8 +105,7 @@ var MainWorkerMainThreadFuncs = {
 					   status: false, // false for fail
 					   reason: 'addon-installed-appdisabled'
 				   }]);
-			   }
-			   if (aAddon.userDisabled) {
+			   } else if (aAddon.userDisabled) {
 				   //str.push('userDisabled: ' + aAddon.userDisabled);
 				   //jsWin.addMsg('userDisabled: ' + aAddon.userDisabled);
 				   // jsWin.addMsg('<orange>Addon is currently disabled - go to addon manager to enable it');
@@ -114,8 +114,7 @@ var MainWorkerMainThreadFuncs = {
 					   status: false, // false for fail
 					   reason: 'addon-installed-userdisabled'
 				   }]);
-			   }
-			   if (aAddon.pendingOperations != AddonManager.PENDING_NONE) {
+			   } else if (aAddon.pendingOperations != AddonManager.PENDING_NONE) {
 				   //str.push('NEEDS RESTART: ' + aAddon.pendingOperations);
 				   //jsWin.addMsg('NEEDS RESTART: ' + aAddon.pendingOperations);
 				   // jsWin.addMsg('Needs to RESTART to complete install...');
@@ -124,8 +123,7 @@ var MainWorkerMainThreadFuncs = {
 					   status: false, // false for fail
 					   reason: 'addons-installed-needsrestart'
 				   }]);
-			   }
-			   if (aInstall.state != AddonManager.STATE_INSTALLED) {
+			   } else if (aInstall.state != AddonManager.STATE_INSTALLED) {
 				   //str.push('aInstall.state: ' + aInstall.state)
 				   //jsWin.addMsg('aInstall.state: ' + aInstall.state);
 				   // jsWin.addMsg('<red>Addon Install Failed - Status Code: ' + aInstall.state);
@@ -152,10 +150,14 @@ var MainWorkerMainThreadFuncs = {
 			}
 		};
 		
+		console.log('ok making nsifile');
 		var xpiNsiFile = new FileUtils.File(aXpiPlatPath);
+		console.log('ok made');
 		AddonManager.getInstallForFile(xpiNsiFile, function(aInstall) {
 		  // aInstall is an instance of AddonInstall
+			console.log('ok adding listeners');
 			aInstall.addListener(installListener);
+			console.log('ok kicking off install');
 			aInstall.install(); //does silent install
 			// AddonManager.installAddonsFromWebpage('application/x-xpinstall', Services.wm.getMostRecentWindow('navigator:browser').gBrowser.selectedBrowser, null, [aInstall]); //does regular popup install
 		}, 'application/x-xpinstall');
