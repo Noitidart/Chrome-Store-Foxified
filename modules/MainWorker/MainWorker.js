@@ -511,32 +511,81 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 			// return ['promise_rejected']; // must return array as this function is designed to return to framescript-sendAsyncMessageWithCallback callInPromiseWorker
 	} catch(ex) {
 		console.error('Something went wrong error is:', ex, uneval(ex));
+		var dataForInstallAsTemp; // either string, or arraybuffer
+		var uint8JSZIP = zipJSZIP.generate({type:'uint8array'});
+		
+		if (aPrefs.save) {
+			// saved file with name unsigned			
+			var unsignedXpiFileName = formatStringFromName('unsigned-xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), xpiVersion]);
+			var unsignedXpiSavePath = OS.Path.join(xpiSaveDir, unsignedXpiFileName + '.xpi');
+			dataForInstallAsTemp = unsignedXpiSavePath;
+			
+			try {
+				OS.File.writeAtomic(unsignedXpiSavePath, uint8JSZIP);
+			} catch(OSFileError) {
+				console.error('Failed writing unsigned XPI to disk:', OSFileError);
+				throw new MainWorkerError('Failed unsigned signed XPI to disk', OSFileError);
+			}
+		} else {
+			dataForInstallAsTemp = uint8JSZIP.buffer;
+		}
 		if (aAttnBarInstState) {
 			aAttnBarInstState.aPriority = 9;
 			aAttnBarInstState.aHideClose = false;
 			if (ex.msg && ex.msg.indexOf('signing-failed') === 0) {
 				aAttnBarInstState.aTxt = formatStringFromName('attn-failed-signing', 'bootstrap', [aExtName]);
-				self.postMessage(['updateAttnBar', aAttnBarInstState, 'attn-failed-signing', aExtName, ex]);
+				var transferList;
+				if (dataForInstallAsTemp.byteLength) {
+					transferList = [dataForInstallAsTemp];
+				}
+				self.postMessage(['updateAttnBar', aAttnBarInstState, 'attn-failed-signing', aExtName, ex, dataForInstallAsTemp], transferList);
+				console.log('dataForInstallAsTemp.byteLength from worker:', dataForInstallAsTemp.byteLength);
 			} else {
 				aAttnBarInstState.aTxt = formatStringFromName('attn-something-went-wrong', 'bootstrap', [aExtName]);
 				self.postMessage(['updateAttnBar', aAttnBarInstState]);
 			}
 		}
-		if (aPrefs.save) {
-			// saved file with name unsigned
-			var uint8JSZIP = zipJSZIP.generate({type:'uint8array'});
+	}
+}
+
+function installAsTempAddon(aExtName, dataForInstallAsTemp, aPrefs, aAttnBarInstState) {
+	console.log('in installAsTempAddon worker side');
+	
+	aAttnBarInstState.aPriority = 1;
+	aAttnBarInstState.aTxt = formatStringFromName('installing-as-temp', 'bootstrap');
+	aAttnBarInstState.aHideClose = true;
+	aAttnBarInstState.aBtns = null;
+	self.postMessage(['updateAttnBar', aAttnBarInstState]);
+	
+	var xpiPath;
+	if (dataForInstallAsTemp.byteLength) {
+			console.log('creating xpi');
+			var unsignedXpiFileName = formatStringFromName('unsigned-xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), new Date().getTime()]); // need unique file name, as writing to temp directory, and the old one is not yet deleted
+			console.log('unsignedXpiFileName:', unsignedXpiFileName);
+			var xpiSaveDir = aPrefs.save ? aPrefs['save-path'] : OS.Constants.Path.tmpDir;
+			console.log('xpiSaveDir:', xpiSaveDir);
+			var xpiSavePath = OS.Path.join(xpiSaveDir, unsignedXpiFileName + '.xpi');
+			console.log('xpiSavePath:', xpiSavePath);
 			
-			var unsignedXpiFileName = formatStringFromName('unsigned-xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), xpiVersion]);
 			var unsignedXpiSavePath = OS.Path.join(xpiSaveDir, unsignedXpiFileName + '.xpi');
+			xpiPath = unsignedXpiSavePath;
+			console.log('xpiPath:', xpiPath);
 			
 			try {
-				OS.File.writeAtomic(unsignedXpiSavePath, uint8JSZIP);
+				OS.File.writeAtomic(unsignedXpiSavePath, new Uint8Array(dataForInstallAsTemp));
 			} catch(OSFileError) {
-				console.error('Failed writing unsigned XPI to disk:', ex);
+				console.error('Failed writing unsigned XPI to disk:', OSFileError);
 				throw new MainWorkerError('Failed unsigned signed XPI to disk', OSFileError);
 			}
-		}
+	} else {
+		console.log('already created');
+		xpiPath = dataForInstallAsTemp;
 	}
+	console.log('xpiPath:', xpiPath);
+	
+	self.postMessageWithCallback(['installAsTemp', xpiPath, aAttnBarInstState], function(aStatusObj) {
+		console.log('ok back in worker after trying installAsTemp, aStatusObj:', aStatusObj);
+	});
 }
 // End - Addon Functionality
 

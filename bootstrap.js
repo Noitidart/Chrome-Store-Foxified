@@ -163,7 +163,7 @@ var MainWorkerMainThreadFuncs = {
 		return deferredMain_installXpi.promise;
 		
 	},
-	updateAttnBar: function(aAttnBarInfoObj, aLocalizedKey, aExtName, aXpiId) { // aXpiId, aLocalizedKey and aExtName only used when addon is found to be user disabled
+	updateAttnBar: function(aAttnBarInfoObj, aLocalizedKey, aExtName, aXpiId, aExtra) { // aXpiId, aLocalizedKey and aExtName only used when addon is found to be user disabled
 		if (aLocalizedKey == 'addon-installed-userdisabled') {
 			aAttnBarInfoObj.aBtns = [
 				{
@@ -181,6 +181,44 @@ var MainWorkerMainThreadFuncs = {
 		} else if (aLocalizedKey == 'attn-failed-signing') {
 			aAttnBarInfoObj.aBtns = [
 				{
+					bTxt: justFormatStringFromName(gL10N.bootstrap['install-as-temp']),
+					bClick: function(doClose, aBrowser) {
+						var dataForInstallAsTemp = aExtra;
+						// installAsTemp(osPathToXpi, aAttnBarInfoObj);
+						
+						var cPrefs = {};
+		
+						// save pref
+						try {
+							cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save');
+						} catch(ex) {
+							// set default avlue as apparently pref is not existing
+							Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.save', true);
+							cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save');
+						}
+						
+						// save-path pref
+						try {
+							cPrefs['save-path'] = Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path');
+						} catch (ex) {
+							// set default avlue as apparently pref is not existing
+							Services.prefs.setCharPref('extensions.chrome-store-foxified@jetpack.save-path', OS.Constants.Path.desktopDir);
+							cPrefs['save-path'] = Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path');
+						}
+						
+						// save donotsign
+						try {
+							cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.donotsign');
+						} catch(ex) {
+							// set default avlue as apparently pref is not existing
+							Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.donotsign', false);
+							cPrefs.donotsign = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.donotsign');
+						}
+						
+						MainWorker.post('installAsTempAddon', [aExtName, dataForInstallAsTemp, cPrefs, aAttnBarInfoObj]);
+					}
+				},
+				{
 					bTxt: justFormatStringFromName(gL10N.bootstrap['show-failed-json']),
 					bClick: function(doClose, aBrowser) {
 						var jsonObj = aXpiId;
@@ -191,6 +229,67 @@ var MainWorkerMainThreadFuncs = {
 			];
 		}
 		AB.setState(aAttnBarInfoObj);
+	},
+	installAsTemp: function(aOsPathToXpi, aAttnBarInfoObj) {
+	
+		var deferred_installAsTemp = new Deferred();
+		
+		try {
+			// aAttnBarInfoObj.aPriority = 1;
+			// aAttnBarInfoObj.aTxt = gL10N.bootstrap['installing-as-temp'];
+			// aAttnBarInfoObj.aHideClose = true;
+			// aAttnBarInfoObj.aBtns = null;
+			// AB.setState(aAttnBarInfoObj);
+			
+			var xpi = new FileUtils.File(aOsPathToXpi);
+			var promise_tempInstall = AddonManager.installTemporaryAddon(xpi);
+			promise_tempInstall.then(
+				function(aVal) {
+					console.log('Fullfilled - promise_tempInstall - ', aVal, 'arguments:', arguments);
+					
+					aAttnBarInfoObj.aPriority = 6;
+					aAttnBarInfoObj.aTxt = gL10N.bootstrap['installed-as-temp'];
+					aAttnBarInfoObj.aHideClose = false;
+					AB.setState(aAttnBarInfoObj);
+					
+					deferred_installAsTemp.resolve([{
+						status: true, // false for fail
+						reason: 'addon-installed'
+					}]);
+				},
+				function(aReason) {
+					var rejObj = {
+						name: 'promise_tempInstall',
+						aReason: aReason
+					};
+					console.error('Rejected - promise_tempInstall - ', rejObj);
+					
+					aAttnBarInfoObj.aPriority = 10;
+					aAttnBarInfoObj.aTxt = gL10N.bootstrap['install-as-temp-fail'];
+					aAttnBarInfoObj.aHideClose = false;
+					AB.setState(aAttnBarInfoObj);
+					
+					deferred_installAsTemp.resolve([{
+						status: false, // false for fail
+						reason: 'addon-install-failed'
+					}]);
+				}
+			).catch(
+				function(aCaught) {
+					var rejObj = {
+						name: 'promise_tempInstall',
+						aCaught: aCaught
+					};
+					console.error('Caught - promise_tempInstall - ', rejObj);
+					Services.prompt.alert(null, 'Error', "devleoper error!!! Error while installing the addon: see browser console!!\n");
+				}
+			);
+		} catch (e) {
+			Services.prompt.alert(null, 'Error', "devleoper error!!! Error while installing the addon:\n" + e.message + "\n");
+			throw e;
+		}
+		
+		return deferred_installAsTemp.promise;
 	}
 };
 
@@ -586,6 +685,9 @@ function uninstall(aData, aReason) {
 		try {
 			Services.prefs.clearUserPref('extensions.chrome-store-foxified@jetpack.save-path');
 		} catch(ignore) {}
+		try {
+			Services.prefs.clearUserPref('extensions.chrome-store-foxified@jetpack.donotsign');
+		} catch(ignore) {}
 	}
 }
 
@@ -605,6 +707,11 @@ function startup(aData, aReason) {
 		Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path');
 	} catch (ex) {
 		Services.prefs.setCharPref('extensions.chrome-store-foxified@jetpack.save-path', OS.Constants.Path.desktopDir);
+	}
+	try {
+		Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.donotsign');
+	} catch(ex) {
+		Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.donotsign', false);
 	}
 	
 	var afterWorker = function(aInitObj) { // because i init worker, then continue init
@@ -715,6 +822,15 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 			// set default avlue as apparently pref is not existing
 			Services.prefs.setCharPref('extensions.chrome-store-foxified@jetpack.save-path', OS.Constants.Path.desktopDir);
 			cPrefs['save-path'] = Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path');
+		}
+		
+		// save donotsign
+		try {
+			cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.donotsign');
+		} catch(ex) {
+			// set default avlue as apparently pref is not existing
+			Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.donotsign', false);
+			cPrefs.donotsign = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.donotsign');
 		}
 		
 		aArrOfWorker_FuncnameThenArgs.push(cPrefs);

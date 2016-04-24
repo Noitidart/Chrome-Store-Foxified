@@ -2,6 +2,7 @@
 <!DOCTYPE mydialog SYSTEM "chrome://chrome-store-foxified/locale/options_inline.dtd">
 
 <vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+	<setting title="&chrome-store-foxified.options.donotsign-name;" type="bool" desc="&chrome-store-foxified.options.donotsign-desc;" pref="extensions.chrome-store-foxified@jetpack.donotsign" />
 	<setting title="&chrome-store-foxified.options.save-name;" type="bool" desc="&chrome-store-foxified.options.save-desc;" pref="extensions.chrome-store-foxified@jetpack.save" />
 	<setting title="&chrome-store-foxified.options.save-path-name;" type="directory" desc="&chrome-store-foxified.options.save-path-desc;" pref="extensions.chrome-store-foxified@jetpack.save-path" />
 	<setting title="&chrome-store-foxified.options.restore-name;" type="control" desc="&chrome-store-foxified.options.restore-desc;">
