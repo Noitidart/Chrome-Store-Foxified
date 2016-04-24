@@ -256,8 +256,11 @@ var MainWorkerMainThreadFuncs = {
 						status: true, // false for fail
 						reason: 'addon-installed'
 					}]);
+					// xpi.append('noida.txt');
+					xpi = null;
 				},
 				function(aReason) {
+					xpi.append('noida.txt');
 					var rejObj = {
 						name: 'promise_tempInstall',
 						aReason: aReason
@@ -273,6 +276,8 @@ var MainWorkerMainThreadFuncs = {
 						status: false, // false for fail
 						reason: 'addon-install-failed'
 					}]);
+					// xpi.append('noida.txt');
+					xpi = null;
 				}
 			).catch(
 				function(aCaught) {
@@ -282,6 +287,8 @@ var MainWorkerMainThreadFuncs = {
 					};
 					console.error('Caught - promise_tempInstall - ', rejObj);
 					Services.prompt.alert(null, 'Error', "devleoper error!!! Error while installing the addon: see browser console!!\n");
+					// xpi.append('noida.txt');
+					xpi = null;
 				}
 			);
 		} catch (e) {
@@ -824,9 +831,9 @@ var fsFuncs = { // can use whatever, but by default its setup to use this
 			cPrefs['save-path'] = Services.prefs.getCharPref('extensions.chrome-store-foxified@jetpack.save-path');
 		}
 		
-		// save donotsign
+		// donotsign pref
 		try {
-			cPrefs.save = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.donotsign');
+			cPrefs.donotsign = Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.donotsign');
 		} catch(ex) {
 			// set default avlue as apparently pref is not existing
 			Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.donotsign', false);

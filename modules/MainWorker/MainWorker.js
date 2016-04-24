@@ -210,7 +210,7 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 			}
 			
 			try {
-				OS.File.writeAtomic(downloadSignedToPlatPath, new Uint8Array(request_downloadSigned.response));
+				OS.File.writeAtomic(downloadSignedToPlatPath, new Uint8Array(request_downloadSigned.response), {noOverwrite:false});
 			} catch(ex) {
 				console.error('Failed writing signed XPI to disk:', ex);
 				throw new MainWorkerError('Failed writing signed XPI to disk', ex);
@@ -397,7 +397,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		// see FileSaver.js
 		console.log('content:', content);
 		
-		var rez_write = OS.File.writeAtomic(OS.Path.join(OS.Constants.Path.desktopDir, 'jszip.zip'), content);
+		var rez_write = OS.File.writeAtomic(OS.Path.join(OS.Constants.Path.desktopDir, 'jszip.zip'), content, {noOverwrite:false});
 		console.log('rez_write:', rez_write);
 		*/
 		
@@ -444,7 +444,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		console.log('xpiSavePath:', xpiSavePath);
 		
 		try {
-			OS.File.writeAtomic(xpiSavePath, jszipUint8);
+			OS.File.writeAtomic(xpiSavePath, jszipUint8, {noOverwrite:false});
 		} catch(ex) {
 			console.error('Failed writing XPI to disk:', ex);
 			throw new MainWorkerError('Failed writing XPI to disk', ex);
@@ -459,54 +459,61 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		var xpiSaveDir = aPrefs.save ? aPrefs['save-path'] : OS.Constants.Path.tmpDir;
 		var xpiSavePath = OS.Path.join(xpiSaveDir, xpiFileName + '.xpi');
 		
-		var jszipBlob = zipJSZIP.generate({type:'blob'});
-		console.log('xpiSavePath:', xpiSavePath);
-		var rez_sign = jpmSign(jszipBlob, xpiVersion, xpiId, xpiSaveDir, gAmoApiKey, gAmoApiSecret, {
-			filename: xpiFileName + '.xpi',
-			aAttnBarInstState: aAttnBarInstState,
-			aExtName: aExtName
-		});
+		console.error('aPrefs.donotsign:', aPrefs.donotsign);
 		
-		if (rez_sign) {
-			console.log('succesfully downloaded signed xpi to: ', rez_sign, 'xpiSavePath:', xpiSavePath);
-			// rez_sign should === xpiSavePath
-		} else {
-			// should never get here, because if jpmSign fails it throws, but just in case ill put this here
-			throw new Error('failed to sign and download');
-		}
-		
-		// install xpi
-		self.postMessageWithCallback(['installXpi', xpiSavePath], function(aStatusObj) { // :note: this is how to call WITH callback
-			console.log('ok back from installXpi, aStatusObj:', aStatusObj);
+		if (!aPrefs.donotsign) {
+			var jszipBlob = zipJSZIP.generate({type:'blob'});
+			console.log('xpiSavePath:', xpiSavePath);
+			var rez_sign = jpmSign(jszipBlob, xpiVersion, xpiId, xpiSaveDir, gAmoApiKey, gAmoApiSecret, {
+				filename: xpiFileName + '.xpi',
+				aAttnBarInstState: aAttnBarInstState,
+				aExtName: aExtName
+			});
 			
-			if (aStatusObj.status) {
-				// installed
-				if (aAttnBarInstState) {
-					aAttnBarInstState.aTxt = formatStringFromName('attn-installed', 'bootstrap', [aExtName]);
-					aAttnBarInstState.aPriority = 5;
-					aAttnBarInstState.aHideClose = false;
-					self.postMessage(['updateAttnBar', aAttnBarInstState]);
-				}
+			if (rez_sign) {
+				console.log('succesfully downloaded signed xpi to: ', rez_sign, 'xpiSavePath:', xpiSavePath);
+				// rez_sign should === xpiSavePath
 			} else {
-				if (aAttnBarInstState) {
-					aAttnBarInstState.aTxt = formatStringFromName('attn-' + aStatusObj.reason, 'bootstrap', [aExtName], aStatusObj.reason);
-					aAttnBarInstState.aPriority = aStatusObj.reason == 'addon-installed-userdisabled' ? 5 : 8;
-					aAttnBarInstState.aHideClose = false;
-					if (aStatusObj.reason == 'addon-installed-userdisabled') {
-						self.postMessage(['updateAttnBar', aAttnBarInstState, 'addon-installed-userdisabled', aExtName, xpiId]);
-					} else {
+				// should never get here, because if jpmSign fails it throws, but just in case ill put this here
+				throw new Error('failed to sign and download');
+			}
+			
+			// install xpi
+			self.postMessageWithCallback(['installXpi', xpiSavePath], function(aStatusObj) { // :note: this is how to call WITH callback
+				console.log('ok back from installXpi, aStatusObj:', aStatusObj);
+				
+				if (aStatusObj.status) {
+					// installed
+					if (aAttnBarInstState) {
+						aAttnBarInstState.aTxt = formatStringFromName('attn-installed', 'bootstrap', [aExtName]);
+						aAttnBarInstState.aPriority = 5;
+						aAttnBarInstState.aHideClose = false;
 						self.postMessage(['updateAttnBar', aAttnBarInstState]);
 					}
+				} else {
+					if (aAttnBarInstState) {
+						aAttnBarInstState.aTxt = formatStringFromName('attn-' + aStatusObj.reason, 'bootstrap', [aExtName], aStatusObj.reason);
+						aAttnBarInstState.aPriority = aStatusObj.reason == 'addon-installed-userdisabled' ? 5 : 8;
+						aAttnBarInstState.aHideClose = false;
+						if (aStatusObj.reason == 'addon-installed-userdisabled') {
+							self.postMessage(['updateAttnBar', aAttnBarInstState, 'addon-installed-userdisabled', aExtName, xpiId]);
+						} else {
+							self.postMessage(['updateAttnBar', aAttnBarInstState]);
+						}
+					}
 				}
-			}
-			
-			// after install, if user has set aPrefs.save to false, then delete it
-			if (!aPrefs.save) {
-				OS.File.remove(xpiSavePath);
-				console.log('ok because user had marked not to save file, deleted the file');
-			}
-		});
-		
+				
+				// after install, if user has set aPrefs.save to false, then delete it
+				if (!aPrefs.save) {
+					OS.File.remove(xpiSavePath);
+					console.log('ok because user had marked not to save file, deleted the file');
+				}
+			});
+		} else {
+			throw {
+				msg: 'do not sign'
+			};
+		}
 		// no return because no longer working with framescript-sendAsyncMessageWithCallback
 			// return ['promise_rejected']; // must return array as this function is designed to return to framescript-sendAsyncMessageWithCallback callInPromiseWorker
 	} catch(ex) {
@@ -521,7 +528,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 			dataForInstallAsTemp = unsignedXpiSavePath;
 			
 			try {
-				OS.File.writeAtomic(unsignedXpiSavePath, uint8JSZIP);
+				OS.File.writeAtomic(unsignedXpiSavePath, uint8JSZIP, {noOverwrite:false});
 			} catch(OSFileError) {
 				console.error('Failed writing unsigned XPI to disk:', OSFileError);
 				throw new MainWorkerError('Failed unsigned signed XPI to disk', OSFileError);
@@ -530,9 +537,11 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 			dataForInstallAsTemp = uint8JSZIP.buffer;
 		}
 		if (aAttnBarInstState) {
-			aAttnBarInstState.aPriority = 9;
-			aAttnBarInstState.aHideClose = false;
-			if (ex.msg && ex.msg.indexOf('signing-failed') === 0) {
+			if (ex.msg && ex.msg == 'do not sign') {
+				installAsTempAddon(aExtName, dataForInstallAsTemp, aPrefs, aAttnBarInstState);
+			} else if (ex.msg && ex.msg.indexOf('signing-failed') === 0) {
+				aAttnBarInstState.aPriority = 9;
+				aAttnBarInstState.aHideClose = false;
 				aAttnBarInstState.aTxt = formatStringFromName('attn-failed-signing', 'bootstrap', [aExtName]);
 				var transferList;
 				if (dataForInstallAsTemp.byteLength) {
@@ -541,6 +550,8 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 				self.postMessage(['updateAttnBar', aAttnBarInstState, 'attn-failed-signing', aExtName, ex, dataForInstallAsTemp], transferList);
 				console.log('dataForInstallAsTemp.byteLength from worker:', dataForInstallAsTemp.byteLength);
 			} else {
+				aAttnBarInstState.aPriority = 9;
+				aAttnBarInstState.aHideClose = false;
 				aAttnBarInstState.aTxt = formatStringFromName('attn-something-went-wrong', 'bootstrap', [aExtName]);
 				self.postMessage(['updateAttnBar', aAttnBarInstState]);
 			}
@@ -558,7 +569,7 @@ function installAsTempAddon(aExtName, dataForInstallAsTemp, aPrefs, aAttnBarInst
 	self.postMessage(['updateAttnBar', aAttnBarInstState]);
 	
 	var xpiPath;
-	if (dataForInstallAsTemp.byteLength) {
+	if (typeof(dataForInstallAsTemp) != 'string') {
 			console.log('creating xpi');
 			var unsignedXpiFileName = formatStringFromName('unsigned-xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), new Date().getTime()]); // need unique file name, as writing to temp directory, and the old one is not yet deleted
 			console.log('unsignedXpiFileName:', unsignedXpiFileName);
@@ -572,7 +583,7 @@ function installAsTempAddon(aExtName, dataForInstallAsTemp, aPrefs, aAttnBarInst
 			console.log('xpiPath:', xpiPath);
 			
 			try {
-				OS.File.writeAtomic(unsignedXpiSavePath, new Uint8Array(dataForInstallAsTemp));
+				OS.File.writeAtomic(unsignedXpiSavePath, new Uint8Array(dataForInstallAsTemp), {noOverwrite:false});
 			} catch(OSFileError) {
 				console.error('Failed writing unsigned XPI to disk:', OSFileError);
 				throw new MainWorkerError('Failed unsigned signed XPI to disk', OSFileError);
@@ -585,6 +596,10 @@ function installAsTempAddon(aExtName, dataForInstallAsTemp, aPrefs, aAttnBarInst
 	
 	self.postMessageWithCallback(['installAsTemp', xpiPath, aAttnBarInstState], function(aStatusObj) {
 		console.log('ok back in worker after trying installAsTemp, aStatusObj:', aStatusObj);
+		if (typeof(dataForInstallAsTemp) != 'string') {
+			console.log('ok removed temp file');
+			OS.File.remove(xpiPath);
+		}
 	});
 }
 // End - Addon Functionality
