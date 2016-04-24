@@ -6,6 +6,6 @@
 	<setting title="&chrome-store-foxified.options.save-name;" type="bool" desc="&chrome-store-foxified.options.save-desc;" pref="extensions.chrome-store-foxified@jetpack.save" />
 	<setting title="&chrome-store-foxified.options.save-path-name;" type="directory" desc="&chrome-store-foxified.options.save-path-desc;" pref="extensions.chrome-store-foxified@jetpack.save-path" />
 	<setting title="&chrome-store-foxified.options.restore-name;" type="control" desc="&chrome-store-foxified.options.restore-desc;">
-		<button label="&chrome-store-foxified.options.restore-btn-label;" oncommand="Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.save', true);Services.prefs.setCharPref('extensions.chrome-store-foxified@jetpack.save-path', OS.Constants.Path.desktopDir);" />
+		<button label="&chrome-store-foxified.options.restore-btn-label;" oncommand="Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.save', true);Services.prefs.setCharPref('extensions.chrome-store-foxified@jetpack.save-path', OS.Constants.Path.desktopDir);Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.donotsign', false);" />
 	</setting>
 </vbox>
