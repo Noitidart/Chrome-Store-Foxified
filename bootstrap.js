@@ -180,7 +180,7 @@ var MainWorkerMainThreadFuncs = {
 					}
 				}
 			];
-		} else if (aLocalizedKey == 'attn-failed-signing' || aLocalizedKey == 'attn-failed-signing-not-logged-in') {
+		} else if (aLocalizedKey == 'attn-failed-signing' || aLocalizedKey == 'attn-failed-signing-not-logged-in' || aLocalizedKey == 'attn-failed-signing-didnt-agree') {
 			aAttnBarInfoObj.aBtns = [];
 			aAttnBarInfoObj.aBtns.push({
 				bTxt: justFormatStringFromName(gL10N.bootstrap['install-as-temp']),
@@ -239,6 +239,27 @@ var MainWorkerMainThreadFuncs = {
 						aBrowser.ownerDocument.defaultView.gBrowser.loadOneTab('https://addons.mozilla.org/en-US/firefox/users/login?to=%2Fen-US%2Ffirefox%2F', {inBackground:false, relatedToCurrent:true});
 					}
 				});
+				// aAttnBarInfoObj.aBtns.push({
+					// bTxt: justFormatStringFromName(gL10N.bootstrap['Retry']),
+					// bClick: function(doClose, aBrowser) {
+						// aBrowser.ownerDocument.defaultView.gBrowser.loadOneTab('https://addons.mozilla.org/en-US/firefox/users/login?to=%2Fen-US%2Ffirefox%2F', {inBackground:false, relatedToCurrent:true});
+					// }
+				// });
+			}
+			
+			if (aLocalizedKey == 'attn-failed-signing-didnt-agree') {
+				aAttnBarInfoObj.aBtns.push({
+					bTxt: justFormatStringFromName(gL10N.bootstrap['open-agree']),
+					bClick: function(doClose, aBrowser) {
+						aBrowser.ownerDocument.defaultView.gBrowser.loadOneTab('https://addons.mozilla.org/en-US/developers/addon/api/key/', {inBackground:false, relatedToCurrent:true});
+					}
+				});
+				// aAttnBarInfoObj.aBtns.push({
+					// bTxt: justFormatStringFromName(gL10N.bootstrap['Retry']),
+					// bClick: function(doClose, aBrowser) {
+						// aBrowser.ownerDocument.defaultView.gBrowser.loadOneTab('https://addons.mozilla.org/en-US/firefox/users/login?to=%2Fen-US%2Ffirefox%2F', {inBackground:false, relatedToCurrent:true});
+					// }
+				// });
 			}
 		}
 		AB.setState(aAttnBarInfoObj);

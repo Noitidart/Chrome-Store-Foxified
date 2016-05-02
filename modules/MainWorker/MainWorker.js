@@ -434,20 +434,24 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 					console.log('reqAmoKeys.response:', reqAmoKeys.response);
 					
 					if (reqAmoKeys.response.indexOf('accept-agreement') > -1) {
-						var fieldTokenHtml = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(reqAmoKeys.response);
-						console.log('fieldTokenHtml:', fieldTokenHtml);
-						var token = /value=["']?(.*?)["' \/<]/i.exec(fieldTokenHtml)[1];
-						console.log('token:', token);
-						
-						xhrUrl = 'https://addons.mozilla.org/en-US/developers/addon/submit/agreement/';
-						xhrOpts.method = 'POST';
-						xhrOpts.data = jQLike.serialize({
-							csrfmiddlewaretoken: token
-						});
-						xhrOpts.headers = {
-							Referer: xhrUrl,
-							'Content-Type': 'application/x-www-form-urlencoded'
+						throw {
+							msg: 'signing-failed:didnt agree'
 						};
+						break;
+						// var fieldTokenHtml = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(reqAmoKeys.response);
+						// console.log('fieldTokenHtml:', fieldTokenHtml);
+						// var token = /value=["']?(.*?)["' \/<]/i.exec(fieldTokenHtml)[1];
+						// console.log('token:', token);
+						
+						// xhrUrl = 'https://addons.mozilla.org/en-US/developers/addon/submit/agreement/';
+						// xhrOpts.method = 'POST';
+						// xhrOpts.data = jQLike.serialize({
+							// csrfmiddlewaretoken: token
+						// });
+						// xhrOpts.headers = {
+							// Referer: xhrUrl,
+							// 'Content-Type': 'application/x-www-form-urlencoded'
+						// };
 						
 						// loopXhr = true;
 					} else if (reqAmoKeys.response.indexOf('firefox/users/edit') == -1) {
@@ -604,7 +608,8 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		var uint8JSZIP = zipJSZIP.generate({type:'uint8array'});
 		
 		if (aPrefs.save) {
-			// saved file with name unsigned			
+			// saved file with name unsigned		
+			var xpiSaveDir = aPrefs.save ? aPrefs['save-path'] : OS.Constants.Path.tmpDir;			
 			var unsignedXpiFileName = formatStringFromName('unsigned-xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), xpiVersion]);
 			var unsignedXpiSavePath = OS.Path.join(xpiSaveDir, unsignedXpiFileName + '.xpi');
 			dataForInstallAsTemp = unsignedXpiSavePath;
@@ -627,10 +632,13 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 				var aLocalizedKey;
 				if (ex.msg == 'signing-failed:not logged in') {
 					aLocalizedKey = 'attn-failed-signing-not-logged-in';
-					aAttnBarInstState.aTxt = formatStringFromName('attn-failed-signing-not-logged-in', 'bootstrap', [aExtName]);
+					aAttnBarInstState.aTxt = formatStringFromName(aLocalizedKey, 'bootstrap', [aExtName]);
+				} else if (ex.msg == 'signing-failed:didnt agree') {
+					aLocalizedKey = 'attn-failed-signing-didnt-agree';
+					aAttnBarInstState.aTxt = formatStringFromName(aLocalizedKey, 'bootstrap', [aExtName]);					
 				} else {
 					aLocalizedKey = 'attn-failed-signing';
-					aAttnBarInstState.aTxt = formatStringFromName('attn-failed-signing', 'bootstrap', [aExtName]);
+					aAttnBarInstState.aTxt = formatStringFromName(aLocalizedKey, 'bootstrap', [aExtName]);
 				}
 				var transferList;
 				if (dataForInstallAsTemp.byteLength) {
