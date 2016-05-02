@@ -9,7 +9,7 @@
 		Notification: React.createClass({
 			displayName: 'Notification',
 			componentDidMount: function() {
-
+				console.error('ok mounted'); // for some reason this doesnt trigger
 				window[aAddonId + '-AB'].Insts[this.props.aId].setState = this.setState.bind(this);
 				window[aAddonId + '-AB'].Node = node;
 				
@@ -76,12 +76,12 @@
 			},
 			shouldMirrorProps: function(aNextProps, aIsMount) { // works with this.customAttrs
 				var node = ReactDOM.findDOMNode(this);
-
+				console.log('node:', node);
 				
 				for (var nProp in aNextProps) {
 					if (nProp in this.customAttrs) {
 						if (aIsMount || this.props[nProp] !== aNextProps[nProp]) { // // i do aIsMount check, because on mount, old prop is same as new prop, becase i call in componentDidMount shouldMirrorProps(this.props)
-
+							console.log(['setting custom attr "' + nProp + '"','old: ' + this.props[nProp], 'new: ' + aNextProps[nProp]].join('\n'));
 							if (!aIsMount && (aNextProps[nProp] === null || aNextProps[nProp] === undefined)) {
 								node.removeAttribute(this.customAttrs[nProp]);
 							} else {
@@ -137,11 +137,11 @@
 			},
 			shouldMirrorProps: function(aNextProps, aIsMount) { // works with this.customAttrs
 				var node = ReactDOM.findDOMNode(this);
-
+				console.log('node:', node);
 				for (var nProp in aNextProps) {
 					if (nProp in this.customAttrs) {
 						if (aIsMount || this.props[nProp] !== aNextProps[nProp]) { // // i do aIsMount check, because on mount, old prop is same as new prop, becase i call in componentDidMount shouldMirrorProps(this.props)
-
+							console.log(['setting custom attr "' + nProp + '"','old: ' + this.props[nProp], 'new: ' + aNextProps[nProp]].join('\n'));
 							if (!aIsMount && (aNextProps[nProp] === null || aNextProps[nProp] === undefined)) {
 								node.removeAttribute(this.customAttrs[nProp]);
 							} else {
@@ -210,11 +210,11 @@
 			},
 			shouldMirrorProps: function(aNextProps, aIsMount) { // works with this.customAttrs
 				var node = ReactDOM.findDOMNode(this);
-
+				console.log('node:', node);
 				for (var nProp in aNextProps) {
 					if (nProp in this.customAttrs) {
 						if (aIsMount || this.props[nProp] !== aNextProps[nProp]) { // // i do aIsMount check, because on mount, old prop is same as new prop, becase i call in componentDidMount shouldMirrorProps(this.props)
-
+							console.log(['setting custom attr "' + nProp + '"','old: ' + this.props[nProp], 'new: ' + aNextProps[nProp]].join('\n'));
 							if (!aIsMount && (aNextProps[nProp] === null || aNextProps[nProp] === undefined)) {
 								node.removeAttribute(this.customAttrs[nProp]);
 							} else {
