@@ -14,8 +14,8 @@ var core = { // have to set up the main keys that you want when aCore is merged 
 	}
 };
 
-var gAmoApiKey; // 'user:12084162:454';
-var gAmoApiSecret; //` '47cd24d68dcd01f8a3854696ba0b2adc81d440db5f457a8bfe78ebfde2c0ebfa';
+var gAmoApiKey;
+var gAmoApiSecret;
 
 var OSStuff = {}; // global vars populated by init, based on OS
 
@@ -496,7 +496,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 			}
 		}
 		
-		var xpiId = aExtId + '@chromeStoreFoxified' + (aPrefs.donotsign ? '' : '-' + gAmoApiKey.replace(/:/g, '-')); // if i dont unique it per user then if two users try to upload same addon, the second will never be able to download it // i have to replace colon with - as if colon then xpi wont install it says its corrupt
+		var xpiId = aExtId + '@chromeStoreFoxified' + (aPrefs.donotsign ? '' : '-' + HashString(gAmoApiKey)); // if i dont unique it per user then if two users try to upload same addon, the second will never be able to download it // i have to replace colon with - as if colon then xpi wont install it says its corrupt
 		var xpiVersion = manifestContentsJSON.version;
 		
 		manifestContentsJSON.applications = {
@@ -850,4 +850,55 @@ function safedForPlatFS(aStr, aOptions={}) {
 				return aStr.replace(_safedForPlatFS_pattNIXMAC, aOptions.repStr);
 	}
 }
+var _cache_HashString = {};
+var HashString = (function (){
+	/**
+	 * Javascript implementation of
+	 * https://hg.mozilla.org/mozilla-central/file/0cefb584fd1a/mfbt/HashFunctions.h
+	 * aka. the mfbt hash function.
+	 */ 
+	// Note: >>>0 is basically a cast-to-unsigned for our purposes.
+	const encoder = getTxtEncodr();
+	const kGoldenRatio = 0x9E3779B9;
+
+	// Multiply two uint32_t like C++ would ;)
+	const mul32 = (a, b) => {
+	// Split into 16-bit integers (hi and lo words)
+		var ahi = (a >> 16) & 0xffff;
+		var alo = a & 0xffff;
+		var bhi = (b >> 16) & 0xffff
+		var blo = b & 0xffff;
+		// Compute new hi and lo seperately and recombine.
+		return (
+			(((((ahi * blo) + (alo * bhi)) & 0xffff) << 16) >>> 0) +
+			(alo * blo)
+		) >>> 0;
+	};
+
+	// kGoldenRatioU32 * (RotateBitsLeft32(aHash, 5) ^ aValue);
+	const add = (hash, val) => {
+		// Note, cannot >> 27 here, but / (1<<27) works as well.
+		var rotl5 = (
+			((hash << 5) >>> 0) |
+			(hash / (1<<27)) >>> 0
+		) >>> 0;
+		return mul32(kGoldenRatio, (rotl5 ^ val) >>> 0);
+	}
+
+	return function(text) {
+		// Convert to utf-8.
+		// Also decomposes the string into uint8_t values already.
+		if (!(text in _cache_HashString)) {
+			var data = encoder.encode(text);
+
+			// Compute the actual hash
+			var rv = 0;
+			for (var c of data) {
+				rv = add(rv, c | 0);
+			}
+			_cache_HashString[text] = rv;
+		}
+		return _cache_HashString[text];
+	};
+})();
 // end - common helper functions

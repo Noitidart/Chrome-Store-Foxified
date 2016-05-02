@@ -1,4 +1,4 @@
-<!ENTITY chrome-store-foxified.options.donotsign-desc 'Install extensions as temmpoary only. Temporary addons are auto-uninstalled on browser close.'>
+<!ENTITY chrome-store-foxified.options.donotsign-desc 'Install extensions as tempoary only. Temporary addons are auto-uninstalled on browser close.'>
 <!ENTITY chrome-store-foxified.options.donotsign-name 'Do Not Sign'>
 
 <!ENTITY chrome-store-foxified.options.save-desc 'Do not delete the extension source file after download &amp; install'>
