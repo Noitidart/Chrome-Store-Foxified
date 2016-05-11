@@ -17,7 +17,13 @@
 				node.close = this.close;
 			},
 			close: function() {
-				window[aAddonId + '-AB'].contentMMForBrowser(gBrowser.selectedBrowser).sendAsyncMessage(aAddonId + '-AB', this.props.aId);
+				var myEvent = document.createEvent('CustomEvent');
+				myEvent.initCustomEvent(aAddonId + '-AB', true, true, {
+					browser: gBrowser.selectedBrowser,
+					cbid: this.props.aId
+				});
+				window.dispatchEvent(myEvent);
+				// window[aAddonId + '-AB'].contentMMForBrowser(gBrowser.selectedBrowser). (aAddonId + '-AB', this.props.aId);
 			},
 			getInitialState: function() {
 				return {
@@ -110,7 +116,8 @@
 							pKey: this.props.pBtns[i].bKey,
 							pTxt: this.props.pBtns[i].bTxt,
 							pMenu: this.props.pBtns[i].bMenu,
-							pIcon: this.props.pBtns[i].bIcon
+							pIcon: this.props.pBtns[i].bIcon,
+							pType: this.props.pBtns[i].bType
 						};
 						cChildren.push(React.createElement(window[aAddonId + '-AB'].masterComponents.Button, cButtonProps));
 					}
@@ -125,6 +132,7 @@
 			displayName: 'Button',
 			componentDidMount: function() {
 				this.shouldMirrorProps(this.props, true);
+				ReactDOM.findDOMNode(this).addEventListener('command', this.click);
 			},
 			componentWillReceiveProps: function(aNextProps) {
 				this.shouldMirrorProps(aNextProps);
@@ -133,7 +141,13 @@
 				pIcon: 'image'
 			},
 			click: function() {
-				window[aAddonId + '-AB'].contentMMForBrowser(gBrowser.selectedBrowser).sendAsyncMessage(aAddonId + '-AB', this.props.pId);
+				var myEvent = document.createEvent('CustomEvent');
+				myEvent.initCustomEvent(aAddonId + '-AB', true, true, {
+					browser: gBrowser.selectedBrowser,
+					cbid: this.props.pId
+				});
+				window.dispatchEvent(myEvent);
+				// window[aAddonId + '-AB'].contentMMForBrowser(gBrowser.selectedBrowser).sendAsyncMessage(aAddonId + '-AB', this.props.pId);
 			},
 			shouldMirrorProps: function(aNextProps, aIsMount) { // works with this.customAttrs
 				var node = ReactDOM.findDOMNode(this);
@@ -166,14 +180,15 @@
 					className: 'notification-button notification-button-default',
 					label: this.props.pTxt,
 					accessKey: cAccesskey,
-					image: cImage
+					image: cImage,
+					type: this.props.pType || undefined
 				};
 				
-				cProps.onClick = this.click;
+				// cProps.onClick = this.click; // moved to componentDidMount and as onCommand
 				
 				var cChildren;			
 				if (this.props.pMenu && this.props.pMenu.length) {
-					cProps.type = 'menu';
+					cProps.type = !cProps.type ? 'menu' : cProps.type;
 					var cChildren = React.createElement(window[aAddonId + '-AB'].masterComponents.Menu, {pMenu:this.props.pMenu});
 				}
 				return React.createElement('button', cProps,
@@ -201,6 +216,11 @@
 			displayName: 'MenuItem',
 			componentDidMount: function() {
 				this.shouldMirrorProps(this.props, true);
+				if (!this.props.cMenu) {
+					console.log('ok its a menuitem so attach command listener');
+					ReactDOM.findDOMNode(this).addEventListener('command', this.click);
+				}
+				else { console.log('will not add event listener for command because its a menu NOT a menuitem') }
 			},
 			componentWillReceiveProps: function(aNextProps) {
 				this.shouldMirrorProps(aNextProps);
@@ -225,8 +245,8 @@
 				}
 			},
 			click: function(e) {
-				window[aAddonId + '-AB'].contentMMForBrowser(gBrowser.selectedBrowser).sendAsyncMessage(aAddonId + '-AB', this.props.cId);
 				e.stopPropagation(); // if i dont do this, then it also triggers the click of the button. as this whole menu is appended as child in the button
+				window[aAddonId + '-AB'].contentMMForBrowser(gBrowser.selectedBrowser).sendAsyncMessage(aAddonId + '-AB', this.props.cId);
 			},
 			render: function() {
 				// incoming props
@@ -236,8 +256,6 @@
 					label: this.props.cTxt,
 					className: this.props.cClass ? this.props.cClass : undefined
 				};
-				
-				cProps.onClick = this.click;
 
 				if (this.props.cMenu) {
 					// https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XUL/menu#Style_classes
@@ -253,6 +271,8 @@
 					if (this.props.cIcon) {
 						cProps.className = (cProps.className ? cProps.className + ' ' : '') + 'menuitem-iconic';
 					}
+					
+					// cProps.onClick = this.click; // moved to componentDidMount and as onCommand
 					
 					return React.createElement('menuitem', cProps);
 				}

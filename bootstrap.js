@@ -334,6 +334,7 @@ var MainWorkerMainThreadFuncs = {
 	}
 };
 
+// start - AttentionBar mixin
 var AB = { // AB stands for attention bar
 	// based on https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XUL/notificationbox#Methods && https://dxr.mozilla.org/mozilla-central/source/toolkit/content/widgets/notification.xml#79
 	Insts: {
@@ -425,7 +426,8 @@ var AB = { // AB stands for attention bar
 			aIcon: 'chrome://mozapps/skin/places/defaultFavicon.png', // icon on the toolbar
 			aPriority: 1, // valid values 1-10
 			aBtns: [], // must be array
-			aHideClose: undefined // if set to string 'true' or bool true, in dom it will get converted to string as 'true'. setting to 1 int will not work.
+			aHideClose: undefined, // if set to string 'true' or bool true, in dom it will get converted to string as 'true'. setting to 1 int will not work.
+			aClose: undefined
 		};
 		
 		/*
@@ -587,6 +589,7 @@ var AB = { // AB stands for attention bar
 		// end - original block link77728110
 		delete aDOMWindow[core.addon.id + '-AB'];
 		console.error('done uninit');
+		aDOMWindow.removeEventListener(core.addon.id + '-AB', AB.msgEventListener, false);
 	},
 	ensureInitedIntoWindow: function(aDOMWindow) {
 		// dont run this yoruself, ensureInstancesToWindow runs this. so if you want to run yourself, then run ensureInstancesToWindow(aDOMWindow)
@@ -596,18 +599,21 @@ var AB = { // AB stands for attention bar
 				domIdPrefix: AB.domIdPrefix
 			}; // ab stands for attention bar
 			if (!aDOMWindow.React) {
-				console.error('WILL NOW LOAD IN REACT');
+				console.log('WILL NOW LOAD IN REACT');
+				// resource://devtools/client/shared/vendor/react.js
 				Services.scriptloader.loadSubScript(core.addon.path.scripts + 'react.js?' + core.addon.cache_key, aDOMWindow); // even if i load it into aDOMWindow.blah and .blah is an object, it goes into global, so i just do aDOMWindow now
 			}
 			if (!aDOMWindow.ReactDOM) {
-				console.error('WILL NOW LOAD IN REACTDOM');
+				console.log('WILL NOW LOAD IN REACTDOM');
+				// resource://devtools/client/shared/vendor/react-dom.js
 				Services.scriptloader.loadSubScript(core.addon.path.scripts + 'react-dom.js?' + core.addon.cache_key, aDOMWindow);
 			}
 			Services.scriptloader.loadSubScript(core.addon.path.scripts + 'ab-react-components.js?' + core.addon.cache_key, aDOMWindow);
+			aDOMWindow.addEventListener(core.addon.id + '-AB', AB.msgEventListener, false);
 		}
 	},
 	init: function() {
-		Services.mm.addMessageListener(core.addon.id + '-AB', AB.msgListener);
+		// Services.mm.addMessageListener(core.addon.id + '-AB', AB.msgListener);
 		
 		Services.wm.addListener(AB.winListener);
 		
@@ -616,7 +622,7 @@ var AB = { // AB stands for attention bar
 		// and its impossible that Insts exists before Init, so no need to iterate through all windows.
 	},
 	uninit: function() {
-		Services.mm.removeMessageListener(core.addon.id + '-AB', AB.msgListener);
+		// Services.mm.removeMessageListener(core.addon.id + '-AB', AB.msgListener);
 		
 		Services.wm.removeListener(AB.winListener);
 		
@@ -629,18 +635,26 @@ var AB = { // AB stands for attention bar
 			}
 		}
 	},
-	msgListener: {
-		receiveMessage: function(aMsgEvent) {
-			var aMsgEventData = aMsgEvent.data;
-			console.error('getting aMsgEvent, data:', aMsgEventData);
-			// this means trigger a callback with id aMsgEventData
-			var cCallbackId = aMsgEventData;
-			var cBrowser = aMsgEvent.target;
-			if (AB.Callbacks[cCallbackId]) { // need this check because react components always send message on click, but it may not have a callback
-				AB.Callbacks[cCallbackId](cBrowser);
-			}
+	msgEventListener: function(e) {
+		console.error('getting aMsgEvent, data:', e.detail);
+		var cCallbackId = e.detail.cbid;
+		var cBrowser = e.detail.browser; 
+		if (AB.Callbacks[cCallbackId]) { // need this check because react components always send message on click, but it may not have a callback
+			AB.Callbacks[cCallbackId](cBrowser);
 		}
 	},
+	// msgListener: {
+	// 	receiveMessage: function(aMsgEvent) {
+	// 		var aMsgEventData = aMsgEvent.data;
+	// 		console.error('getting aMsgEvent, data:', aMsgEventData);
+	// 		// this means trigger a callback with id aMsgEventData
+	// 		var cCallbackId = aMsgEventData;
+	// 		var cBrowser = aMsgEvent.target;
+	// 		if (AB.Callbacks[cCallbackId]) { // need this check because react components always send message on click, but it may not have a callback
+	// 			AB.Callbacks[cCallbackId](cBrowser);
+	// 		}
+	// 	}
+	// },
 	loadInstancesIntoWindow: function(aDOMWindow) {
 		// this function is called when there may be instances in AB.Insts but and it needs to be verified that its mounted in window
 		// basically this is called when a new window is opened
@@ -704,7 +718,7 @@ var AB = { // AB stands for attention bar
 	winListener: {
 		onOpenWindow: function (aXULWindow) {
 			// Wait for the window to finish loading
-			var aDOMWindow = aXULWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowInternal || Ci.nsIDOMWindow);
+			var aDOMWindow = aXULWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindow);
 			aDOMWindow.addEventListener('load', function () {
 				aDOMWindow.removeEventListener('load', arguments.callee, false);
 				AB.loadInstancesIntoWindow(aDOMWindow);
@@ -714,6 +728,7 @@ var AB = { // AB stands for attention bar
 		onWindowTitleChange: function (aXULWindow, aNewTitle) {},
 	}
 };
+// end - AttentionBar mixin
 
 function install() {}
 

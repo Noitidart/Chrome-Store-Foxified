@@ -477,7 +477,8 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 							xhrUrl = 'https://addons.mozilla.org/en-US/developers/addon/api/key/';
 							xhrOpts.method = 'POST';
 							xhrOpts.data = jQLike.serialize({
-								csrfmiddlewaretoken: token
+								csrfmiddlewaretoken: token,
+								action: 'generate'
 							});
 							xhrOpts.headers = {
 								Referer: xhrUrl,
