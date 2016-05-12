@@ -17,14 +17,11 @@ var core = { // have to set up the main keys that you want when aCore is merged 
 var gAmoApiKey;
 var gAmoApiSecret;
 
+const AMODOMAIN = 'https://addons.mozilla.org';
+
 var OSStuff = {}; // global vars populated by init, based on OS
 
 // Imports that use stuff defined in chrome
-// I don't import ostypes_*.jsm yet as I want to init core first, as they use core stuff like core.os.isWinXP etc
-// imported scripts have access to global vars on MainWorker.js
-// importScripts(core.addon.path.modules + 'cutils.jsm');
-// importScripts(core.addon.path.modules + 'ctypes_math.jsm');
-importScripts(core.addon.path.modules + 'jsonwebtoken.js');
 importScripts(core.addon.path.modules + 'jszip.min.js');
 
 // Setup PromiseWorker
@@ -100,6 +97,54 @@ MainWorkerError.prototype.toMsg = function() {
 		name: this.name
 	};
 };
+
+// start - jwt stuff
+importScripts(core.addon.path.modules + 'hmac-sha256.js');
+importScripts(core.addon.path.modules + 'enc-base64-min.js');
+function b64utoa(aStr) {
+	// base64url encode
+	return btoa(aStr)
+		.replace(/\+/g, '-')
+		.replace(/\//g, '_')
+		.replace(/\=+$/m, '')
+}
+
+function JSON_stringify_sorted(aObj) {
+	var keys = Object.keys(aObj);
+	keys.sort();
+	var strArr = [];
+	var l = keys.length;
+	for(var i = 0; i < l; i++) {
+		var stry = JSON.stringify({
+			[keys[i]]: aObj[keys[i]]
+		});
+		stry = stry.substr(1, stry.length - 2); // remove the opening and closing curly
+		strArr.push(stry);
+	}
+	return '{' + strArr.join(',') + '}'
+}
+
+function jwtSignOlympia(aKey, aSecret, aDateMs) {
+	// aKey and aSecret should both be strings
+	// jwt signature function for using with signing addons on AMO (addons.mozilla.org)
+	var part1 = b64utoa(JSON_stringify_sorted({
+		typ: 'JWT',
+		alg: 'HS256'
+	}));
+
+	var iat = Math.ceil(aDateMs / 1000); // in seconds
+	var part2 = b64utoa(JSON_stringify_sorted({
+		iss: aKey,
+		jti: Math.random().toString(),
+		iat,
+		exp: iat + 60
+	}));
+
+	var part3 = CryptoJS.HmacSHA256(part1 + '.' + part2, aSecret).toString(CryptoJS.enc.Base64).replace(/\=+$/m, '');
+	return part1 + '.' + part2 + '.' + part3;
+}
+// end - jwt stuff
+
 ////// end of imports and definitions
 
 function init(objCore) { // function name init required for SIPWorker
@@ -172,14 +217,16 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 		self.postMessage(['updateAttnBar', aOptions.aAttnBarInstState]);
 	}
 	
-	var request_amoSubmit = xhr('https://addons.mozilla.org/api/v3/addons/' + encodeURIComponent(aAddonIdInXpi) + '/versions/' + aAddonVersionInXpi + '/', { // only on first time upload, the aAddonVersionInXpi can be anything
+	var request_amoSubmit = xhr(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(aAddonIdInXpi) + '/versions/' + aAddonVersionInXpi + '/', { // only on first time upload, the aAddonVersionInXpi can be anything
 		method: 'PUT',
 		data: formData,
 		responseType: 'json',
 		headers: {
-			Authorization: 'JWT ' + generateToken(aAmoApiKey, aAmoApiSecret, getNowDateFromServer())
+			Authorization: 'JWT ' + jwtSignOlympia(aAmoApiKey, aAmoApiSecret, getNowDateFromServer())
 		}
 	});
+	console.log('request_amoSubmit.status:', request_amoSubmit.status);
+	console.log('request_amoSubmit.response:', request_amoSubmit.response);
 	
 	var downloadIt = function(aDownloadSignedURL) {
 		if (aOptions.aAttnBarInstState) {
@@ -190,7 +237,7 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 		var request_downloadSigned = xhr(aDownloadSignedURL, {
 			responseType: 'arraybuffer',
 			headers: {
-				Authorization: 'JWT ' + generateToken(aAmoApiKey, aAmoApiSecret, getNowDateFromServer())
+				Authorization: 'JWT ' + jwtSignOlympia(aAmoApiKey, aAmoApiSecret, getNowDateFromServer())
 			}
 		});
 		
@@ -234,10 +281,10 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 			aOptions.aAttnBarInstState.aTxt = formatStringFromName('attn-signing-checking', 'bootstrap', [aOptions.aExtName]);
 			self.postMessage(['updateAttnBar', aOptions.aAttnBarInstState]);
 		}
-		var request_fetchExisting = xhr('https://addons.mozilla.org/api/v3/addons/' + encodeURIComponent(aAddonIdInXpi) + '/versions/' + aAddonVersionInXpi + '/', {
+		var request_fetchExisting = xhr(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(aAddonIdInXpi) + '/versions/' + aAddonVersionInXpi + '/', {
 			responseType: 'json',
 			headers: {
-				Authorization: 'JWT ' + generateToken(aAmoApiKey, aAmoApiSecret, getNowDateFromServer())
+				Authorization: 'JWT ' + jwtSignOlympia(aAmoApiKey, aAmoApiSecret, getNowDateFromServer())
 			}
 		});
 		
@@ -421,7 +468,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 				self.postMessage(['updateAttnBar', aAttnBarInstState]);
 				
 				// get key and secret first
-				var xhrUrl = 'https://addons.mozilla.org/en-US/developers/addon/api/key/';
+				var xhrUrl = AMODOMAIN + '/en-US/developers/addon/api/key/';
 				var xhrOpts = {
 					method: 'GET'
 				};
@@ -443,7 +490,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 						// var token = /value=["']?(.*?)["' \/<]/i.exec(fieldTokenHtml)[1];
 						// console.log('token:', token);
 						
-						// xhrUrl = 'https://addons.mozilla.org/en-US/developers/addon/submit/agreement/';
+						// xhrUrl = AMODOMAIN + '/en-US/developers/addon/submit/agreement/';
 						// xhrOpts.method = 'POST';
 						// xhrOpts.data = jQLike.serialize({
 							// csrfmiddlewaretoken: token
@@ -474,7 +521,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 							var token = /value=["']?(.*?)["' \/<]/i.exec(fieldTokenHtml)[1];
 							console.log('token:', token);
 							
-							xhrUrl = 'https://addons.mozilla.org/en-US/developers/addon/api/key/';
+							xhrUrl = AMODOMAIN + '/en-US/developers/addon/api/key/';
 							xhrOpts.method = 'POST';
 							xhrOpts.data = jQLike.serialize({
 								csrfmiddlewaretoken: token,
