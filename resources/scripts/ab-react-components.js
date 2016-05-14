@@ -246,7 +246,13 @@
 			},
 			click: function(e) {
 				e.stopPropagation(); // if i dont do this, then it also triggers the click of the button. as this whole menu is appended as child in the button
-				window[aAddonId + '-AB'].contentMMForBrowser(gBrowser.selectedBrowser).sendAsyncMessage(aAddonId + '-AB', this.props.cId);
+				// window[aAddonId + '-AB'].contentMMForBrowser(gBrowser.selectedBrowser).sendAsyncMessage(aAddonId + '-AB', this.props.cId);
+				var myEvent = document.createEvent('CustomEvent');
+				myEvent.initCustomEvent(aAddonId + '-AB', true, true, {
+					browser: gBrowser.selectedBrowser,
+					cbid: this.props.cId
+				});
+				window.dispatchEvent(myEvent);
 			},
 			render: function() {
 				// incoming props
