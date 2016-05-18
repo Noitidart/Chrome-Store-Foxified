@@ -9,7 +9,7 @@ var core = {
 			name: 'chrome-store-foxified',
 			scripts: 'chrome://chrome-store-foxified/content/resources/scripts/'
 		},
-		cache_key: 'v1.11' // set to version on release
+		cache_key: Math.random() // set to version on release
 	}
 };
 
@@ -23,7 +23,7 @@ var PAGE_UNLOADERS = [];
 
 // start - addon functionalities
 function doPageUnloaders() {
-
+	console.error('kicking of page unloaders');
 	for (var i=0; i<PAGE_UNLOADERS.length; i++) {
 		PAGE_UNLOADERS[i]();
 		PAGE_UNLOADERS.splice(i, 1);
@@ -35,7 +35,7 @@ function actOnExt(aExtId, aExtName) {
 	// sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['actOnExt', aExtId, aExtName], bootstrapMsgListener.funcScope, function(aStatus, aStatusInfo) {
 	// 	if (aStatus == 'promise_rejected') {
 	// 		content.alert(gL10N.inlay.failed_install + '\n\n' + JSON.stringify(aStatusInfo));
-
+	// 		console.error(aStatusInfo);
 	// 		throw new Error(aStatusInfo);
 	// 	} else {
 	// 		content.alert(aStatusInfo);
@@ -50,7 +50,7 @@ function actOnExt(aExtId, aExtName) {
 	// sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['callInPromiseWorker', ['doit', aExtId, aExtName]], bootstrapMsgListener.funcScope, function(aStatus, aStatusInfo) {
 	// 	if (aStatus == 'promise_rejected') {
 	// 		content.alert(gL10N.inlay.failed_install + '\n\n' + JSON.stringify(aStatusInfo));
-
+	// 		console.error(aStatusInfo);
 	// 		throw new Error(aStatusInfo);
 	// 	} else {
 	// 		content.alert(aStatusInfo);
@@ -62,21 +62,21 @@ function actOnExt(aExtId, aExtName) {
 }
 
 function listenMouseDownFalse(aEvent) {
-
+	console.log('mouse down FALSE happend:', aEvent.target);
 	if ((aEvent.target.classList.contains('webstore-test-button-label') || aEvent.target.getAttribute('role') == 'button' && aEvent.target.querySelector('.webstore-test-button-label'))) { // if its a button that contains "add to firefox"
 		aEvent.stopPropagation();
 		aEvent.preventDefault();
 	}
 }
 function listenMouseUpFalse(aEvent) {
-
+	console.log('mouse up FALSE happend:', aEvent.target);
 	if ((aEvent.target.classList.contains('webstore-test-button-label') || aEvent.target.getAttribute('role') == 'button' && aEvent.target.querySelector('.webstore-test-button-label'))) { // if its a button that contains "add to firefox"
 		aEvent.stopPropagation();
 		aEvent.preventDefault();
 	}
 }
 function listenClickFalse(aEvent) {
-
+	console.log('click FALSE happend:', aEvent.target);
 	if ((aEvent.target.classList.contains('webstore-test-button-label') || aEvent.target.getAttribute('role') == 'button' && aEvent.target.querySelector('.webstore-test-button-label'))) { // if its a button that contains "add to firefox"
 		aEvent.stopPropagation();
 		aEvent.preventDefault();
@@ -84,21 +84,21 @@ function listenClickFalse(aEvent) {
 }
 
 function listenMouseDownTrue(aEvent) {
-
+	console.log('mouse down TRUE happend:', aEvent.target);
 	if ((aEvent.target.classList.contains('webstore-test-button-label') || aEvent.target.getAttribute('role') == 'button' && aEvent.target.querySelector('.webstore-test-button-label'))) { // if its a button that contains "add to firefox"
 		aEvent.stopPropagation();
 		aEvent.preventDefault();
 	}
 }
 function listenMouseUpTrue(aEvent) {
-
+	console.log('mouse up TRUE happend:', aEvent.target);
 	if ((aEvent.target.classList.contains('webstore-test-button-label') || aEvent.target.getAttribute('role') == 'button' && aEvent.target.querySelector('.webstore-test-button-label'))) { // if its a button that contains "add to firefox"
 		aEvent.stopPropagation();
 		aEvent.preventDefault();
 	}
 }
 function listenClickTrue(aEvent) {
-
+	console.log('click TRUE happend:', aEvent.target);
 	var aContentWindow = aEvent.target.ownerDocument.defaultView;
 	if ((aEvent.target.classList.contains('webstore-test-button-label') || aEvent.target.getAttribute('role') == 'button' && aEvent.target.querySelector('.webstore-test-button-label'))) { // if its a button that contains "add to firefox"
 		aEvent.stopPropagation();
@@ -139,11 +139,11 @@ function listenClickTrue(aEvent) {
 			}
 			extId = extId[1];
 			// aContentWindow.alert('extId: ' + extId);
-
+			console.log('domEl_withHref:', domEl_withHref);
 			// var extName = domEl_withHref.querySelector('div:nth-of-type(3) > div:nth-of-type(3) > div:nth-of-type(1)').textContent;
-
+			console.log('query selector string:', ('a[href="' + theHref + '"]'));
 			var aWithHref = domEl_withHref.parentNode.querySelectorAll('a[href="' + theHref + '"]');
-
+			console.log('aWithHref:', aWithHref);
 			var extName = aWithHref[1].textContent.trim();
 			aContentWindow.alert('extName: ' + extName);
 			actOnExt(extId, extName);
@@ -163,7 +163,7 @@ function domInsert(aContentWindow) {
 	*/
 	
 	if (aContentDocument.getElementById('chrome-store-foxified_stylesheet')) {
-
+		console.warn('already inserted into this document, so dont insert again');
 		return;
 	}
 	
@@ -179,7 +179,7 @@ function domInsert(aContentWindow) {
 			return;
 		} else {
 			firstNonFind = 0;
-
+			console.error('warning, could not find download gchrome link!');
 			// throw new Error('warning, could not find download gchrome link!');
 			return;
 		}
@@ -197,7 +197,7 @@ function domInsert(aContentWindow) {
 	}
 	
 	if (aContentWindow.getComputedStyle(domEl_downloadGoogleChromeMainDiv).position != 'fixed') {
-
+		console.error('warning, could not find download gchrome link main container!');
 		// throw new Error('warning, could not find download gchrome link main container!');
 		return;
 	}
@@ -256,21 +256,21 @@ function bodyOnDOMContentLoaded(aContentWindow) {
 		// check if got error loading page:
 		var webnav = content.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebNavigation);
 		var docuri = webnav.document.documentURI;
-
+		// console.info('docuri:', docuri);
 		if (docuri.indexOf('about:') == 0) {
 			// twitter didnt really load, it was an error page
-
+			console.log('twitter hostname page ready, but an error page loaded, so like offline or something:', content.location, 'docuri:', docuri);
 			// unregReason = 'error-loading';
 			return;
 		} else {
 			// twitter actually loaded
 			// twitterReady = true;
-
+			console.error('ok twitter page ready, lets ensure page loaded finished');
 			domInsert(content);
 			// ensureLoaded(content); // :note: commented out as not needing content script right now
 		}
 	} else {
-
+		// console.log('page ready, but its not twitter so do nothing:', uneval(content.location));
 		return;
 	}
 }
@@ -283,10 +283,10 @@ function bodyOnDOMContentLoaded(aContentWindow) {
 var bootstrapCallbacks = { // can use whatever, but by default it uses this
 	// put functions you want called by bootstrap/server here
 	destroySelf: function() {
-
-
+		// console.log('content.location.hostname:', content.location.hostname);
+		console.error('doing destroySelf');
 		doPageUnloaders();
-
+		console.error('doing fs unloaders');
 		for (var i=0; i<FS_UNLOADERS.length; i++) {
 			FS_UNLOADERS[i]();
 			FS_UNLOADERS.splice(i, 1);
@@ -300,7 +300,7 @@ function sendAsyncMessageWithCallback(aMessageManager, aGroupId, aMessageArr, aC
 	sam_last_cb_id++;
 	var thisCallbackId = SAM_CB_PREFIX + sam_last_cb_id;
 	aCallbackScope = aCallbackScope ? aCallbackScope : bootstrap; // :todo: figure out how to get global scope here, as bootstrap is undefined
-
+	console.error('adding to funcScope:', thisCallbackId, content.location.href);
 	aCallbackScope[thisCallbackId] = function(aMessageArr) {
 		delete aCallbackScope[thisCallbackId];
 		aCallback.apply(null, aMessageArr);
@@ -312,7 +312,7 @@ var bootstrapMsgListener = {
 	funcScope: bootstrapCallbacks,
 	receiveMessage: function(aMsgEvent) {
 		var aMsgEventData = aMsgEvent.data;
-
+		console.error('framescript getting aMsgEvent, unevaled:', aMsgEventData);
 		// aMsgEvent.data should be an array, with first item being the unfction name in this.funcScope
 		
 		var callbackPendingId;
@@ -333,12 +333,12 @@ var bootstrapMsgListener = {
 							contentMMFromContentWindow_Method2(content).sendAsyncMessage(core.addon.id, [callbackPendingId, aVal]);
 						},
 						function(aReason) {
-
+							console.error('aReject:', aReason);
 							contentMMFromContentWindow_Method2(content).sendAsyncMessage(core.addon.id, [callbackPendingId, ['promise_rejected', aReason]]);
 						}
 					).catch(
 						function(aCatch) {
-
+							console.error('aCatch:', aCatch);
 							contentMMFromContentWindow_Method2(content).sendAsyncMessage(core.addon.id, [callbackPendingId, ['promise_rejected', aCatch]]);
 						}
 					);
@@ -348,7 +348,7 @@ var bootstrapMsgListener = {
 				}
 			}
 		}
-
+		else { console.warn('funcName', funcName, 'not in scope of this.funcScope', this.funcScope, content.location.href) } // else is intentionally on same line with console. so on finde replace all console. lines on release it will take this out
 		
 	}
 };
@@ -394,7 +394,7 @@ function Deferred() {
 		}.bind(this));
 		Object.freeze(this);
 	} catch (ex) {
-
+		console.log('Promise not available!', ex);
 		throw new Error('Promise not available!');
 	}
 }
@@ -470,15 +470,15 @@ function getContentWindowFromNsiRequest(aRequest) {
 		try {
 			loadContext = aRequest.loadGroup.notificationCallbacks.getInterface(Ci.nsILoadContext);
 		} catch (ex1) {
-
+			// console.exception('aRequest loadGroup with notificationCallbacks but oculd not get nsIloadContext', ex1, 'aRequest:', aRequest);
 			try {
 				loadContext = aRequest.notificationCallbacks.getInterface(Ci.nsILoadContext);
 			} catch (ex2) {
-
+				// console.error('aRequest has notificationCallbacks but could not get nsILoadContext', ex2, 'aRequest:', aRequest);
 			}
 		}
 	} else {
-
+		console.warn('aRequest argument is not instance of nsIRequest, aRequest:', aRequest);
 	}
 
 	if (!loadContext) {
@@ -503,32 +503,32 @@ function getFlags(aFlags, aFlagsColl) {
 // start - load unload stuff
 function fsUnloaded() {
 	// framescript on unload
-
+	console.log('fsInaly.js framworker unloading');
 	bootstrapCallbacks.destroySelf();
 
 }
 function onDOMContentLoaded(aEvent) {
 	var aContentWindow = aEvent.target.defaultView;
-
+	console.error('DOMContentLoaded', 'content == aContentWindow', content == aContentWindow, 'content.location.href:', content.location.href, 'aContentWindow.location.href:', aContentWindow.location.href, 'aContentWindow.frameElement:', aContentWindow.frameElement);
 	bodyOnDOMContentLoaded(aContentWindow);
 }
 /*
 function onLoad(aEvent) {
 	var aContentWindow = aEvent.target.defaultView;
-
+	console.warn('onLoad', 'content == aContentWindow', content == aContentWindow, 'content.location.href:', content.location.href, 'aContentWindow.location.href:', aContentWindow.location.href, 'aContentWindow.frameElement:', aContentWindow.frameElement);
 	// doOnReady(aContentWindow);
 }
 
 function onPageShow(aEvent) {
 	var aContentWindow = aEvent.target.defaultView;
-
+	console.info('onPageShow.', 'content == aContentWindow', content == aContentWindow, 'content.location.href:', content.location.href, 'aContentWindow.location.href:', aContentWindow.location.href, 'aContentWindow.frameElement:', aContentWindow.frameElement);
 	// doOnReady(aContentWindow);
 }
 */
 function init() {
-
+		console.error('in init on content.location.href:');
 		try {
-
+			console.log('content.location.href:', content.location.toString());
 		} catch (ignore) {}
 	
 		contentMMFromContentWindow_Method2(content).addMessageListener(core.addon.id, bootstrapMsgListener);
@@ -540,9 +540,9 @@ function init() {
 		
 		sendAsyncMessageWithCallback(contentMMFromContentWindow_Method2(content), core.addon.id, ['requestInit'], bootstrapMsgListener.funcScope, function(aData) {
 			// core = aData.aCore;
-
+			console.error('back in callback', aData, content.location.href);
 			gL10N = aData.aL10n;
-
+			console.error('set gL10N to:', aData.aL10n, content.location.href)
 			
 			addEventListener('unload', fsUnloaded, false);
 			FS_UNLOADERS.push(function() {

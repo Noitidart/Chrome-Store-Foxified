@@ -55,14 +55,14 @@ var WORKER = this;
 self.addEventListener('message', function(aMsgEvent) { // this is what you do if you want SIPWorker mainthread calling ability
 	var aMsgEventData = aMsgEvent.data;
 	if (Array.isArray(aMsgEventData)) {
-
+		console.error('worker got response for main thread calling SIPWorker functionality:', aMsgEventData)
 		var funcName = aMsgEventData.shift();
 		if (funcName in WORKER) {
 			var rez_worker_call = WORKER[funcName].apply(null, aMsgEventData);
 		}
-
+		else { console.error('funcName', funcName, 'not in scope of WORKER') } // else is intentionally on same line with console. so on finde replace all console. lines on release it will take this out
 	} else {
-
+		console.error('no this is just regular promise worker message');
 		worker.handleMessage(aMsgEvent)
 	}
 });
@@ -77,7 +77,7 @@ self.postMessageWithCallback = function(aPostMessageArr, aCB, aPostMessageTransf
 	var thisCallbackId = SIP_CB_PREFIX + sip_last_cb_id;
 	aFuncExecScope[thisCallbackId] = function() {
 		delete aFuncExecScope[thisCallbackId];
-
+		console.log('in worker callback trigger wrap, will apply aCB with these arguments:', arguments);
 		aCB.apply(null, arguments[0]);
 	};
 	aPostMessageArr.push(thisCallbackId);
@@ -148,7 +148,7 @@ function jwtSignOlympia(aKey, aSecret, aDateMs) {
 ////// end of imports and definitions
 
 function init(objCore) { // function name init required for SIPWorker
-
+	//console.log('in worker init');
 	
 	// merge objCore into core
 	// core and objCore is object with main keys, the sub props
@@ -177,7 +177,7 @@ function init(objCore) { // function name init required for SIPWorker
 	var rezInit = {};
 	rezInit.l10n = _cache_formatStringFromName_packages;
 	
-
+	console.log('MainWorker init success');
 	return rezInit; // required for SIPWorker
 }
 
@@ -205,7 +205,7 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 		// assume its blob
 		fileXpi = new File([aPathOrBlobToXpi], aOptions.filename + ' -- unsigned.xpi'); // doing = new File(aBlob) is not working, the xhr response is coming from amo saying "key of `upload` is missing"
 	}
-
+	console.log('fileXpi:', fileXpi);
 	
 	// create form data
 	var formData = new FormData(); // Cc['@mozilla.org/files/formdata;1'].createInstance(Ci.nsIDOMFormData); // http://stackoverflow.com/q/25038292/1828637
@@ -225,8 +225,8 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 			Authorization: 'JWT ' + jwtSignOlympia(aAmoApiKey, aAmoApiSecret, getNowDateFromServer())
 		}
 	});
-
-
+	console.log('request_amoSubmit.status:', request_amoSubmit.status);
+	console.log('request_amoSubmit.response:', request_amoSubmit.response);
 	
 	var downloadIt = function(aDownloadSignedURL) {
 		if (aOptions.aAttnBarInstState) {
@@ -259,7 +259,7 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 			try {
 				OS.File.writeAtomic(downloadSignedToPlatPath, new Uint8Array(request_downloadSigned.response), {noOverwrite:false});
 			} catch(ex) {
-
+				console.error('Failed writing signed XPI to disk:', ex);
 				throw new MainWorkerError('Failed writing signed XPI to disk', ex);
 			}
 			
@@ -288,17 +288,17 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 			}
 		});
 		
-
-
+		console.log('request_fetchExisting.status:', request_fetchExisting.status);
+		console.log('request_fetchExisting.response:', request_fetchExisting.response);
 		
 		if (request_fetchExisting.status == 200) {
 			if (request_fetchExisting.response.files && request_fetchExisting.response.files.length == 1) {
 				return downloadIt(request_fetchExisting.response.files[0].download_url);
 			} else {
-
+				console.error('addon existing, and successfully got exiswting status check, but files are not yet ready! not yet handled :todo:');
 				// throw new Error('addon existing, and successfully got exiswting status check, but files are not yet ready! not yet handled :todo:');
 				// wait 5 seconds then try again
-
+				console.log('wait 5 seconds then try again as it has not been signed yet');
 				
 				// if (request_fetchExisting.response)
 				if (Array.isArray(request_fetchExisting.response.files) && request_fetchExisting.response.reviewed && !request_fetchExisting.response.passed_review) { // i was using .response.processed however it was not right, as it gets processed before reviewed. so updated to .response.reviewed. as with fullscreenshot thing i got that warning for binary - https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl
@@ -324,7 +324,7 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 						}
 					};
 				}
-
+				console.log('cumulativeCheckCount:', cumulativeCheckCount);
 				for (var i=10; i>=1; i--) {
 					if (aOptions.aAttnBarInstState) {
 						aOptions.aAttnBarInstState.aTxt = formatStringFromName('attn-signing-check-waiting', 'bootstrap', [aOptions.aExtName, i, cumulativeCheckCount, maxCumCheckCount]);
@@ -346,15 +346,15 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 		}
 	};
 	
-
+	console.log('request_amoSubmit.status:', request_amoSubmit.status, 'request_amoSubmit.response:', request_amoSubmit.response);
 	if (request_amoSubmit.status == 409) {
 		// the version already exists
-
+		console.log('version already exists');
 		return waitForReview();
 	} else {
 		if (request_amoSubmit.status == 201 || request_amoSubmit.status == 202) {
 			// ok new submission went through
-
+			console.log('ok new submission went through');
 			return waitForReview();
 		} else {
 			throw {
@@ -378,7 +378,7 @@ function getNowDateFromServer(aTryCnt) {
 
 	var requestDuration = Date.now() - requestStartDate;
 	
-
+	console.log('request took:', requestDuration, 'ms');
 	
 	if (requestUnixNow.status != 200) {
 		if (aTryCnt > 4) {
@@ -390,27 +390,27 @@ function getNowDateFromServer(aTryCnt) {
 				}
 			};
 		}
-
+		console.log('response status was bad, will wait 5 sec then try again');
 		setTimeoutSync(5000);
-
+		console.log('ok waitied, will now try');
 		return getNowDateFromServer(aTryCnt + 1);
 	}
 	
-
-
+	console.log('requestUnixNow.status:', requestUnixNow.status);
+	// console.log('requestUnixNow.response:', requestUnixNow.response);
 	
 	var nowDateServerMatch = /current_time = (\d+);/.exec(requestUnixNow.response);
 	if (!nowDateServerMatch) {
 		throw new Error('failed to get now date from server');
 	}
-
+	console.log('nowDateServerMatch:', nowDateServerMatch);
 	
 	var nowDateServerUncompensated = parseInt(nowDateServerMatch[1]) * 1000;
-
+	console.log('nowDateServerUncompensated:', nowDateServerUncompensated);
 	
 	var nowDateServer = nowDateServerUncompensated - requestDuration;
 	
-
+	console.log('nowDateServer:', nowDateServer);
 	
 	return nowDateServer;
 }
@@ -422,7 +422,7 @@ function setTimeoutSync(aMilliseconds) {
 
 function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 	try {
-
+		console.log('in doit:', aExtId, aExtName);
 		
 		// step - download crx
 		aAttnBarInstState.aTxt = formatStringFromName('attn-downloading', 'bootstrap', [aExtName]);
@@ -431,7 +431,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		var requestGoogle = xhr('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + aExtId + '%26installsource%3Dondemand%26uc', {
 			responseType: 'arraybuffer'
 		});
-
+		console.log('requestGoogle:', requestGoogle);
 		var crxArrBuf = requestGoogle.response;
 		
 		// step - make crx a zip
@@ -440,13 +440,13 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		
 		// var crxBlob = new Blob([new Uint8Array(requestGoogle.response)], {type: 'application/octet-binary'});
 		var locOfPk = new Uint8Array(crxArrBuf.slice(0, 1000));
-
+		// console.log('locOfPk:', locOfPk);
 		for (var i=0; i<locOfPk.length; i++) {
 			if (locOfPk[i] == 80 && locOfPk[i+1] == 75 && locOfPk[i+2] == 3 && locOfPk[i+3] == 4) {
 				break;
 			}
 		}
-
+		console.log('pk found at:', i);
 		
 		/* // testng if jszip works, yes it does
 		var zip = new JSZip();
@@ -455,10 +455,10 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		img.file("Hello.txt", "Hello World\n");
 		var content = zip.generate({type:"uint8array"});
 		// see FileSaver.js
-
+		console.log('content:', content);
 		
 		var rez_write = OS.File.writeAtomic(OS.Path.join(OS.Constants.Path.desktopDir, 'jszip.zip'), content, {noOverwrite:false});
-
+		console.log('rez_write:', rez_write);
 		*/
 		
 		var zipArrBuff = crxArrBuf.slice(i);
@@ -466,13 +466,13 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		
 		// step - modify the manifest.json and get the version of the addon from manifest.json
 		var zipJSZIP = new JSZip(zipArrBuff);
-
+		// console.log('zipJSZIP:', zipJSZIP);
 		
 		var manifestContents = zipJSZIP.file('manifest.json').asText();
-
+		// console.log('manifestContents:', manifestContents);
 		
 		var manifestContentsJSON = JSON.parse(manifestContents.trim());
-
+		console.log('manifestContentsJSON:', manifestContentsJSON);
 		
 		if (!aPrefs.donotsign) {
 			if (!gAmoApiKey) {
@@ -487,10 +487,10 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 				var loopXhr = 0;
 				while (loopXhr < 3) { // 3 because max times needed is 3 xhr's.
 					loopXhr++;
-
+					console.log('xhrUrl:', xhrUrl, 'xhrOpts:', xhrOpts);
 					var reqAmoKeys = xhr(xhrUrl, xhrOpts);
 					
-
+					console.log('reqAmoKeys.response:', reqAmoKeys.response);
 					
 					if (reqAmoKeys.response.indexOf('accept-agreement') > -1) {
 						throw {
@@ -498,9 +498,9 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 						};
 						break;
 						// var fieldTokenHtml = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(reqAmoKeys.response);
-
+						// console.log('fieldTokenHtml:', fieldTokenHtml);
 						// var token = /value=["']?(.*?)["' \/<]/i.exec(fieldTokenHtml)[1];
-
+						// console.log('token:', token);
 						
 						// xhrUrl = AMODOMAIN + '/en-US/developers/addon/submit/agreement/';
 						// xhrOpts.method = 'POST';
@@ -514,7 +514,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 						
 						// loopXhr = true;
 					} else if (reqAmoKeys.response.indexOf('firefox/users/edit') == -1) {
-
+						console.error('you are not logged in');
 						throw {
 							msg: 'signing-failed:not logged in'
 						};
@@ -523,15 +523,15 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 						var fieldKeyHtml = /input[^<]+jwtkey[^>]+/i.exec(reqAmoKeys.response);
 						var fieldSecretHtml = /input[^<]+jwtsecret[^>]+/i.exec(reqAmoKeys.response);
 						
-
-
+						console.log('fieldKeyHtml:', fieldKeyHtml);
+						console.log('fieldSecretHtml:', fieldSecretHtml);
 						
 						if (!fieldKeyHtml) {
 							// keys are not there, need to generate
 							var fieldTokenHtml = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(reqAmoKeys.response);
-
+							console.log('fieldTokenHtml:', fieldTokenHtml);
 							var token = /value=["']?(.*?)["' \/<]/i.exec(fieldTokenHtml)[1];
-
+							console.log('token:', token);
 							
 							xhrUrl = AMODOMAIN + '/en-US/developers/addon/api/key/';
 							xhrOpts.method = 'POST';
@@ -550,8 +550,8 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 						gAmoApiKey = /value=["']?(.*?)["' \/<]/i.exec(fieldKeyHtml)[1];
 						gAmoApiSecret = /value=["']?(.*?)["' \/<]/i.exec(fieldSecretHtml)[1];
 						
-
-
+						console.log('gAmoApiKey:', gAmoApiKey);
+						console.log('gAmoApiSecret:', gAmoApiSecret);
 						
 						break;
 					}
@@ -592,12 +592,12 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 			xpiSavePath = OS.Path.join(OS.Constants.Path.tmpDir, xpiFileName + '.xpi');
 		}
 		
-
+		console.log('xpiSavePath:', xpiSavePath);
 		
 		try {
 			OS.File.writeAtomic(xpiSavePath, jszipUint8, {noOverwrite:false});
 		} catch(ex) {
-
+			console.error('Failed writing XPI to disk:', ex);
 			throw new MainWorkerError('Failed writing XPI to disk', ex);
 		}
 		*/
@@ -607,14 +607,14 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		var xpiSaveDir = aPrefs.save ? aPrefs['save-path'] : OS.Constants.Path.tmpDir;
 		var xpiSavePath = OS.Path.join(xpiSaveDir, xpiFileName + '.xpi');
 		
-
+		console.error('aPrefs.donotsign:', aPrefs.donotsign);
 		
 		if (!aPrefs.donotsign) {			
 			aAttnBarInstState.aTxt = formatStringFromName('attn-signing', 'bootstrap', [aExtName]);
 			self.postMessage(['updateAttnBar', aAttnBarInstState]);
 			
 			var jszipBlob = zipJSZIP.generate({type:'blob'});
-
+			console.log('xpiSavePath:', xpiSavePath);
 			var rez_sign = jpmSign(jszipBlob, xpiVersion, xpiId, xpiSaveDir, gAmoApiKey, gAmoApiSecret, {
 				filename: xpiFileName + '.xpi',
 				aAttnBarInstState: aAttnBarInstState,
@@ -622,7 +622,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 			});
 			
 			if (rez_sign) {
-
+				console.log('succesfully downloaded signed xpi to: ', rez_sign, 'xpiSavePath:', xpiSavePath);
 				// rez_sign should === xpiSavePath
 			} else {
 				// should never get here, because if jpmSign fails it throws, but just in case ill put this here
@@ -631,7 +631,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 			
 			// install xpi
 			self.postMessageWithCallback(['installXpi', xpiSavePath], function(aStatusObj) { // :note: this is how to call WITH callback
-
+				console.log('ok back from installXpi, aStatusObj:', aStatusObj);
 				
 				if (aStatusObj.status) {
 					// installed
@@ -657,7 +657,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 				// after install, if user has set aPrefs.save to false, then delete it
 				if (!aPrefs.save) {
 					OS.File.remove(xpiSavePath);
-
+					console.log('ok because user had marked not to save file, deleted the file');
 				}
 			});
 		} else {
@@ -668,7 +668,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 		// no return because no longer working with framescript-sendAsyncMessageWithCallback
 			// return ['promise_rejected']; // must return array as this function is designed to return to framescript-sendAsyncMessageWithCallback callInPromiseWorker
 	} catch(ex) {
-
+		console.error('Something went wrong error is:', ex, uneval(ex));
 		var dataForInstallAsTemp; // either string, or arraybuffer
 		var uint8JSZIP = zipJSZIP.generate({type:'uint8array'});
 		
@@ -682,7 +682,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 			try {
 				OS.File.writeAtomic(unsignedXpiSavePath, uint8JSZIP, {noOverwrite:false});
 			} catch(OSFileError) {
-
+				console.error('Failed writing unsigned XPI to disk:', OSFileError);
 				throw new MainWorkerError('Failed unsigned signed XPI to disk', OSFileError);
 			}
 		} else {
@@ -713,7 +713,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 					transferList = [dataForInstallAsTemp];
 				}
 				self.postMessage(['updateAttnBar', aAttnBarInstState, aLocalizedKey, aExtName, ex, dataForInstallAsTemp], transferList);
-
+				console.log('dataForInstallAsTemp.byteLength from worker:', dataForInstallAsTemp.byteLength);
 			} else {
 				aAttnBarInstState.aPriority = 9;
 				aAttnBarInstState.aHideClose = false;
@@ -725,7 +725,7 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 }
 
 function installAsTempAddon(aExtName, dataForInstallAsTemp, aPrefs, aAttnBarInstState) {
-
+	console.log('in installAsTempAddon worker side');
 	
 	aAttnBarInstState.aPriority = 1;
 	aAttnBarInstState.aTxt = formatStringFromName('installing-as-temp', 'bootstrap');
@@ -735,34 +735,34 @@ function installAsTempAddon(aExtName, dataForInstallAsTemp, aPrefs, aAttnBarInst
 	
 	var xpiPath;
 	if (typeof(dataForInstallAsTemp) != 'string') {
-
+			console.log('creating xpi');
 			var unsignedXpiFileName = formatStringFromName('unsigned-xpi-filename-template', 'bootstrap', [safedForPlatFS(aExtName), new Date().getTime()]); // need unique file name, as writing to temp directory, and the old one is not yet deleted
-
+			console.log('unsignedXpiFileName:', unsignedXpiFileName);
 			var xpiSaveDir = aPrefs.save ? aPrefs['save-path'] : OS.Constants.Path.tmpDir;
-
+			console.log('xpiSaveDir:', xpiSaveDir);
 			var xpiSavePath = OS.Path.join(xpiSaveDir, unsignedXpiFileName + '.xpi');
-
+			console.log('xpiSavePath:', xpiSavePath);
 			
 			var unsignedXpiSavePath = OS.Path.join(xpiSaveDir, unsignedXpiFileName + '.xpi');
 			xpiPath = unsignedXpiSavePath;
-
+			console.log('xpiPath:', xpiPath);
 			
 			try {
 				OS.File.writeAtomic(unsignedXpiSavePath, new Uint8Array(dataForInstallAsTemp), {noOverwrite:false});
 			} catch(OSFileError) {
-
+				console.error('Failed writing unsigned XPI to disk:', OSFileError);
 				throw new MainWorkerError('Failed unsigned signed XPI to disk', OSFileError);
 			}
 	} else {
-
+		console.log('already created');
 		xpiPath = dataForInstallAsTemp;
 	}
-
+	console.log('xpiPath:', xpiPath);
 	
 	self.postMessageWithCallback(['installAsTemp', xpiPath, aAttnBarInstState], function(aStatusObj) {
-
+		console.log('ok back in worker after trying installAsTemp, aStatusObj:', aStatusObj);
 		if (typeof(dataForInstallAsTemp) != 'string') {
-
+			console.log('ok removed temp file');
 			OS.File.remove(xpiPath);
 		}
 	});
@@ -798,7 +798,7 @@ function validateOptionsObj(aOptions, aOptionsDefaults) {
 	// ensures no invalid keys are found in aOptions, any key found in aOptions not having a key in aOptionsDefaults causes throw new Error as invalid option
 	for (var aOptKey in aOptions) {
 		if (!(aOptKey in aOptionsDefaults)) {
-
+			console.error('aOptKey of ' + aOptKey + ' is an invalid key, as it has no default value, aOptionsDefaults:', aOptionsDefaults, 'aOptions:', aOptions);
 			throw new Error('aOptKey of ' + aOptKey + ' is an invalid key, as it has no default value');
 		}
 	}
@@ -812,7 +812,7 @@ function validateOptionsObj(aOptions, aOptionsDefaults) {
 }
 
 function xhr(aUrlOrFileUri, aOptions={}) {
-
+	// console.error('in xhr!!! aUrlOrFileUri:', aUrlOrFileUri);
 	
 	// all requests are sync - as this is in a worker
 	var aOptionsDefaults = {
@@ -837,9 +837,9 @@ function xhr(aUrlOrFileUri, aOptions={}) {
 	cRequest.responseType = aOptions.responseType;
 	cRequest.send(aOptions.data);
 	
-
+	// console.log('response:', cRequest.response);
 	
-
+	// console.error('done xhr!!!');
 	return cRequest;
 }
 
@@ -863,7 +863,7 @@ function formatStringFromName(aKey, aLocalizedPackageName, aReplacements) {
 		
 		_cache_formatStringFromName_packages[aLocalizedPackageName] = packageJson;
 		
-
+		console.log('packageJson:', packageJson);
 	}
 	
 	var cLocalizedStr = _cache_formatStringFromName_packages[aLocalizedPackageName][aKey];
