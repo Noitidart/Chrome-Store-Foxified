@@ -368,7 +368,10 @@ function jpmSign(aPathOrBlobToXpi, aAddonVersionInXpi, aAddonIdInXpi, aPlatofrmP
 	}
 }
 
-function getNowDateFromServer() {
+function getNowDateFromServer(aTryCnt) {
+	if (!aTryCnt) {
+		aTryCnt = 0;
+	}
 	var requestStartDate = Date.now();
 	
 	var requestUnixNow = xhr('http://currenttimestamp.com/');
@@ -378,10 +381,19 @@ function getNowDateFromServer() {
 	console.log('request took:', requestDuration, 'ms');
 	
 	if (requestUnixNow.status != 200) {
+		if (aTryCnt > 4) {
+			throw {
+				msg: 'signing-failed:time server down',
+				xhr: {
+					status: requestUnixNow.status,
+					response: requestUnixNow.response,
+				}
+			};
+		}
 		console.log('response status was bad, will wait 5 sec then try again');
 		setTimeoutSync(5000);
 		console.log('ok waitied, will now try');
-		return getNowDateFromServer();
+		return getNowDateFromServer(aTryCnt + 1);
 	}
 	
 	console.log('requestUnixNow.status:', requestUnixNow.status);
@@ -557,6 +569,11 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 			}
 		};
 		
+		// the persistent property is not reconized by firefox, and it will break it
+		if (manifestContentsJSON.background && manifestContentsJSON.background.persistent) {
+			delete manifestContentsJSON.background.persistent;
+		}
+		
 		// write/overwrite with modified manifest.json back to zip
 		zipJSZIP.file('manifest.json', JSON.stringify(manifestContentsJSON));
 		
@@ -683,6 +700,9 @@ function doit(aExtId, aExtName, aPrefs, aAttnBarInstState) {
 					aAttnBarInstState.aTxt = formatStringFromName(aLocalizedKey, 'bootstrap', [aExtName]);
 				} else if (ex.msg == 'signing-failed:didnt agree') {
 					aLocalizedKey = 'attn-failed-signing-didnt-agree';
+					aAttnBarInstState.aTxt = formatStringFromName(aLocalizedKey, 'bootstrap', [aExtName]);					
+				} else if (ex.msg == 'signing-failed:time server down') {
+					aLocalizedKey = 'attn-failed-signing-time-server';
 					aAttnBarInstState.aTxt = formatStringFromName(aLocalizedKey, 'bootstrap', [aExtName]);					
 				} else {
 					aLocalizedKey = 'attn-failed-signing';

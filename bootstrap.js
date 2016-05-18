@@ -180,7 +180,7 @@ var MainWorkerMainThreadFuncs = {
 					}
 				}
 			];
-		} else if (aLocalizedKey == 'attn-failed-signing' || aLocalizedKey == 'attn-failed-signing-not-logged-in' || aLocalizedKey == 'attn-failed-signing-didnt-agree') {
+		} else if (aLocalizedKey == 'attn-failed-signing' || aLocalizedKey == 'attn-failed-signing-not-logged-in' || aLocalizedKey == 'attn-failed-signing-didnt-agree' || aLocalizedKey == 'attn-failed-signing-time-server') {
 			aAttnBarInfoObj.aBtns = [];
 			aAttnBarInfoObj.aBtns.push({
 				bTxt: justFormatStringFromName(gL10N.bootstrap['install-as-temp']),
