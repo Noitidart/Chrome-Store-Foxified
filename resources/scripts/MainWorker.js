@@ -12,8 +12,8 @@ function init(objCore) {
 
 	core = objCore;
 
-	importScripts(core.addon.path.scripts + 'hmac-sha256.js');
-	importScripts(core.addon.path.scripts + 'enc-base64-min.js');
+	importScripts(core.addon.path.scripts + '3rd/hmac-sha256.js');
+	importScripts(core.addon.path.scripts + '3rd/enc-base64-min.js');
 
 	core.addon.path.storage = OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id, 'simple-storage');
 

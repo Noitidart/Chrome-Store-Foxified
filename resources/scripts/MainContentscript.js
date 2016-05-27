@@ -6,13 +6,18 @@ var gFsComm;
 var gAriaLabels = [
 	'Available on Chrome'
 ];
-
+alert(this)
+alert(this === window);
 function init() {
 	gFsComm.postMessage('callInBootstrap', {method:'fetchCore',wait:true}, null, function(aCore) {
 		console.log('core:', aCore);
 		core = aCore;
 
 		window.addEventListener('click', genericClick, true);
+
+		var rootEl = document.createElement('div');
+		rootEl.setAttribute('id', 'chrome-store-foxified-root');
+		document.documentElement.insertBefore(rootEl, document.documentElement.firstChild);
 
 		var styleEl = document.createElement('style');
 		styleEl.setAttribute('id', 'chrome-store-foxified-style')
@@ -122,7 +127,7 @@ function installClick(e) {
 	}
 
 	// insert modal
-	
+
 }
 
 // start - common helper functions

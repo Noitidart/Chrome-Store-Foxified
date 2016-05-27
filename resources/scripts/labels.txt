@@ -1,9 +1,0 @@
-div[aria-label="‏متوفر في Chrome"] .webstore-test-button-label::before,	/* Arabic */
-div[aria-label="Налице за Chrome"] .webstore-test-button-label::before,	/*  */
-div[aria-label="Chrome এ উপলব্ধ"] .webstore-test-button-label::before,	/*  */
-div[aria-label="Disponible a Chrome"] .webstore-test-button-label::before,	/*  */
-div[aria-label="K dispozici v Chromu"] .webstore-test-button-label::before,	/*  */
-div[aria-label="Tilgængelig til Chrome"] .webstore-test-button-label::before,	/*  */
-div[aria-label="Für Chrome verfügbar"] .webstore-test-button-label::before,	/*  */
-div[aria-label="Disponible en Chrome"] .webstore-test-button-label::before,	/*  */
-div[aria-label="Saadaval Chrome'ile"] .webstore-test-button-label::before,	/*  */

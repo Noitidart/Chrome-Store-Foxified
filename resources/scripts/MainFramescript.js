@@ -5,7 +5,7 @@ const { interfaces:Ci, utils:Cu } = Components;
 var core = {addon: {id:'Chrome-Store-Foxified@jetpack'}}; // all that should be needed is core.addon.id, the rest is brought over on init
 var gBsComm;
 var gWinComm;
-// var gSandbox;
+var gSandbox;
 
 const CHROMESTORE_HOSTNAME = 'chrome.google.com';
 
@@ -27,17 +27,26 @@ var pageLoader = {
 		var contentWindow = aContentWindow;
 		console.log('ready enter');
 
-		// try {
-		// 	if (gSandbox) { Cu.nukeSandbox(gSandbox) }
-		// } catch(ignore) {}
-		// var principal = contentWindow.location.origin; // docShell.chromeEventHandler.contentPrincipal;
-		// console.error('principal:', principal);
-		// gSandbox = Cu.Sandbox(principal, {
-		// 	sandboxPrototype: content,
-		// 	wantXrays: false
-		// });
-		// Services.scriptloader.loadSubScript(core.addon.path.scripts + 'MainContentscript.js?' + core.addon.cache_key, gSandbox, 'UTF-8');
-		Services.scriptloader.loadSubScript(core.addon.path.scripts + 'MainContentscript.js?' + core.addon.cache_key, content, 'UTF-8');
+		try {
+			if (gSandbox) { Cu.nukeSandbox(gSandbox) }
+		} catch(ignore) {}
+		var principal = contentWindow.location.origin; // docShell.chromeEventHandler.contentPrincipal;
+		console.error('principal:', principal);
+		gSandbox = Cu.Sandbox(principal, {
+			sandboxPrototype: content,
+			wantXrays: false
+		});
+		Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-with-addons.js?' + core.addon.cache_key, gSandbox, 'UTF-8');
+		Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-dom.js?' + core.addon.cache_key, gSandbox, 'UTF-8');
+		Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/redux.js?' + core.addon.cache_key, gSandbox, 'UTF-8');
+		Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-redux.js?' + core.addon.cache_key, gSandbox, 'UTF-8');
+		Services.scriptloader.loadSubScript(core.addon.path.scripts + 'MainContentscript.js?' + core.addon.cache_key, gSandbox, 'UTF-8');
+
+		// Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-with-addons.js?' + core.addon.cache_key, content, 'UTF-8');
+		// Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-dom.js?' + core.addon.cache_key, content, 'UTF-8');
+		// Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/redux.js?' + core.addon.cache_key, content, 'UTF-8');
+		// Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-redux.js?' + core.addon.cache_key, content, 'UTF-8');
+		// Services.scriptloader.loadSubScript(core.addon.path.scripts + 'MainContentscript.js?' + core.addon.cache_key, content, 'UTF-8');
 
 		gWinComm = new contentComm(contentWindow); // cross-file-link884757009
 
@@ -50,12 +59,12 @@ var pageLoader = {
 	},
 	readyNonmatch: function(aContentWindow) {
 		gWinComm = null;
-		// if (gSandbox) { Cu.nukeSandbox(gSandbox) }
+		if (gSandbox) { Cu.nukeSandbox(gSandbox) }
 	},
 	loadNonmatch: function(aContentWindow) {},
 	errorNonmatch: function(aContentWindow, aDocURI) {
 		gWinComm = null;
-		// if (gSandbox) { Cu.nukeSandbox(gSandbox) }
+		if (gSandbox) { Cu.nukeSandbox(gSandbox) }
 	},
 	// not yet supported
 	// timeout: function(aContentWindow) {
@@ -180,9 +189,9 @@ function uninit() { // link4757484773732
 		gWinComm.postMessage('uninit');
 	}
 
-	// content.setTimeout(function() {
-	// 	if (gSandbox) { Cu.nukeSandbox(gSandbox) }
-	// }, 100); // because we want the gWinComm.postMessage('uninit') to trigger first
+	content.setTimeout(function() {
+		if (gSandbox) { Cu.nukeSandbox(gSandbox) }
+	}, 100); // because we want the gWinComm.postMessage('uninit') to trigger first
 
 	crossprocComm_unregAll();
 
