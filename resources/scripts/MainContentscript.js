@@ -14,12 +14,8 @@ function init() {
 
 		window.addEventListener('click', genericClick, true);
 
-		var rootEl = document.createElement('div');
-		rootEl.setAttribute('id', 'chrome-store-foxified-root');
-		document.documentElement.insertBefore(rootEl, document.documentElement.firstChild);
-
 		var styleEl = document.createElement('style');
-		styleEl.setAttribute('id', 'chrome-store-foxified-style')
+		styleEl.setAttribute('id', 'foxified-style')
 		styleEl.textContent = `
 			XXXdiv[aria-label="Available on Chrome"] {
 				overflow: hidden !important;
@@ -46,16 +42,74 @@ function init() {
 			{
 				display: none;
 			}
+
+			/******* start app style *******/
+			.foxified-app {
+				z-index: 999999999;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100vw;
+				height: 100vh;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				background-color: rgba(255, 255, 255, 0.4);
+			}
+			.foxified-modal {
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				background-color: #fff;
+				border: 1px solid #000;
+				height: 25vh;
+				width: 30vw;
+			}
 		`;
 
 		document.documentElement.insertBefore(styleEl, document.documentElement.firstChild);
+
+		// init the react app
+		var rootEl = document.createElement('div');
+		rootEl.setAttribute('id', 'foxified-root');
+		document.documentElement.insertBefore(rootEl, document.documentElement.firstChild);
+
+		ReactDOM.render(
+			React.createElement(ReactRedux.Provider, { store },
+				React.createElement(AppContainer)
+			),
+			rootEl
+		);
+
+		setTimeout(function() {
+			store.dispatch(toggleDisplay(true));
+		}, 2000);
+
+		setTimeout(function() {
+			store.dispatch(toggleDisplay(false));
+		}, 4000);
+
+		setTimeout(function() {
+			store.dispatch(toggleDisplay(true));
+		}, 6000);
+
+		setTimeout(function() {
+			store.dispatch(toggleDisplay(false));
+		}, 8000);
+
+
 	});
 }
 // div[aria-label="Available on Chrome"] .webstore-test-button-label::before
 function uninit() {
-	var styleEl = document.getElementById('chrome-store-foxified-style');
+	var styleEl = document.getElementById('foxified-style');
 	if (styleEl) {
 		styleEl.parentNode.removeChild(styleEl);
+	}
+
+	var rootEl = document.getElementById('foxified-root');
+	if (rootEl) {
+		rootEl.parentNode.removeChild(rootEl);
 	}
 
 	window.removeEventListener('click', genericClick, true);
@@ -105,12 +159,15 @@ function installClick(e) {
 
 	// figure out id
 	var id;
-	var idPatt = /permalink\?id\=([a-z0-9]*)/i;
+	var idPatt = /[^a-p]([a-p]{32})[^a-p]/i; // Thanks to @Rob--W the id is accurately obtained: "It is the first 32 characters of the public key's sha256 hash, with the 0-9a-f replaced with a-p"
 	var searchEl = e.target;
 	var i = 0;
 	var idExec;
-	while (i < 20) {
+	while (i < 100) {
 		searchEl = searchEl.parentNode;
+		if (!searchEl) {
+			break;
+		}
 		idExec = idPatt.exec(searchEl.innerHTML);
 		if (idExec) {
 			id = idExec[1];
@@ -119,7 +176,7 @@ function installClick(e) {
 	}
 
 	if (!id) {
-		alert('Chrome Store Foxified - Error - Failed to extract ID');
+		alert(formatStringFromNameCore('fail_extract_id', 'main'));
 	} else {
 		// ok do with the id now
 		alert('http://chrome.google.com/webstore/permalink?id=' + id);
@@ -128,6 +185,215 @@ function installClick(e) {
 	// insert modal
 
 }
+
+// start - react-redux
+// ACTIONS
+const TOGGLE_DISPLAY = 'TOGGLE_DISPLAY'; // should set true or false
+const SHOW_PAGE = 'SHOW_PAGE'; // should be a extension id, or any other special ids i give like "all exts" or "prefs" or something
+const UPDATE_STATUS = 'UPDATE_STATUS';
+
+// ACTION CREATORS
+function toggleDisplay(visible) { // true or false
+	return {
+		type: TOGGLE_DISPLAY,
+		visible
+	}
+}
+function showPage(id) { // extid is extension id
+	return {
+		type: SHOW_PAGE,
+		id
+	}
+}
+function updateStatus(extid, key, value) {
+	return {
+		type: UPDATE_STATUS,
+		extid,
+		[key]: value
+	}
+}
+
+// REDUCERS
+/*
+const initialState = {
+	visibility: false,
+	pageid: null, // is extid
+	statuses: {} // object, where key is extid and value is object with keys: txt,
+};
+*/
+function visibility(state=false, action) {
+	switch (action.type) {
+		case TOGGLE_DISPLAY:
+			return action.visible;
+		default:
+			return state;
+	}
+}
+
+function pageid(state='PAGE_NONE', action) {
+	switch (action.type) {
+		case SHOW_PAGE:
+			return action.id;
+		default:
+			return state;
+	}
+}
+
+function statuses(state={}, action) {
+	switch (action.type) {
+		case UPDATE_STATUS:
+			var { extid, key, value } = action;
+
+			var stateEntryOld = state[extid];
+			var stateEntryNew = Objct.assign({}, stateEntryOld, {
+				[key]: value
+			});
+
+			return Object.assign({}, state, {
+				[extid]: stateEntryNew
+			});
+		default:
+			return state;
+	}
+}
+
+const foxifiedApp = Redux.combineReducers({
+	visibility,
+	pageid,
+	statuses
+});
+
+// STORE
+var store = Redux.createStore(foxifiedApp);
+
+var unsubscribe = store.subscribe(() =>
+	console.log(store.getState())
+);
+
+// REACT COMPONENTS - PRESENTATIONAL
+var App = React.createClass({
+	render() {
+		var { visibility } = this.props;
+
+		var cProps = {
+			className: 'foxified-app',
+			style: {
+				display: visibility ? undefined : 'none'
+			}
+		};
+
+		return React.createElement('div', cProps,
+			React.createElement(Modal, null,
+				React.createElement(Header),
+				React.createElement(PageContainer)
+			)
+		);
+	}
+});
+
+var Header = React.createClass({
+	render() {
+		return React.createElement('div', { className:'foxified-header' },
+			'Chrome Store Foxified'
+		)
+	}
+});
+
+var Modal = React.createClass({
+	render() {
+		return React.createElement('div', { className:'foxified-modal' },
+			React.createElement(Header),
+			React.createElement(PageContainer)
+		);
+	}
+});
+
+var Page = React.createClass({
+	render() {
+		var { pageid, status } = this.props;
+		// status is only available if pageid is extid
+
+		var cChildren = [];
+		console.error('pageid:', pageid);
+		switch (pageid) {
+			case 'PAGE_PREFS':
+
+					// not yet supported
+
+				break;
+			case 'PAGE_ALL_EXTS':
+
+					// not yet supported
+
+				break;
+			case 'PAGE_NONE':
+
+					cChildren.push('showing PAGE_NONE');
+
+				break;
+			default:
+				// pageid is extid, so we show PAGE_EXT
+				var { txt } = status;
+				cChildren.push( React.createElement(ExtStatus, {txt}) );
+		}
+
+		return React.createElement('div', null,
+			cChildren
+		);
+	}
+});
+
+// REACT COMPONENTS - CONTAINER
+const AppContainer = ReactRedux.connect(
+	function mapStateToProps(state, ownProps) {
+		return {
+			visibility: state.visibility
+		}
+	}
+)(App);
+
+const PageContainer = ReactRedux.connect(
+	function mapStateToProps(state, ownProps) {
+		var { pageid } = state;
+		var status;
+
+		switch(pageid) {
+			case 'PAGE_PREFS':
+
+					// not yet supported
+
+				break;
+			case 'PAGE_ALL_EXTS':
+
+					// not yet supported
+
+				break;
+			case 'PAGE_NONE':
+
+					// not yet supported
+
+				break;
+			default:
+				// PAGE_EXT
+				var extid = pageid;
+				status = state.statuses[extid];
+		}
+
+		return {
+			status,
+			pageid
+		}
+	},
+	function mapDispatchToProps(dispatch, ownProps) {
+		return {
+			onClick: function() {
+				dispatch(setVisibilityFilter(ownProps.filter))
+			}
+		}
+	}
+)(Page);
+// end - react-redux
+
 
 // start - common helper functions
 
