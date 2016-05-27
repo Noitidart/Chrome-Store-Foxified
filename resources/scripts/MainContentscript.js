@@ -1,14 +1,99 @@
+// this file is not triggered till DOMContentLoaded
+
 var core;
 var gFsComm;
 
-function init(aCore) {
-	alert('test trig');
-	core = aCore;
+var gAriaLabels = [
+	'Available on Chrome'
+];
+
+function init() {
+	gFsComm.postMessage('callInBootstrap', {method:'fetchCore',wait:true}, null, function(aCore) {
+		console.log('core:', aCore);
+		core = aCore;
+
+		window.addEventListener('click', click, true);
+
+		var styleEl = document.createElement('style');
+		styleEl.setAttribute('id', 'chrome-store-foxified-style')
+		styleEl.textContent = `
+			XXXdiv[aria-label="Available on Chrome"] {
+				overflow: hidden !important;
+				background-color: rgb(124, 191, 54) !important;
+				background-image: linear-gradient(to bottom, rgb(124, 191, 54), rgb(101, 173, 40)) !important; border-color:rgb(78, 155, 25) !important;
+			}
+
+			${gAriaLabels.map(arrEl=>{return 'div[aria-label="' + arrEl + '"] .webstore-test-button-label'}).join(',')}
+			{
+				/* this is needed, because on search results page, the parent of this is set to display flex, so it centers things vertically, showing my "add to firefox" line and the one i pushed "available on chrome"*/
+				align-self: start;
+				overflow: hidden;
+				height: 100%;
+			}
+
+			${gAriaLabels.map(arrEl=>{return 'div[aria-label="' + arrEl + '"] .webstore-test-button-label::before'}).join(',')}
+			{
+				display: block;
+				content: "${formatStringFromNameCore('install_button_label', 'main')}";
+			}
+
+			body > div:last-of-type > div:nth-of-type(2),	/* targeting download div */
+			.h-Yb-wa.Yb-wa									/* alt target download div */
+			{
+				display: none;
+			}
+		`;
+
+		document.documentElement.insertBefore(styleEl, document.documentElement.firstChild);
+	});
+}
+// div[aria-label="Available on Chrome"] .webstore-test-button-label::before
+function uninit() {
+	var styleEl = document.getElementById('chrome-store-foxified-style');
+	if (styleEl) {
+		styleEl.parentNode.removeChild(styleEl);
+	}
+
+	window.removeEventListener('click', click, true);
 }
 
-function uninit() {
-	alert('uninit');
+function click(e) {
+	var targetEl = e.target;
+	console.log('clicked, targetEl:', targetEl.innerHTML);
+	if (targetEl) {
+
+		var isTestBtn = targetEl.classList.contains('webstore-test-button-label');
+		var isRoleBtn = (targetEl.getAttribute('role') == 'button');
+		var containsTestBtn;
+		try {
+			containsTestBtn = targetEl.querySelector('.webstore-test-button-label');
+		} catch(ignore) {}
+		console.log('isTestBtn:', isTestBtn, 'isRoleBtn:', isRoleBtn, 'containsTestBtn:', containsTestBtn);
+
+		if (isTestBtn || (isRoleBtn && containsTestBtn)) {
+			var ariaLabel;
+			var btnText;
+
+			if (isRoleBtn) {
+				ariaLabel = targetEl.getAttribute('aria-label');
+			}
+			if (isTestBtn) {
+				btnText = targetEl.textContent.trim();
+			}
+
+			console.log('ariaLabel:', ariaLabel, 'btnText:', btnText);
+			if (gAriaLabels.indexOf(ariaLabel) > -1 || gAriaLabels.indexOf(btnText) > -1) {
+				alert('ok trigger');
+				e.stopPropagation();
+				e.preventDefault();
+			} else {
+				alert('non');
+			}
+		}
+	}
 }
+
+// start - common helper functions
 
 function formatStringFromNameCore(aLocalizableStr, aLoalizedKeyInCoreAddonL10n, aReplacements) {
 	// 051916 update - made it core.addon.l10n based

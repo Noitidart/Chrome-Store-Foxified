@@ -27,7 +27,9 @@ var pageLoader = {
 		var contentWindow = aContentWindow;
 		console.log('ready enter');
 
-		if (gSandbox) { Cu.nukeSandbox(gSandbox) }
+		try {
+			if (gSandbox) { Cu.nukeSandbox(gSandbox) }
+		} catch(ignore) {}
 		var principal = contentWindow.location.origin; // docShell.chromeEventHandler.contentPrincipal;
 		console.error('principal:', principal);
 		gSandbox = Cu.Sandbox(principal, {
