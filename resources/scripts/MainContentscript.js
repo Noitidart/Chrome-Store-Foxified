@@ -12,7 +12,7 @@ function init() {
 		console.log('core:', aCore);
 		core = aCore;
 
-		window.addEventListener('click', click, true);
+		window.addEventListener('click', genericClick, true);
 
 		var styleEl = document.createElement('style');
 		styleEl.setAttribute('id', 'chrome-store-foxified-style')
@@ -54,10 +54,10 @@ function uninit() {
 		styleEl.parentNode.removeChild(styleEl);
 	}
 
-	window.removeEventListener('click', click, true);
+	window.removeEventListener('click', genericClick, true);
 }
 
-function click(e) {
+function genericClick(e) {
 	var targetEl = e.target;
 	console.log('clicked, targetEl:', targetEl.innerHTML);
 	if (targetEl) {
@@ -83,13 +83,42 @@ function click(e) {
 
 			console.log('ariaLabel:', ariaLabel, 'btnText:', btnText);
 			if (gAriaLabels.indexOf(ariaLabel) > -1 || gAriaLabels.indexOf(btnText) > -1) {
-				alert('ok trigger');
+				// alert('ok trigger');
+				installClick(e);
 				e.stopPropagation();
 				e.preventDefault();
-			} else {
-				alert('non');
 			}
 		}
+	}
+}
+
+function installClick(e) {
+	// find ext id
+
+	// http://chrome.google.com/webstore/permalink?id=pebppomjfocnoigkeepgbmcifnnlndla
+	// https://chrome.google.com/webstore/report/pebppomjfocnoigkeepgbmcifnnlndla?hl=en-US&amp;gl=US
+
+
+	// figure out id
+	var id;
+	var idPatt = /permalink\?id\=([a-z0-9]*)/i;
+	var searchEl = e.target;
+	var i = 0;
+	var idExec;
+	while (i < 20) {
+		searchEl = searchEl.parentNode;
+		idExec = idPatt.exec(searchEl.innerHTML);
+		if (idExec) {
+			id = idExec[1];
+			break;
+		}
+	}
+
+	if (!id) {
+		alert('Chrome Store Foxified - Error - Failed to extract ID');
+	} else {
+		// ok do with the id now
+		alert('http://chrome.google.com/webstore/permalink?id=' + id);
 	}
 }
 
