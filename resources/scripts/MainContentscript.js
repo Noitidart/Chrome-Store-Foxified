@@ -113,15 +113,6 @@ function init() {
 			store.dispatch(toggleDisplay(false));
 		}, 4000);
 
-		setTimeout(function() {
-			store.dispatch(toggleDisplay(true));
-		}, 6000);
-
-		setTimeout(function() {
-			store.dispatch(showPage('madeupExtid'));
-		}, 8000);
-
-
 	});
 }
 // div[aria-label="Available on Chrome"] .webstore-test-button-label::before
@@ -202,8 +193,43 @@ function installClick(e) {
 	if (!id) {
 		alert(formatStringFromNameCore('fail_extract_id', 'main'));
 	} else {
+
+		// figure out name
+		var name;
+		var searchEl = e.target;
+		var i = 0;
+		while (i < 100) {
+			searchEl = searchEl.parentNode;
+			if (!searchEl) {
+				break;
+			}
+
+			try {
+				var nameSearch = searchEl.querySelector('.a-na-d-w');
+				var nameFeatured = searchEl.querySelector('.l-w');
+				var nameModal = searchEl.querySelector('.e-f-w');
+
+				if (nameSearch) {
+					name = nameSearch.textContent.trim();
+				} else if (nameFeatured) {
+					name = nameFeatured.textContent.trim();
+				} else if (nameModal) {
+					name = nameModal.textContent.trim();
+				}
+
+				if (name) {
+					break;
+				}
+			} catch(ignore) {}
+		}
+
+		if (!name) {
+			name = 'Unknown Extension Name';
+		}
 		// ok do with the id now
-		alert('http://chrome.google.com/webstore/permalink?id=' + id);
+		store.dispatch(addExt(id, name));
+		store.dispatch(showPage(id));
+		store.dispatch(toggleDisplay(true));
 	}
 
 	// insert modal
@@ -215,10 +241,19 @@ function installClick(e) {
 const TOGGLE_DISPLAY = 'TOGGLE_DISPLAY'; // should set true or false
 const SHOW_PAGE = 'SHOW_PAGE'; // should be a extension id, or any other special ids i give like "all exts" or "prefs" or something
 const UPDATE_STATUS = 'UPDATE_STATUS';
+const ADD_EXT = 'ADD_EXT';
 
 // non-action constants
 
 // ACTION CREATORS
+function addExt(extid, name) {
+	return {
+		type: ADD_EXT,
+		extid,
+		name
+	}
+}
+
 function toggleDisplay(visible) { // true or false
 	return {
 		type: TOGGLE_DISPLAY,
@@ -295,6 +330,23 @@ function statuses(state={}, action) {
 			return Object.assign({}, state, {
 				[extid]: stateEntryNew
 			});
+		case ADD_EXT:
+			var { extid, name } = action;
+
+			var stateNew;
+
+			if (state[extid]) {
+				// dont add, as its already there
+				stateNew = state;
+			} else {
+				stateNew = Object.assign({}, state, {
+					[extid]: {
+						name
+					}
+				});
+			}
+			
+			return stateNew;
 		default:
 			return state;
 	}
@@ -369,6 +421,10 @@ var ExtStatus = React.createClass({
 		var { extid, status } = this.props;
 
 		var cChildren = [];
+
+		cChildren.push(React.createElement('div', undefined, status.name));
+		cChildren.push(React.createElement('br'));
+		cChildren.push(React.createElement('br'));
 
 		return React.createElement('div', { clssName:'foxified-ext-status' },
 			cChildren

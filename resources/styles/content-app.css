@@ -8,17 +8,18 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	background-color: rgba(255, 255, 255, 0.4);
+	background-color: rgba(255, 255, 255, 0.7);
 }
 .foxified-modal {
 	display: flex;
 	justify-content: center;
-	align-items: center;
+	align-items: start;
 	background-color: #fff;
 	border: 1px solid #000;
 	height: 200px;
 	width: 400px;
 	position: relative;
+	padding: 5px;
 }
 .foxified-header {
 	position: absolute;
