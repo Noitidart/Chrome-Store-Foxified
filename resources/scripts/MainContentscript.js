@@ -120,6 +120,9 @@ function installClick(e) {
 		// ok do with the id now
 		alert('http://chrome.google.com/webstore/permalink?id=' + id);
 	}
+
+	// insert modal
+	
 }
 
 // start - common helper functions
