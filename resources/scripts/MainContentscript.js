@@ -6,8 +6,7 @@ var gFsComm;
 var gAriaLabels = [
 	'Available on Chrome'
 ];
-alert(this)
-alert(this === window);
+
 function init() {
 	gFsComm.postMessage('callInBootstrap', {method:'fetchCore',wait:true}, null, function(aCore) {
 		console.log('core:', aCore);

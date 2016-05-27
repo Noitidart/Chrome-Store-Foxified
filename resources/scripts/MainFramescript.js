@@ -28,13 +28,16 @@ var pageLoader = {
 		console.log('ready enter');
 
 		try {
-			if (gSandbox) { Cu.nukeSandbox(gSandbox) }
-		} catch(ignore) {}
+			if (gSandbox) { Cu.nukeSandbox(gSandbox); gSandbox=null; }
+		} catch(tofix) {
+			console.error('sandbox nuke error:', tofix); // TODO: figure out why this and fix it
+		}
 		var principal = contentWindow.location.origin; // docShell.chromeEventHandler.contentPrincipal;
 		console.error('principal:', principal);
 		gSandbox = Cu.Sandbox(principal, {
 			sandboxPrototype: content,
-			wantXrays: false
+			wantXrays: false,
+			sameZoneAs: content
 		});
 		Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-with-addons.js?' + core.addon.cache_key, gSandbox, 'UTF-8');
 		Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-dom.js?' + core.addon.cache_key, gSandbox, 'UTF-8');
@@ -59,12 +62,12 @@ var pageLoader = {
 	},
 	readyNonmatch: function(aContentWindow) {
 		gWinComm = null;
-		if (gSandbox) { Cu.nukeSandbox(gSandbox) }
+		if (gSandbox) { Cu.nukeSandbox(gSandbox); gSandbox=null; }
 	},
 	loadNonmatch: function(aContentWindow) {},
 	errorNonmatch: function(aContentWindow, aDocURI) {
 		gWinComm = null;
-		if (gSandbox) { Cu.nukeSandbox(gSandbox) }
+		if (gSandbox) { Cu.nukeSandbox(gSandbox); gSandbox=null; }
 	},
 	// not yet supported
 	// timeout: function(aContentWindow) {
@@ -190,7 +193,7 @@ function uninit() { // link4757484773732
 	}
 
 	content.setTimeout(function() {
-		if (gSandbox) { Cu.nukeSandbox(gSandbox) }
+		if (gSandbox) { Cu.nukeSandbox(gSandbox); gSandbox=null; }
 	}, 100); // because we want the gWinComm.postMessage('uninit') to trigger first
 
 	crossprocComm_unregAll();
