@@ -27,17 +27,14 @@ var pageLoader = {
 		var contentWindow = aContentWindow;
 		console.log('ready enter');
 
-		try {
-			if (gSandbox) { Cu.nukeSandbox(gSandbox); gSandbox=null; }
-		} catch(tofix) {
-			console.error('sandbox nuke error:', tofix); // TODO: figure out why this and fix it
-		}
+		if (gSandbox) { Cu.nukeSandbox(gSandbox); gSandbox=null; }
 		var principal = contentWindow.location.origin; // docShell.chromeEventHandler.contentPrincipal;
 		console.error('principal:', principal);
 		gSandbox = Cu.Sandbox(principal, {
 			sandboxPrototype: content,
-			wantXrays: false,
-			sameZoneAs: content
+			wantXrays: true, // only set this to false if you need direct access to the page's javascript. true provides a safer, isolated context.
+			sameZoneAs: content,
+			wantComponents: false
 		});
 		Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-with-addons.js?' + core.addon.cache_key, gSandbox, 'UTF-8');
 		Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-dom.js?' + core.addon.cache_key, gSandbox, 'UTF-8');
