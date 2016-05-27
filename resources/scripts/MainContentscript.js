@@ -4,7 +4,54 @@ var core;
 var gFsComm;
 
 var gAriaLabels = [
-	'Available on Chrome'
+	'‏متوفر في Chrome',
+	'Налице за Chrome',
+	'Chrome এ উপলব্ধ',
+	'Disponible a Chrome',
+	'K dispozici v Chromu',
+	'Tilgængelig til Chrome',
+	'Für Chrome verfügbar',
+	'Available on Chrome',
+	'Disponible en Chrome',
+	'Saadaval Chrome\'ile',
+	'ΔΙΑΘΕΣΙΜΟ ΣΤΟ CHROME',
+	'‏در Chrome موجود است',
+	'Available sa Chrome',
+	'Saatavilla Chromelle',
+	'Disponible sur Chrome',
+	'Chrome પર ઉપલ્બ્ધ છે',
+	'‏זמין ב-Chrome',
+	'Chrome पर उपलब्ध है',
+	'Dostupno na Chromeu',
+	'Elérhető Chrome-hoz',
+	'Tersedia di Chrome',
+	'Disponibile su Chrome',
+	'Chrome に追加',
+	'Chrome에서 사용 가능',
+	'Galima „Chrome“',
+	'Pieejama Chrome',
+	'Tersedia di Chrome',
+	'Chrome-ൽ ലഭ്യം',
+	'Chrome वर उपलब्ध',
+	'Beschikbaar voor Chrome',
+	'Tilgjengelig for Chrome',
+	'Dostępna dla Chrome',
+	'Disponível no Google Chrome',
+	'Disponível no Chrome',
+	'Disponibilă pe Chrome',
+	'Доступно в Chrome',
+	'K dispozícii v prehliadači Chrome',
+	'Na voljo za Chrome',
+	'Доступно у Chrome-у',
+	'Lägg till i Chrome',
+	'Chrome இல் உள்ளது',
+	'Chromeలో అందుబాటులో ఉంది',
+	'พร้อมใช้งานบน Chrome',
+	'Chrome için mevcut',
+	'Доступно для Chrome',
+	'Khả dụng trên Chrome',
+	'适用于 Chrome 浏览器',
+	'加到 Chrome'
 ];
 
 function init() {
@@ -69,6 +116,10 @@ function init() {
 		setTimeout(function() {
 			store.dispatch(toggleDisplay(true));
 		}, 6000);
+
+		setTimeout(function() {
+			store.dispatch(showPage('madeupExtid'));
+		}, 8000);
 
 
 	});
@@ -165,6 +216,8 @@ const TOGGLE_DISPLAY = 'TOGGLE_DISPLAY'; // should set true or false
 const SHOW_PAGE = 'SHOW_PAGE'; // should be a extension id, or any other special ids i give like "all exts" or "prefs" or something
 const UPDATE_STATUS = 'UPDATE_STATUS';
 
+// non-action constants
+
 // ACTION CREATORS
 function toggleDisplay(visible) { // true or false
 	return {
@@ -179,6 +232,23 @@ function showPage(id) { // extid is extension id
 	}
 }
 function updateStatus(extid, key, value) {
+	/* key - value
+	txt - string
+	name - string - extension name
+	// progresses
+	downloading_crx
+	converting_xpi
+	signing_xpi
+	signing_uploading
+	signing_checking
+	signing_downloading
+	installing
+	// flags
+	downloaded - bool
+	downloaded_signed - bool
+	signed - bool
+	failed_signing - false or string - string is the failed reason
+	*/
 	return {
 		type: UPDATE_STATUS,
 		extid,
@@ -280,9 +350,35 @@ var Modal = React.createClass({
 	}
 });
 
+var ExtActions = React.createClass({
+	render() {
+		var { extid, status, close } = this.props;
+		return React.createElement('div', { clssName:'foxified-ext-actions' },
+			React.createElement('button', {}, 'Install Unsigned'),
+			React.createElement('button', {}, 'Install'),
+			React.createElement('button', {}, 'Save Unsigned to File'),
+			React.createElement('button', {}, 'Save to File'),
+			React.createElement('button', {}, 'Open AMO Login'),
+			React.createElement('button', {}, 'Open AMO Agreement'),
+			React.createElement('button', { onClick:close }, 'Close')
+		);
+	}
+});
+var ExtStatus = React.createClass({
+	render() {
+		var { extid, status } = this.props;
+
+		var cChildren = [];
+
+		return React.createElement('div', { clssName:'foxified-ext-status' },
+			cChildren
+		);
+	}
+});
+
 var Page = React.createClass({
 	render() {
-		var { pageid, status } = this.props;
+		var { pageid, status, close } = this.props;
 		// status is only available if pageid is extid
 
 		var cChildren = [];
@@ -305,8 +401,9 @@ var Page = React.createClass({
 				break;
 			default:
 				// pageid is extid, so we show PAGE_EXT
-				var { txt } = status;
-				cChildren.push( React.createElement(ExtStatus, {txt}) );
+				var extid = pageid;
+				cChildren.push( React.createElement(ExtStatus, { extid, status }) );
+				cChildren.push( React.createElement(ExtActions, { extid, status, close }) );
 		}
 
 		return React.createElement('div', null,
@@ -358,8 +455,8 @@ const PageContainer = ReactRedux.connect(
 	},
 	function mapDispatchToProps(dispatch, ownProps) {
 		return {
-			onClick: function() {
-				dispatch(setVisibilityFilter(ownProps.filter))
+			close: function() {
+				dispatch(toggleDisplay(false))
 			}
 		}
 	}
