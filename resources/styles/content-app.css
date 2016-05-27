@@ -1,0 +1,30 @@
+.foxified-app {
+	z-index: 999999999;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: rgba(255, 255, 255, 0.4);
+}
+.foxified-modal {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: #fff;
+	border: 1px solid #000;
+	height: 200px;
+	width: 400px;
+	position: relative;
+}
+.foxified-header {
+	position: absolute;
+	bottom: 3px;
+	right: 3px;
+	width: 42px;
+	height: 48px;
+	background: transparent url("chrome://chrome-store-foxified-accessible/content/images/icon48.png") no-repeat scroll 0% 0%;
+}

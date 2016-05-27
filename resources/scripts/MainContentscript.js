@@ -42,29 +42,6 @@ function init() {
 			{
 				display: none;
 			}
-
-			/******* start app style *******/
-			.foxified-app {
-				z-index: 999999999;
-				position: fixed;
-				top: 0;
-				left: 0;
-				width: 100vw;
-				height: 100vh;
-				display: flex;
-				justify-content: center;
-				align-items: center;
-				background-color: rgba(255, 255, 255, 0.4);
-			}
-			.foxified-modal {
-				display: flex;
-				justify-content: center;
-				align-items: center;
-				background-color: #fff;
-				border: 1px solid #000;
-				height: 25vh;
-				width: 30vw;
-			}
 		`;
 
 		document.documentElement.insertBefore(styleEl, document.documentElement.firstChild);
@@ -92,10 +69,6 @@ function init() {
 		setTimeout(function() {
 			store.dispatch(toggleDisplay(true));
 		}, 6000);
-
-		setTimeout(function() {
-			store.dispatch(toggleDisplay(false));
-		}, 8000);
 
 
 	});
@@ -283,6 +256,7 @@ var App = React.createClass({
 		};
 
 		return React.createElement('div', cProps,
+			React.createElement('link', { rel:'stylesheet', type:'text/css', media:'screen', href:'chrome://chrome-store-foxified-accessible/content/styles/content-app.css' }),
 			React.createElement(Modal, null,
 				React.createElement(Header),
 				React.createElement(PageContainer)
@@ -293,9 +267,7 @@ var App = React.createClass({
 
 var Header = React.createClass({
 	render() {
-		return React.createElement('div', { className:'foxified-header' },
-			'Chrome Store Foxified'
-		)
+		return React.createElement('div', { className:'foxified-header' })
 	}
 });
 
