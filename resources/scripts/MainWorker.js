@@ -28,6 +28,31 @@ function init(objCore) {
 
 // Start - Addon Functionality
 
+function downloadCrx(extid, aComm) {
+	// called by bootstrap
+	xhrAsync('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + extid + '%26installsource%3Dondemand%26uc', {
+				responseType: 'arraybuffer'
+	}, function(xhrArg) {
+		var { request, ok } = xhrArg;
+		console.log('xhrArg:', xhrArg);
+		if (!ok || ok) {
+			gBsComm.postMessage('sDispatch', {
+				aMessageManager: '*',
+				creator: 'updateStatus',
+				applyarr: [
+					extid,
+					{
+						downloading_crx_failed: formatStringFromName('downloading_crx_failed_server', 'main'),
+						downloading_crx: false
+					}
+				],
+				inbs: true
+			});
+		}
+	});
+
+}
+
 self.onclose = function() {
 	console.log('ok ready to terminate');
 }
@@ -168,6 +193,100 @@ function formatStringFromName(aKey, aLocalizedPackageName, aReplacements) {
 	}
 
 	return cLocalizedStr;
+}
+
+function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052616
+	// console.error('in xhr!!! aUrlOrFileUri:', aUrlOrFileUri);
+
+	// all requests are sync - as this is in a worker
+	var aOptionsDefaults = {
+		responseType: 'text',
+		timeout: 0, // integer, milliseconds, 0 means never timeout, value is in milliseconds
+		headers: null, // make it an object of key value pairs
+		method: 'GET', // string
+		data: null // make it whatever you want (formdata, null, etc), but follow the rules, like if aMethod is 'GET' then this must be null
+	};
+	Object.assign(aOptionsDefaults, aOptions);
+	aOptions = aOptionsDefaults;
+
+	var request = new XMLHttpRequest();
+
+	var handler = ev => {
+		evf(m => request.removeEventListener(m, handler, !1));
+
+		switch (ev.type) {
+			case 'load':
+
+					aCallback({request, ok:true});
+					// if (xhr.readyState == 4) {
+					// 	if (xhr.status == 200) {
+					// 		deferredMain_xhr.resolve(xhr);
+					// 	} else {
+					// 		var rejObj = {
+					// 			name: 'deferredMain_xhr.promise',
+					// 			aReason: 'Load Not Success', // loaded but status is not success status
+					// 			xhr: xhr,
+					// 			message: xhr.statusText + ' [' + ev.type + ':' + xhr.status + ']'
+					// 		};
+					// 		deferredMain_xhr.reject(rejObj);
+					// 	}
+					// } else if (xhr.readyState == 0) {
+					// 	var uritest = Services.io.newURI(aStr, null, null);
+					// 	if (uritest.schemeIs('file')) {
+					// 		deferredMain_xhr.resolve(xhr);
+					// 	} else {
+					// 		var rejObj = {
+					// 			name: 'deferredMain_xhr.promise',
+					// 			aReason: 'Load Failed', // didnt even load
+					// 			xhr: xhr,
+					// 			message: xhr.statusText + ' [' + ev.type + ':' + xhr.status + ']'
+					// 		};
+					// 		deferredMain_xhr.reject(rejObj);
+					// 	}
+					// }
+
+				break;
+			case 'abort':
+			case 'error':
+			case 'timeout':
+
+					var result_details = {
+						reason: ev.type,
+						request,
+						message: request.statusText + ' [' + ev.type + ':' + request.status + ']'
+					};
+					aCallback({request:request, ok:false, result_details});
+
+				break;
+			default:
+				var result_details = {
+					reason: 'unknown',
+					request,
+					message: request.statusText + ' [' + ev.type + ':' + request.status + ']'
+				};
+				aCallback({xhr:request, ok:false, result_details});
+		}
+	};
+
+
+	var evf = f => ['load', 'error', 'abort', 'timeout'].forEach(f);
+	evf(m => request.addEventListener(m, handler, false));
+
+	request.open(aOptions.method, aUrlOrFileUri, true); // 3rd arg is false for async
+
+	if (aOptions.headers) {
+		for (var h in aOptions.headers) {
+			request.setRequestHeader(h, aOptions.headers[h]);
+		}
+	}
+
+	request.responseType = aOptions.responseType;
+	request.send(aOptions.data);
+
+	// console.log('response:', request.response);
+
+	// console.error('done xhr!!!');
+
 }
 
 function Deferred() { // revFinal

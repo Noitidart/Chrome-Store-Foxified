@@ -109,27 +109,52 @@ function shutdown(aData, aReason) {
 function fetchCore() {
 	return core;
 }
+
 var statuses = {};
 function addExt(aArg, aMessageManager, aBrowser, aComm) {
 	var { extid, name } = aArg;
 	if (!statuses[extid]) {
-		var status = {
-			name,
-			downloading_crx: true
+		statuses[extid] = {
+			name
 		};
-
-		statuses[extid] = status;
+	}
+	if (!statuses[extid].downloaded_crx && !statuses[extid].downloading_crx) {
+		statuses[extid].downloading_crx = true;
+		delete statuses[extid].downloading_crx_failed;
+		gWkComm.postMessage('downloadCrx', extid)
 	}
 
-	sDispatch(aMessageManager, 'replaceStatus', [
-		extid,
-		statuses[extid]
-	]);
+	sDispatch({
+		aMessageManager,
+		creator: 'replaceStatus',
+		applyarr: [
+			extid,
+			statuses[extid]
+		],
+		inbs: false
+	});
+}
+
+function updateStatus(extid, obj) {
+	var stateEntryOld = statuses[extid];
+	Object.assign(stateEntryOld, obj);
+}
+
+function replaceStatus(extid, status) {
+	statuses[extid] = status;
 }
 // end - functions called by framescript
 
 // start - functions called by worker
-function sDispatch(aMessageManager='*', creator, applyarr) {
+function sDispatch(aArg, aComm) {
+	var { aMessageManager, creator, applyarr, inbs } = aArg;
+	// inbs means update call obj in bootstrap scope as well
+	if (!aMessageManager) {
+		aMessageManager = '*';
+	}
+	if (inbs) {
+		gBootstrap[creator].apply(null, applyarr);
+	}
 	// if aMessageManager is null then it will call sDispatch in all tabs that have match
 	gFsComm.transcribeMessage(aMessageManager, 'callInContent', {
 		method: 'sDispatch',

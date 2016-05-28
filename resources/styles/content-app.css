@@ -20,6 +20,7 @@
 	width: 400px;
 	position: relative;
 	padding: 5px;
+	flex-direction: column;
 }
 .foxified-header {
 	position: absolute;

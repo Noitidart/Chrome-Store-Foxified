@@ -132,7 +132,7 @@ function uninit() {
 
 function genericClick(e) {
 	var targetEl = e.target;
-	console.log('clicked, targetEl:', targetEl.innerHTML);
+	// console.log('clicked, targetEl:', targetEl.innerHTML);
 	if (targetEl) {
 
 		var isTestBtn = targetEl.classList.contains('webstore-test-button-label');
@@ -141,7 +141,7 @@ function genericClick(e) {
 		try {
 			containsTestBtn = targetEl.querySelector('.webstore-test-button-label');
 		} catch(ignore) {}
-		console.log('isTestBtn:', isTestBtn, 'isRoleBtn:', isRoleBtn, 'containsTestBtn:', containsTestBtn);
+		// console.log('isTestBtn:', isTestBtn, 'isRoleBtn:', isRoleBtn, 'containsTestBtn:', containsTestBtn);
 
 		if (isTestBtn || (isRoleBtn && containsTestBtn)) {
 			var ariaLabel;
@@ -290,7 +290,8 @@ function showPage(id) { // extid is extension id
 		id
 	};
 }
-function updateStatus(extid, key, value) {
+
+function updateStatus(extid, obj) {
 	/* key - value
 	txt - string
 	name - string - extension name
@@ -312,7 +313,7 @@ function updateStatus(extid, key, value) {
 	return {
 		type: UPDATE_STATUS,
 		extid,
-		[key]: value
+		obj
 	}
 }
 
@@ -345,16 +346,16 @@ function pageid(state='PAGE_NONE', action) {
 function statuses(state={}, action) {
 	switch (action.type) {
 		case UPDATE_STATUS:
-			var { extid, key, value } = action;
+
+			var { extid, obj } = action;
 
 			var stateEntryOld = state[extid];
-			var stateEntryNew = Objct.assign({}, stateEntryOld, {
-				[key]: value
-			});
+			var stateEntryNew = Object.assign({}, stateEntryOld, obj);
 
 			return Object.assign({}, state, {
 				[extid]: stateEntryNew
 			});
+
 		case ADD_EXT:
 			var { extid, name } = action;
 
@@ -474,6 +475,7 @@ var ExtActions = React.createClass({
 });
 var ExtStatus = React.createClass({
 	render() {
+		// downloading_crx_failed - is set to string when failed
 		var { extid, status } = this.props;
 
 		var cChildren = [];
@@ -508,6 +510,9 @@ var ExtStatus = React.createClass({
 			} else {
 				cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('signing_failed_unknown', 'main')) );
 			}
+		}
+		if (status.downloading_crx_failed) {
+			cChildren.push( React.createElement('div', undefined, status.downloading_crx_failed) );
 		}
 		cChildren.push(React.createElement('br'));
 
