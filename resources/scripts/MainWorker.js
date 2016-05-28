@@ -144,12 +144,46 @@ function signXpi(extid) {
 		/*
 		ok: true or false
 		reason: present only if ok was set to false - current values:
-		 		no_crx - no source crx found
-
+		 		no_unsigned - no source unsigned xpi found
+				no_login_amo -
+				no_agree_amo -
 		*/
 	};
 
+	// read uint8 of core.addon.path.storage_unsigned
+		// error no_unsigned
+
+	// navigate to get amo details - do not store globally, i need to do every time to ensure logged in each time
+
+	// no_login_amo
+	// no_agree_amo
+
+	// modify id in unsigned to use hash of user id
+
+	// get offset of system clock to unix clock
+		// if server1 fails use server2. if server2 fails continue with system clock (possible last globally stored offset - think about it)
+
+	// go through signing on amo - its errors including especially time not in sync
+
+
 	return deferredMain_signXpi.promise;
+}
+
+function saveToFile(aArg, aComm) {
+	var { extid, which } = aArg;
+	// which is: 0-unsigned, 1-signed, 2-crx
+
+	var deferredMain_saveToFile = new Deferred();
+
+	var rez = {
+		/*
+		ok: bool
+		reason: only present on fail, current values:
+				no_src_file - meaning the source for the one requested is not there yet
+		*/
+	};
+
+	return deferredMain_saveToFile.promise;
 }
 
 self.onclose = function() {
