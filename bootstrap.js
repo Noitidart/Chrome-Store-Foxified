@@ -2,6 +2,15 @@
 const {interfaces: Ci, utils: Cu} = Components;
 Cu.import('resource://gre/modules/Services.jsm');
 
+// start - beutify stuff
+var gBeautify = {};
+(function() {
+	var { require } = Cu.import('resource://devtools/shared/Loader.jsm', {});
+	var { jsBeautify } = require('devtools/shared/jsbeautify/src/beautify-js');
+	gBeautify.js = jsBeautify;
+}());
+// end - beutify stuff
+
 // Globals
 var core = {
 	addon: {
@@ -131,7 +140,9 @@ function callInWorker(aArg, aComm) {
 // end - functions called by framescript
 
 // start - functions called by worker
-
+function beautifyManifest(aJsStr) {
+	return gBeautify.js(aJsStr);
+}
 // end - functions called by worker
 
 //start - common helper functions

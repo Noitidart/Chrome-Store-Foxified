@@ -16,6 +16,10 @@ function init(objCore) {
 	importScripts(core.addon.path.scripts + '3rd/enc-base64-min.js');
 
 	core.addon.path.storage = OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id, 'simple-storage');
+	core.addon.path.storage_crx = OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id, 'simple-storage', 'crx');
+	core.addon.path.storage_unsigned = OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id, 'simple-storage', 'unsigned');
+	core.addon.path.storage_signed = OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id, 'simple-storage', 'signed');
+	core.addon.path.storage_installations = OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id, 'simple-storage', 'installations');
 
 	// load all localization pacakages
 	formatStringFromName('blah', 'main');
@@ -56,10 +60,96 @@ function downloadCrx(extid, aComm) {
 		// 	rezObj.updateStatus.downloading_crx_failed = formatStringFromName('downloading_crx_failed_server', 'main');
 		// }
 
+		writeThenDir(OS.Path.join(core.addon.path.storage_crx, extid + '.crx'));
+
 		deferredMain_downloadCrx.resolve(rezObj)
 	});
 
 	return deferredMain_downloadCrx.promise;
+}
+
+function convertXpi(extid) {
+	// creates an unsigned xpi out of a crx
+	var deferredMain_convertXpi = new Deferred();
+
+	var rezMain = {
+		/*
+		ok: true or false
+		reason: present only if ok was set to false - current values:
+		 		no_crx - no source crx found
+		*/
+	};
+
+	// read crx
+	var crx_uint8;
+	try {
+		crx_uint8 = OS.File.read(OS.Path.join(core.addon.path.storage_crx, extid + '.crx'));
+	} catch (ex) {
+		rez.ok = false;
+		rez.reason = 'no_crx';
+	}
+
+	if (crx_uint8) {
+		var locOfPk = new Uint8Array(crx_uint8.buffer.slice(0, 1000));
+		// console.log('locOfPk:', locOfPk);
+		for (var i=0; i<locOfPk.length; i++) {
+			if (locOfPk[i] == 80 && locOfPk[i+1] == 75 && locOfPk[i+2] == 3 && locOfPk[i+3] == 4) {
+				locOfPk = null;
+				break;
+			}
+		}
+		console.log('pk found at:', i);
+
+		// TODO: possible error point here, if pk not found
+
+		var zip_buffer = crx_uint8.buffer.slice(i);
+		crx_uint8 = null;
+
+		var zip_jszip = new JSZip(zip_buffer);
+
+		var manifest = JSON.parse(zipJSZIP.file('manifest.json').asText());
+
+		// TODO: possible error point, if the JSON.parse fails
+
+		manifest.applications = {
+			gecko: {
+				id: extid + '@chrome-store=foxified-unsigned'
+			}
+		};
+
+		// TODO: many error points here - handle them all
+
+		gBsComm.postMessage('beautifyManifest', JSON.stringify(manifest), function(manfiest_pretty, aComm) {
+			zip_jszip.file('manifest.json', manfiest_pretty);
+
+			var zip_uint8 = zip_jszip.generate({type:'uint8array'});
+
+			writeThenDir(OS.Path.join(core.addon.path.storage_unsigned, extid + '.xpi'));
+
+			rezMain.ok = true;
+
+			deferredMain_convertXpi.reoslve(rezMain);
+		});
+	} else {
+		deferredMain_convertXpi.reoslve(rezMain);
+	}
+
+	return deferredMain_convertXpi.promise;
+}
+
+function signXpi(extid) {
+	var deferredMain_signXpi = new Deferred();
+
+	var rezMain = {
+		/*
+		ok: true or false
+		reason: present only if ok was set to false - current values:
+		 		no_crx - no source crx found
+
+		*/
+	};
+
+	return deferredMain_signXpi.promise;
 }
 
 self.onclose = function() {
@@ -69,6 +159,38 @@ self.onclose = function() {
 // End - Addon Functionality
 
 // start - common helper functions
+// https://gist.github.com/Noitidart/7810121036595cdc735de2936a7952da -rev1
+function writeThenDir(aPlatPath, aContents, aDirFrom, aOptions={}) {
+	// tries to writeAtomic
+	// if it fails due to dirs not existing, it creates the dir
+	// then writes again
+	// if fail again for whatever reason it throws
+
+	var cOptionsDefaults = {
+		encoding: 'utf-8',
+		noOverwrite: false,
+		// tmpPath: aPlatPath + '.tmp'
+	}
+
+	var do_write = function() {
+		return OS.File.writeAtomic(aPlatPath, aContents, aOptions); // doing unixMode:0o4777 here doesn't work, i have to `OS.File.setPermissions(path_toFile, {unixMode:0o4777})` after the file is made
+	};
+
+
+
+	try {
+		do_write();
+	} catch (OSFileError) {
+		if (OSFileError.becauseNoSuchFile) { // this happens when directories dont exist to it
+			OS.File.makeDir(OS.Path.dirname(aPlatPath), {from:aDirFrom});
+			do_write(); // if it fails this time it will throw outloud
+		} else {
+			throw OSFileError;
+		}
+	}
+
+}
+
 function setTimeoutSync(aMilliseconds) {
 	var breakDate = Date.now() + aMilliseconds;
 	while (Date.now() < breakDate) {}
