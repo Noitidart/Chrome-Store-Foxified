@@ -29,3 +29,6 @@
 	height: 48px;
 	background: transparent url("chrome://chrome-store-foxified-accessible/content/images/icon48.png") no-repeat scroll 0% 0%;
 }
+.foxified-page {
+	flex: 1 0 auto;
+}

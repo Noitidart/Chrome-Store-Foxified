@@ -326,7 +326,7 @@ function crossprocComm(aChannelId) {
 			var messageManager = e.target.messageManager;
 			var browser = e.target;
 			var payload = e.data;
-			console.log('bootstrap crossprocComm - incoming, payload:', payload); //, 'e:', e);
+			console.log('framescript crossprocComm - incoming, payload:', payload); //, 'e:', e);
 			// console.log('this in receiveMessage bootstrap:', this);
 
 			if (payload.method) {

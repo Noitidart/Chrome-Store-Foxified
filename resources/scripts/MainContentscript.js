@@ -228,6 +228,14 @@ function installClick(e) {
 		}
 		// ok do with the id now
 		store.dispatch(addExt(id, name));
+		gFsComm.postMessage('callInBootstrap', {
+			method:'addExt',
+			arg:{
+				extid: id,
+				name
+			}
+		});
+		// gFsComm.postMessage('callInBootstrap', {method:'broadcastStatus', arg:extid});
 		store.dispatch(showPage(id));
 		store.dispatch(toggleDisplay(true));
 	}
@@ -236,12 +244,20 @@ function installClick(e) {
 
 }
 
+// start - functions called by framescript
+function sDispatch(aArg, aComm) {
+	var { creator, applyarr } = aArg;
+	store.dispatch(gSubContent[creator].apply(store, applyarr));
+}
+// end - functions called by framescript
+
 // start - react-redux
 // ACTIONS
 const TOGGLE_DISPLAY = 'TOGGLE_DISPLAY'; // should set true or false
 const SHOW_PAGE = 'SHOW_PAGE'; // should be a extension id, or any other special ids i give like "all exts" or "prefs" or something
 const UPDATE_STATUS = 'UPDATE_STATUS';
 const ADD_EXT = 'ADD_EXT';
+const REPLACE_STATUS = 'REPLACE_STATUS';
 
 // non-action constants
 
@@ -251,20 +267,28 @@ function addExt(extid, name) {
 		type: ADD_EXT,
 		extid,
 		name
-	}
+	};
+}
+
+function replaceStatus(extid, status) {
+	return {
+		type: REPLACE_STATUS,
+		extid,
+		status
+	};
 }
 
 function toggleDisplay(visible) { // true or false
 	return {
 		type: TOGGLE_DISPLAY,
 		visible
-	}
+	};
 }
 function showPage(id) { // extid is extension id
 	return {
 		type: SHOW_PAGE,
 		id
-	}
+	};
 }
 function updateStatus(extid, key, value) {
 	/* key - value
@@ -279,7 +303,8 @@ function updateStatus(extid, key, value) {
 	signing_downloading
 	installing
 	// flags
-	downloaded - bool
+	downloaded_crx - bool
+	converted_xpi - bool
 	downloaded_signed - bool
 	signed - bool
 	failed_signing - false or string - string is the failed reason
@@ -345,7 +370,24 @@ function statuses(state={}, action) {
 					}
 				});
 			}
-			
+
+			return stateNew;
+		case REPLACE_STATUS:
+			var { extid, status } = action;
+
+			var stateEntryOld = state[extid];
+			var stateEntryNew = status;
+
+			var stateNew;
+			if (React.addons.shallowCompare({props:stateEntryOld}, stateEntryNew)) {
+				stateNew = Object.assign({}, state, {
+					[extid]: stateEntryNew
+				});
+			} else {
+				// its unchanged
+				stateNew = state;
+			}
+
 			return stateNew;
 		default:
 			return state;
@@ -405,14 +447,28 @@ var Modal = React.createClass({
 var ExtActions = React.createClass({
 	render() {
 		var { extid, status, close } = this.props;
+
+		var cChildren = [];
+		if (status.downloaded_crx) {
+			cChildren.push( React.createElement('button', {}, formatStringFromNameCore('crx_save', 'main')) );
+		}
+		if (status.converted_xpi) {
+			if (status.unsigned_installing) {
+				cChildren.push( React.createElement('button', {}, formatStringFromNameCore('unsigned_install', 'main')) );
+			}
+			cChildren.push( React.createElement('button', {}, formatStringFromNameCore('unsigned_save', 'main')) );
+		}
+		if (status.downloaded_signed) {
+			if (!status.signed_installing) {
+				cChildren.push( React.createElement('button', {}, formatStringFromNameCore('signed_install', 'main')) );
+			}
+			cChildren.push( React.createElement('button', {}, formatStringFromNameCore('signed_save', 'main')) );
+		}
+
+		cChildren.push( React.createElement('button', { onClick:close }, 'Close') );
+
 		return React.createElement('div', { clssName:'foxified-ext-actions' },
-			React.createElement('button', {}, 'Install Unsigned'),
-			React.createElement('button', {}, 'Install'),
-			React.createElement('button', {}, 'Save Unsigned to File'),
-			React.createElement('button', {}, 'Save to File'),
-			React.createElement('button', {}, 'Open AMO Login'),
-			React.createElement('button', {}, 'Open AMO Agreement'),
-			React.createElement('button', { onClick:close }, 'Close')
+			cChildren
 		);
 	}
 });
@@ -424,6 +480,35 @@ var ExtStatus = React.createClass({
 
 		cChildren.push(React.createElement('div', undefined, status.name));
 		cChildren.push(React.createElement('br'));
+		if (status.downloading_crx && !status.downloaded_crx) {
+			cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('downloading_crx', 'main')) );
+		}
+		if (status.converting_xpi) {
+			cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('converting_xpi', 'main')) );
+		}
+		if (status.signing_failed) {
+			if (status.signing_failed == formatStringFromNameCore('signing_failed_agreement')) {
+				cChildren.push(
+					React.createElement('div', undefined,
+						formatStringFromNameCore('signing_failed_agreement', 'main'),
+						React.createElement('a', undefined,
+							formatStringFromNameCore('signing_failed_agreement_link', 'main')
+						)
+					)
+				);
+			} else if (status.signing_failed == formatStringFromNameCore('signing_failed_login')) {
+				cChildren.push(
+					React.createElement('div', undefined,
+						formatStringFromNameCore('signing_failed_login', 'main'),
+						React.createElement('a', undefined,
+							formatStringFromNameCore('signing_failed_login_link', 'main')
+						)
+					)
+				);
+			} else {
+				cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('signing_failed_unknown', 'main')) );
+			}
+		}
 		cChildren.push(React.createElement('br'));
 
 		return React.createElement('div', { clssName:'foxified-ext-status' },
@@ -462,7 +547,7 @@ var Page = React.createClass({
 				cChildren.push( React.createElement(ExtActions, { extid, status, close }) );
 		}
 
-		return React.createElement('div', null,
+		return React.createElement('div', { className:'foxified-page' },
 			cChildren
 		);
 	}

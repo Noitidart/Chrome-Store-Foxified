@@ -109,7 +109,37 @@ function shutdown(aData, aReason) {
 function fetchCore() {
 	return core;
 }
+var statuses = {};
+function addExt(aArg, aMessageManager, aBrowser, aComm) {
+	var { extid, name } = aArg;
+	if (!statuses[extid]) {
+		var status = {
+			name,
+			downloading_crx: true
+		};
+
+		statuses[extid] = status;
+	}
+
+	sDispatch(aMessageManager, 'replaceStatus', [
+		extid,
+		statuses[extid]
+	]);
+}
 // end - functions called by framescript
+
+// start - functions called by worker
+function sDispatch(aMessageManager='*', creator, applyarr) {
+	// if aMessageManager is null then it will call sDispatch in all tabs that have match
+	gFsComm.transcribeMessage(aMessageManager, 'callInContent', {
+		method: 'sDispatch',
+		arg: {
+			creator,
+			applyarr
+		}
+	})
+}
+// end - functions called by worker
 
 //start - common helper functions
 // start - CommAPI
@@ -205,11 +235,19 @@ function crossprocComm(aChannelId) {
 		}
 
 		// return;
-		aMessageManager.sendAsyncMessage(aChannelId, {
-			method: aMethod,
-			arg: aArg,
-			cbid
-		});
+		if (aMessageManager == '*') {
+			Services.mm.broadcastAsyncMessage(aChannelId, {
+				method: aMethod,
+				arg: aArg,
+				cbid
+			});
+		} else {
+			aMessageManager.sendAsyncMessage(aChannelId, {
+				method: aMethod,
+				arg: aArg,
+				cbid
+			});
+		}
 	};
 	this.callbackReceptacle = {};
 
