@@ -173,7 +173,7 @@ function installClick(e) {
 
 
 	// figure out id
-	var id;
+	var extid;
 	var idPatt = /[^a-p]([a-p]{32})[^a-p]/i; // Thanks to @Rob--W the id is accurately obtained: "It is the first 32 characters of the public key's sha256 hash, with the 0-9a-f replaced with a-p"
 	var searchEl = e.target;
 	var i = 0;
@@ -185,12 +185,12 @@ function installClick(e) {
 		}
 		idExec = idPatt.exec(searchEl.innerHTML);
 		if (idExec) {
-			id = idExec[1];
+			extid = idExec[1];
 			break;
 		}
 	}
 
-	if (!id) {
+	if (!extid) {
 		alert(formatStringFromNameCore('fail_extract_id', 'main'));
 	} else {
 
@@ -224,31 +224,50 @@ function installClick(e) {
 		}
 
 		if (!name) {
-			name = 'Unknown Extension Name';
+			name = formatStringFromNameCore('unknown_ext_name', 'main');
 		}
-		// ok do with the id now
-		store.dispatch(addExt(id, name));
-		gFsComm.postMessage('callInBootstrap', {
-			method:'addExt',
-			arg:{
-				extid: id,
-				name
-			}
-		});
-		// gFsComm.postMessage('callInBootstrap', {method:'broadcastStatus', arg:extid});
-		store.dispatch(showPage(id));
+		// ok do with the extid now
+		// store.dispatch(addExt(extid, name));
+		store.dispatch(updateStatus(extid, {
+			name
+		}));
+		store.dispatch(showPage(extid));
 		store.dispatch(toggleDisplay(true));
+
+		downloadCrx(extid);
 	}
 
 	// insert modal
 
 }
 
-// start - functions called by framescript
-function sDispatch(aArg, aComm) {
-	var { creator, applyarr } = aArg;
-	store.dispatch(gSubContent[creator].apply(store, applyarr));
+function downloadCrx(extid) {
+	store.dispatch(updateStatus(extid, {
+		downloading_crx: true,
+		downloaded_crx: false,
+		downloading_crx_failed: undefined
+	}));
+	gFsComm.postMessage('callInBootstrap', {
+		method: 'callInWorker',
+		wait: true,
+		arg: {
+			method: 'downloadCrx',
+			wait: true,
+			arg: extid
+		}
+	}, undefined, function(aArg, aComm) {
+		console.log('back in content after triggering downloadCrx, got back aArg:', aArg);
+		var { request, ok, reason } = aArg; // reason only available when ok==false
+		store.dispatch(updateStatus(extid, {
+			downloading_crx: false,
+			downloaded_crx: ok,
+			downloading_crx_failed: ok ? undefined : formatStringFromNameCore('downloading_crx_failed_server', 'main', [request.statusText, request.status, reason])
+		}));
+	})
 }
+
+// start - functions called by framescript
+
 // end - functions called by framescript
 
 // start - react-redux
@@ -446,12 +465,23 @@ var Modal = React.createClass({
 });
 
 var ExtActions = React.createClass({
+	close() {
+		this.props.dispatch(toggleDisplay(false));
+	},
+	retry() {
+		// short for retryDownloadInstallFlow
+		downloadCrx(this.props.extid);
+	},
 	render() {
-		var { extid, status, close } = this.props;
+		var { extid, status, dispatch } = this.props;
 
 		var cChildren = [];
 		if (status.downloaded_crx) {
 			cChildren.push( React.createElement('button', {}, formatStringFromNameCore('crx_save', 'main')) );
+		} else {
+			if (!status.downloading_crx) {
+				cChildren.push( React.createElement('button', { onClick:this.retry }, formatStringFromNameCore('retry', 'main')) );
+			}
 		}
 		if (status.converted_xpi) {
 			if (status.unsigned_installing) {
@@ -466,7 +496,7 @@ var ExtActions = React.createClass({
 			cChildren.push( React.createElement('button', {}, formatStringFromNameCore('signed_save', 'main')) );
 		}
 
-		cChildren.push( React.createElement('button', { onClick:close }, 'Close') );
+		cChildren.push( React.createElement('button', { onClick:this.close }, 'Close') );
 
 		return React.createElement('div', { clssName:'foxified-ext-actions' },
 			cChildren
@@ -524,7 +554,7 @@ var ExtStatus = React.createClass({
 
 var Page = React.createClass({
 	render() {
-		var { pageid, status, close } = this.props;
+		var { pageid, status, dispatch } = this.props;
 		// status is only available if pageid is extid
 
 		var cChildren = [];
@@ -549,7 +579,7 @@ var Page = React.createClass({
 				// pageid is extid, so we show PAGE_EXT
 				var extid = pageid;
 				cChildren.push( React.createElement(ExtStatus, { extid, status }) );
-				cChildren.push( React.createElement(ExtActions, { extid, status, close }) );
+				cChildren.push( React.createElement(ExtActions, { extid, status, dispatch }) );
 		}
 
 		return React.createElement('div', { className:'foxified-page' },
@@ -597,14 +627,12 @@ const PageContainer = ReactRedux.connect(
 		return {
 			status,
 			pageid
-		}
+		};
 	},
 	function mapDispatchToProps(dispatch, ownProps) {
 		return {
-			close: function() {
-				dispatch(toggleDisplay(false))
-			}
-		}
+			dispatch
+		};
 	}
 )(Page);
 // end - react-redux

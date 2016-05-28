@@ -30,27 +30,36 @@ function init(objCore) {
 
 function downloadCrx(extid, aComm) {
 	// called by bootstrap
+	var deferredMain_downloadCrx = new Deferred();
+
 	xhrAsync('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + extid + '%26installsource%3Dondemand%26uc', {
-				responseType: 'arraybuffer'
+		responseType: 'arraybuffer',
+		timeout: 30000,
 	}, function(xhrArg) {
-		var { request, ok } = xhrArg;
+		var { request, ok, reason } = xhrArg; // reason is undefined if ok==true
 		console.log('xhrArg:', xhrArg);
-		if (!ok || ok) {
-			gBsComm.postMessage('sDispatch', {
-				aMessageManager: '*',
-				creator: 'updateStatus',
-				applyarr: [
-					extid,
-					{
-						downloading_crx_failed: formatStringFromName('downloading_crx_failed_server', 'main'),
-						downloading_crx: false
-					}
-				],
-				inbs: true
-			});
+		try {
+			console.log('request.responseText:', request.responseText);
+		} catch(ex) {
+			console.error('failed to read responseText, ex:', ex);
 		}
+		var rezObj = {
+			ok,
+			reason, // is undefined if ok==true
+			request: {
+				status: request.status,
+				statusText: request.statusText
+			}
+		};
+		// if (!ok) {
+		// 	rezObj.status
+		// 	rezObj.updateStatus.downloading_crx_failed = formatStringFromName('downloading_crx_failed_server', 'main');
+		// }
+
+		deferredMain_downloadCrx.resolve(rezObj)
 	});
 
+	return deferredMain_downloadCrx.promise;
 }
 
 self.onclose = function() {
@@ -195,7 +204,7 @@ function formatStringFromName(aKey, aLocalizedPackageName, aReplacements) {
 	return cLocalizedStr;
 }
 
-function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052616
+function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052716 - added timeout support
 	// console.error('in xhr!!! aUrlOrFileUri:', aUrlOrFileUri);
 
 	// all requests are sync - as this is in a worker
@@ -210,6 +219,8 @@ function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052616
 	aOptions = aOptionsDefaults;
 
 	var request = new XMLHttpRequest();
+
+	request.timeout = aOptions.timeout;
 
 	var handler = ev => {
 		evf(m => request.removeEventListener(m, handler, !1));
@@ -250,12 +261,12 @@ function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052616
 			case 'error':
 			case 'timeout':
 
-					var result_details = {
-						reason: ev.type,
-						request,
-						message: request.statusText + ' [' + ev.type + ':' + request.status + ']'
-					};
-					aCallback({request:request, ok:false, result_details});
+					// var result_details = {
+					// 	reason: ev.type,
+					// 	request,
+					// 	message: request.statusText + ' [' + ev.type + ':' + request.status + ']'
+					// };
+					aCallback({request:request, ok:false, reason:ev.type});
 
 				break;
 			default:

@@ -109,64 +109,61 @@ function shutdown(aData, aReason) {
 function fetchCore() {
 	return core;
 }
+function callInWorker(aArg, aComm) {
+	// called by framescript
+	var {method, arg, wait} = aArg;
+	// wait - bool - set to true if you want to wait for response from worker, and then return it to framescript
 
-var statuses = {};
-function addExt(aArg, aMessageManager, aBrowser, aComm) {
-	var { extid, name } = aArg;
-	if (!statuses[extid]) {
-		statuses[extid] = {
-			name
+	var cWorkerCommCb = undefined;
+	var rez = undefined;
+	if (wait) {
+		var deferred_callInWorker = new Deferred();
+
+		cWorkerCommCb = function(aVal) {
+			deferred_callInWorker.resolve(aVal);
 		};
+
+		rez = deferred_callInWorker.promise;
 	}
-	if (!statuses[extid].downloaded_crx && !statuses[extid].downloading_crx) {
-		statuses[extid].downloading_crx = true;
-		delete statuses[extid].downloading_crx_failed;
-		gWkComm.postMessage('downloadCrx', extid)
-	}
-
-	sDispatch({
-		aMessageManager,
-		creator: 'replaceStatus',
-		applyarr: [
-			extid,
-			statuses[extid]
-		],
-		inbs: false
-	});
-}
-
-function updateStatus(extid, obj) {
-	var stateEntryOld = statuses[extid];
-	Object.assign(stateEntryOld, obj);
-}
-
-function replaceStatus(extid, status) {
-	statuses[extid] = status;
+	gWkComm.postMessage(method, arg, undefined, cWorkerCommCb); // :todo: design a way so it can transfer to content. for sure though the info that comes here from bootstap is copied. but from here to content i should transfer if possible
+	return rez;
 }
 // end - functions called by framescript
 
 // start - functions called by worker
-function sDispatch(aArg, aComm) {
-	var { aMessageManager, creator, applyarr, inbs } = aArg;
-	// inbs means update call obj in bootstrap scope as well
-	if (!aMessageManager) {
-		aMessageManager = '*';
-	}
-	if (inbs) {
-		gBootstrap[creator].apply(null, applyarr);
-	}
-	// if aMessageManager is null then it will call sDispatch in all tabs that have match
-	gFsComm.transcribeMessage(aMessageManager, 'callInContent', {
-		method: 'sDispatch',
-		arg: {
-			creator,
-			applyarr
-		}
-	})
-}
+
 // end - functions called by worker
 
 //start - common helper functions
+function Deferred() { // revFinal
+	this.resolve = null;
+	this.reject = null;
+	this.promise = new Promise(function(resolve, reject) {
+		this.resolve = resolve;
+		this.reject = reject;
+	}.bind(this));
+	Object.freeze(this);
+}
+function genericReject(aPromiseName, aPromiseToReject, aReason) {
+	var rejObj = {
+		name: aPromiseName,
+		aReason: aReason
+	};
+	console.error('Rejected - ' + aPromiseName + ' - ', rejObj);
+	if (aPromiseToReject) {
+		aPromiseToReject.reject(rejObj);
+	}
+}
+function genericCatch(aPromiseName, aPromiseToReject, aCaught) {
+	var rejObj = {
+		name: aPromiseName,
+		aCaught: aCaught
+	};
+	console.error('Caught - ' + aPromiseName + ' - ', rejObj);
+	if (aPromiseToReject) {
+		aPromiseToReject.reject(rejObj);
+	}
+}
 // start - CommAPI
 // common to all of these apis
 	// whenever you use the message method, the method MUST not be a number, as if it is, then it is assumed it is a callback
@@ -260,19 +257,11 @@ function crossprocComm(aChannelId) {
 		}
 
 		// return;
-		if (aMessageManager == '*') {
-			Services.mm.broadcastAsyncMessage(aChannelId, {
-				method: aMethod,
-				arg: aArg,
-				cbid
-			});
-		} else {
-			aMessageManager.sendAsyncMessage(aChannelId, {
-				method: aMethod,
-				arg: aArg,
-				cbid
-			});
-		}
+		aMessageManager.sendAsyncMessage(aChannelId, {
+			method: aMethod,
+			arg: aArg,
+			cbid
+		});
 	};
 	this.callbackReceptacle = {};
 
