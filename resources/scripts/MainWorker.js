@@ -48,12 +48,17 @@ function downloadCrx(extid, aComm) {
 		} catch(ex) {
 			console.error('failed to read responseText, ex:', ex);
 		}
+
+		if (ok && request.status != 200) {
+			ok = false;
+		}
 		var rezObj = {
 			ok,
 			reason, // is undefined if ok==true
 			request: {
 				status: request.status,
 				statusText: request.statusText
+				// , responseText: request.responseText
 			}
 		};
 
@@ -192,154 +197,21 @@ function signXpi(extid) {
 		// navigate to get amo details - do not store globally, i need to do every time to ensure logged in each time
 			// no_login_amo
 			// no_agree_amo
+
+		// start - async-proc25830
+		var asynProc25830 = function() {
+			updateStatus(extid, {
+				signing_xpi: formatStringFromName('signing_xpi_checking_loggedin', 'main')
+			});
+			xhrAsync(AMODOMAIN + '/en-US/developers/addon/api/key/', {
+				timeout: 10000
+			}, callbackLoadkey);
+		};
+
 		var amo_user = {
 			// key:
 			// secret:
 		};
-
-
-		var afterSystemTimeOffsetGot = function() {
-			// go through signing on amo - its errors including especially time not in sync
-
-			console.log('systemTimeOffset:', systemTimeOffset);
-			updateStatus(extid, {
-				signing_xpi: formatStringFromName('signing_xpi_uploading', 'main')
-			});
-		};
-
-		var getCorrectedSystemTime = function() {
-			// returns milliseconds
-			return (new Date()).getTime() - systemTimeOffset;
-		};
-		var systemTimeOffset; // in seconds
-		var afterXpiIdModded = function() {
-			// get offset of system clock to unix clock
-				// if server1 fails use server2. if server2 fails continue with system clock (possible last globally stored offset - think about it)
-
-			var requestStart; // start time of request
-
-			var tryServer1 = function() {
-				requestStart = (new Date()).getTime();
-				xhrAsync('http://currenttimestamp.com/', {
-					timeout: 10000
-				}, callbackServer1);
-			};
-
-			var tryServer2 = function() {
-				updateStatus(extid, {
-					signing_xpi: formatStringFromName('signing_xpi_unix_server_2', 'main')
-				});
-				requestStart = (new Date()).getTime();
-				xhrAsync('http://convert-unix-time.com/', {
-					timeout: 10000
-				}, callbackServer2);
-			};
-
-
-			var callbackServer1 = function(xhrArg) {
-				var { request, ok, reason } = xhrArg;
-
-				var onFail = function() {
-					tryServer2();
-				};
-
-				if (!ok) {
-					onFail();
-				} else {
-					var requestEnd = (new Date()).getTime();
-					var requestDuration = requestEnd - requestStart;
-					var html = request.response;
-
-					// start - calc sys offset
-					var nowDateServerMatch = /current_time = (\d+);/.exec(html);
-					if (!nowDateServerMatch) {
-						onFail();
-					}
-					console.log('nowDateServerMatch:', nowDateServerMatch);
-
-					var nowDateServerUncompensated = parseInt(nowDateServerMatch[1]) * 1000;
-					console.log('nowDateServerUncompensated:', nowDateServerUncompensated);
-
-					var nowDateServer = nowDateServerUncompensated - requestDuration;
-					console.log('nowDateServer:', nowDateServer);
-
-					console.log('systemNow:', (new Date(requestStart)).toLocaleString(), 'serverNow:', (new Date(nowDateServer)).toLocaleString(), 'requestDuration seconds:', (requestDuration / 1000))
-					systemTimeOffset = requestStart - nowDateServer;
-					gLastSystemTimeOffset = systemTimeOffset;
-					// end - calc sys offset
-
-					afterSystemTimeOffsetGot();
-				}
-			};
-
-			var callbackServer2 = function(xhrArg) {
-				var { request, ok, reason } = xhrArg;
-
-				var onFail = function() {
-					// rely on whatever gLastSystemTimeOffset is
-					afterSystemTimeOffsetGot();
-				};
-
-				if (!ok) {
-					onFail();
-				} else {
-					var requestEnd = (new Date()).getTime();
-					var requestDuration = requestEnd - requestStart;
-					var html = request.response;
-
-
-					// start - calc sys offset
-					var nowDateServerMatch = /Seconds since 1970 (\d+)/.exec(html);
-					if (!nowDateServerMatch) {
-						onFail();
-					}
-					console.log('nowDateServerMatch:', nowDateServerMatch);
-
-					var nowDateServerUncompensated = parseInt(nowDateServerMatch[1]) * 1000;
-					console.log('nowDateServerUncompensated:', nowDateServerUncompensated);
-
-					var nowDateServer = nowDateServerUncompensated - requestDuration;
-					console.log('nowDateServer:', nowDateServer);
-
-					console.log('systemNow:', (new Date(requestStart)).toLocaleString(), 'serverNow:', (new Date(nowDateServer)).toLocaleString(), 'requestDuration seconds:', (requestDuration / 1000))
-					systemTimeOffset = requestStart - nowDateServer;
-					gLastSystemTimeOffset = systemTimeOffset;
-					// end - calc sys offset
-
-					afterSystemTimeOffsetGot();
-				}
-			};
-
-			updateStatus(extid, {
-				signing_xpi: formatStringFromName('signing_xpi_unix_server_1', 'main')
-			});
-			tryServer1();
-		};
-
-		var presigned_zip_blob;
-		var afterAmouserPopulated = function() {
-			// modify id in unsigned to use hash of user id
-
-			updateStatus(extid, {
-				signing_xpi: formatStringFromName('signing_xpi_setting_id', 'main')
-			});
-
-			var unsigned_jszip = new JSZip(unsigned_uint8.buffer);
-			unsigned_uint8 = null;
-
-			var manifest_txt = unsigned_jszip.file('manifest.json').asText();
-
-			manifest_txt.replace(extid + '@chrome-store-foxified-unsigned', extid + '@chrome-store-foxified-' + HashString(amo_user.key));
-
-			// TODO: error points here? JSZip failing? maybe think about it, if there are then handle it
-
-			unsigned_jszip.file('manifest.json', manifest_txt);
-
-			presigned_zip_blob = unsigned_jszip.generate({type:'blob'});
-
-			afterXpiIdModded();
-		};
-
 		var didGenerate = false;
 		var callbackLoadkey = function(xhrArg) {
 			var { request, ok, reason } = xhrArg;
@@ -426,12 +298,152 @@ function signXpi(extid) {
 			}
 		};
 
-		updateStatus(extid, {
-			signing_xpi: formatStringFromName('signing_xpi_checking_loggedin', 'main')
-		});
-		xhrAsync(AMODOMAIN + '/en-US/developers/addon/api/key/', {
-			timeout: 10000
-		}, callbackLoadkey);
+		var presigned_zip_blob;
+		var afterAmouserPopulated = function() {
+			// modify id in unsigned to use hash of user id
+
+			updateStatus(extid, {
+				signing_xpi: formatStringFromName('signing_xpi_setting_id', 'main')
+			});
+
+			var unsigned_jszip = new JSZip(unsigned_uint8.buffer);
+			unsigned_uint8 = null;
+
+			var manifest_txt = unsigned_jszip.file('manifest.json').asText();
+
+			manifest_txt.replace(extid + '@chrome-store-foxified-unsigned', extid + '@chrome-store-foxified-' + HashString(amo_user.key));
+
+			// TODO: error points here? JSZip failing? maybe think about it, if there are then handle it
+
+			unsigned_jszip.file('manifest.json', manifest_txt);
+
+			presigned_zip_blob = unsigned_jszip.generate({type:'blob'});
+
+			afterXpiIdModded();
+		};
+
+		var systemTimeOffset; // in milliseconds
+		var afterXpiIdModded = function() {
+			// get offset of system clock to unix clock
+				// if server1 fails use server2. if server2 fails continue with system clock (possible last globally stored offset - think about it)
+
+			// start async-proc94848
+			var requestStart; // start time of request
+			var asyncProc94848 = function() {
+				updateStatus(extid, {
+					signing_xpi: formatStringFromName('signing_xpi_unix_server_1', 'main')
+				});
+				tryServer1();
+			};
+
+			var tryServer1 = function() {
+				requestStart = Date.now();
+				xhrAsync('http://currenttimestamp.com/', {
+					timeout: 10000
+				}, callbackServer1);
+			};
+
+			var callbackServer1 = function(xhrArg) {
+				var { request, ok, reason } = xhrArg;
+
+				var onFail = function() {
+					tryServer2();
+				};
+
+				if (!ok) {
+					onFail();
+				} else {
+					var requestEnd = Date.now();
+					var requestDuration = requestEnd - requestStart;
+					var html = request.response;
+
+					// start - calc sys offset
+					var nowDateServerMatch = /current_time = (\d+);/.exec(html);
+					if (!nowDateServerMatch) {
+						onFail();
+					}
+					console.log('nowDateServerMatch:', nowDateServerMatch);
+
+					var nowDateServerUncompensated = parseInt(nowDateServerMatch[1]) * 1000;
+					console.log('nowDateServerUncompensated:', nowDateServerUncompensated);
+
+					var nowDateServer = nowDateServerUncompensated - requestDuration;
+					console.log('nowDateServer:', nowDateServer);
+
+					console.log('systemNow:', (new Date(requestStart)).toLocaleString(), 'serverNow:', (new Date(nowDateServer)).toLocaleString(), 'requestDuration seconds:', (requestDuration / 1000))
+					systemTimeOffset = requestStart - nowDateServer;
+					gLastSystemTimeOffset = systemTimeOffset;
+					// end - calc sys offset
+
+					afterSystemTimeOffsetGot();
+				}
+			};
+
+			var tryServer2 = function() {
+				updateStatus(extid, {
+					signing_xpi: formatStringFromName('signing_xpi_unix_server_2', 'main')
+				});
+				requestStart = Date.now();
+				xhrAsync('http://convert-unix-time.com/', {
+					timeout: 10000
+				}, callbackServer2);
+			};
+
+			var callbackServer2 = function(xhrArg) {
+				var { request, ok, reason } = xhrArg;
+
+				var onFail = function() {
+					// rely on whatever gLastSystemTimeOffset is
+					afterSystemTimeOffsetGot();
+				};
+
+				if (!ok) {
+					onFail();
+				} else {
+					var requestEnd = Date.now();
+					var requestDuration = requestEnd - requestStart;
+					var html = request.response;
+
+
+					// start - calc sys offset
+					var nowDateServerMatch = /Seconds since 1970 (\d+)/.exec(html);
+					if (!nowDateServerMatch) {
+						onFail();
+					}
+					console.log('nowDateServerMatch:', nowDateServerMatch);
+
+					var nowDateServerUncompensated = parseInt(nowDateServerMatch[1]) * 1000;
+					console.log('nowDateServerUncompensated:', nowDateServerUncompensated);
+
+					var nowDateServer = nowDateServerUncompensated - requestDuration;
+					console.log('nowDateServer:', nowDateServer);
+
+					console.log('systemNow:', (new Date(requestStart)).toLocaleString(), 'serverNow:', (new Date(nowDateServer)).toLocaleString(), 'requestDuration seconds:', (requestDuration / 1000))
+					systemTimeOffset = requestStart - nowDateServer;
+					gLastSystemTimeOffset = systemTimeOffset;
+					// end - calc sys offset
+
+					afterSystemTimeOffsetGot();
+				}
+			};
+
+			asyncProc94848();
+			// end - async-proc94848
+		};
+
+		var getCorrectedSystemTime = ()=>(Date.now() - systemTimeOffset);
+		var afterSystemTimeOffsetGot = function() {
+			// go through signing on amo - its errors including especially time not in sync
+
+			console.log('systemTimeOffset:', systemTimeOffset);
+			updateStatus(extid, {
+				signing_xpi: formatStringFromName('signing_xpi_uploading', 'main')
+			});
+		};
+
+		asynProc25830();
+		// end - async-proc25830
+
 	}
 
 	return deferredMain_signXpi.promise;

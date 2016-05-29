@@ -263,7 +263,9 @@ function downloadCrx(extid) {
 			downloading_crx_failed: ok ? undefined : formatStringFromNameCore('downloading_crx_failed_server', 'main', [request.statusText, request.status, reason])
 		}));
 
-		convertXpi(extid);
+		if (ok) {
+			convertXpi(extid);
+		}
 	});
 }
 
@@ -576,7 +578,11 @@ var ExtActions = React.createClass({
 		});
 	},
 	sign: function() {
-		signXpi(this.props.extid);
+		var { extid, status, dispatch } = this.props;
+		if (status.asking_perm_or_temp) {
+			dispatch( updateStatus(extid, { asking_perm_or_temp:undefined }) );
+		}
+		signXpi(extid);
 	},
 	render() {
 		var { extid, status, dispatch } = this.props;
@@ -616,10 +622,7 @@ var ExtStatus = React.createClass({
 
 		e.preventDefault(); // so it doesnt changel locaiton to "#"
 
-		store.dispatch(updateStatus(extid, {
-			asking_perm_or_temp: undefined,
-			unsigned_installing: true
-		}));
+		store.dispatch( updateStatus(extid, { asking_perm_or_temp:undefined, unsigned_installing:true }) );
 	},
 	installPerm(e) {
 		var { extid } = this.props;
