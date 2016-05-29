@@ -530,6 +530,15 @@ var ExtActions = React.createClass({
 		// short for retryDownloadInstallFlow
 		downloadCrx(this.props.extid);
 	},
+	saveCrx() {
+		this.save(2);
+	},
+	saveUnsigned() {
+		this.save(0);
+	},
+	saveSigned() {
+		this.save(1);
+	},
 	save(which) {
 		var { version, name } = this.props.status;
 		gFsComm.postMessage('callInBootstrap', {
@@ -566,12 +575,15 @@ var ExtActions = React.createClass({
 			}
 		});
 	},
+	sign: function() {
+		signXpi(this.props.extid);
+	},
 	render() {
 		var { extid, status, dispatch } = this.props;
 
 		var cChildren = [];
 		if (status.downloaded_crx) {
-			cChildren.push( React.createElement('button', { onClick:this.save.bind(this, 2) }, formatStringFromNameCore('crx_save', 'main')) );
+			cChildren.push( React.createElement('button', { onClick:this.saveCrx }, formatStringFromNameCore('crx_save', 'main')) );
 		} else {
 			if (!status.downloading_crx) {
 				cChildren.push( React.createElement('button', { onClick:this.retry }, formatStringFromNameCore('retry', 'main')) );
@@ -581,14 +593,16 @@ var ExtActions = React.createClass({
 			if (!status.unsigned_installing) {
 				cChildren.push( React.createElement('button', {}, formatStringFromNameCore('unsigned_install', 'main')) );
 			}
-			cChildren.push( React.createElement('button', { onClick:this.save.bind(this, 0) }, formatStringFromNameCore('unsigned_save', 'main')) );
-			cChildren.push( React.createElement('button', { onClick:signXpi.bind(null, extid) }, formatStringFromNameCore('sign_unsigned_addon', 'main')) );
+			cChildren.push( React.createElement('button', { onClick:this.saveUnsigned }, formatStringFromNameCore('unsigned_save', 'main')) );
+			if (!status.signing_xpi) {
+				cChildren.push( React.createElement('button', { onClick:this.sign }, formatStringFromNameCore('sign_unsigned_addon', 'main')) );
+			}
 		}
 		if (status.downloaded_signed) {
 			if (!status.signed_installing) {
 				cChildren.push( React.createElement('button', {}, formatStringFromNameCore('signed_install', 'main')) );
 			}
-			cChildren.push( React.createElement('button', { onClick:this.save.bind(this, 1) }, formatStringFromNameCore('signed_save', 'main')) );
+			cChildren.push( React.createElement('button', { onClick:this.saveSigned }, formatStringFromNameCore('signed_save', 'main')) );
 		}
 
 		return React.createElement('div', { className:'foxified-ext-actions' },
