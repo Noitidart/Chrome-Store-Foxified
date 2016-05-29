@@ -228,9 +228,8 @@ function installClick(e) {
 		}
 		// ok do with the extid now
 		// store.dispatch(addExt(extid, name));
-		store.dispatch(updateStatus(extid, {
-			name,
-			asking_perm_or_temp: undefined
+		store.dispatch(replaceStatus(extid, {
+			name
 		}));
 		store.dispatch(showPage(extid));
 		store.dispatch(toggleDisplay(true));
@@ -245,7 +244,6 @@ function installClick(e) {
 function downloadCrx(extid) {
 	store.dispatch(updateStatus(extid, {
 		downloading_crx: true,
-		downloaded_crx: false,
 		downloading_crx_failed: undefined
 	}));
 	gFsComm.postMessage('callInBootstrap', {
@@ -575,7 +573,7 @@ var ExtActions = React.createClass({
 			cChildren.push( React.createElement('button', { onClick:this.save.bind(this, 1) }, formatStringFromNameCore('signed_save', 'main')) );
 		}
 
-		return React.createElement('div', { clssName:'foxified-ext-actions' },
+		return React.createElement('div', { className:'foxified-ext-actions' },
 			cChildren
 		);
 	}
@@ -678,7 +676,7 @@ var ExtStatus = React.createClass({
 		}
 		cChildren.push(React.createElement('br'));
 
-		return React.createElement('div', { clssName:'foxified-ext-status' },
+		return React.createElement('div', { className:'foxified-ext-status' },
 			cChildren
 		);
 	}

@@ -45,3 +45,13 @@
 .foxified-close:hover {
 	color: red;
 }
+.foxified-ext-actions {
+	padding-right: 55px;
+}
+.foxified-ext-status {
+	flex: 1 0 auto;
+}
+.foxified-page {
+	display: flex;
+	flex-direction: column;
+}
