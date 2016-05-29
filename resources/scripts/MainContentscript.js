@@ -263,6 +263,30 @@ function downloadCrx(extid) {
 			downloaded_crx: ok,
 			downloading_crx_failed: ok ? undefined : formatStringFromNameCore('downloading_crx_failed_server', 'main', [request.statusText, request.status, reason])
 		}));
+
+		convertXpi(extid);
+	});
+}
+
+function convertXpi(extid) {
+	store.dispatch(updateStatus(extid, {
+		converting_xpi: true
+	}));
+	gFsComm.postMessage('callInBootstrap', {
+		method: 'callInWorker',
+		wait: true,
+		arg: {
+			method: 'convertXpi',
+			wait: true,
+			arg: extid
+		}
+	}, undefined, function(aArg, aComm) {
+		console.log('back in content after triggering downloadCrx, got back aArg:', aArg);
+		var { request, ok, reason } = aArg; // reason only available when ok==false
+		store.dispatch(updateStatus(extid, {
+			converting_xpi: false,
+			converted_xpi: ok
+		}));
 	});
 }
 
@@ -548,7 +572,7 @@ var ExtStatus = React.createClass({
 		if (status.downloading_crx && !status.downloaded_crx) {
 			cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('downloading_crx', 'main')) );
 		}
-		if (status.converting_xpi) {
+		if (status.converting_xpi && !status.converted_xpi) {
 			cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('converting_xpi', 'main')) );
 		}
 		if (status.signing_failed) {

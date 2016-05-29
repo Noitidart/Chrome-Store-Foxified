@@ -14,6 +14,7 @@ function init(objCore) {
 
 	importScripts(core.addon.path.scripts + '3rd/hmac-sha256.js');
 	importScripts(core.addon.path.scripts + '3rd/enc-base64-min.js');
+	importScripts(core.addon.path.scripts + '3rd/jszip.min.js');
 
 	core.addon.path.storage = OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id, 'simple-storage');
 	core.addon.path.storage_crx = OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id, 'simple-storage', 'crx');
@@ -110,19 +111,19 @@ function convertXpi(extid) {
 
 		var zip_jszip = new JSZip(zip_buffer);
 
-		var manifest = JSON.parse(zipJSZIP.file('manifest.json').asText());
+		var manifest = JSON.parse(zip_jszip.file('manifest.json').asText());
 
 		// TODO: possible error point, if the JSON.parse fails
 
 		manifest.applications = {
 			gecko: {
-				id: extid + '@chrome-store=foxified-unsigned'
+				id: extid + '@chrome-store-foxified-unsigned'
 			}
 		};
 
 		// TODO: many error points here - handle them all
 
-		gBsComm.postMessage('beautifyManifest', JSON.stringify(manifest), function(manfiest_pretty, aComm) {
+		gBsComm.postMessage('beautifyManifest', JSON.stringify(manifest), null, function(manfiest_pretty, aComm) {
 			zip_jszip.file('manifest.json', manfiest_pretty);
 
 			var zip_uint8 = zip_jszip.generate({type:'uint8array'});
@@ -136,10 +137,10 @@ function convertXpi(extid) {
 
 			rezMain.ok = true;
 
-			deferredMain_convertXpi.reoslve(rezMain);
+			deferredMain_convertXpi.resolve(rezMain);
 		});
 	} else {
-		deferredMain_convertXpi.reoslve(rezMain);
+		deferredMain_convertXpi.resolve(rezMain);
 	}
 
 	return deferredMain_convertXpi.promise;
