@@ -146,6 +146,7 @@ function convertXpi(extid) {
 	return deferredMain_convertXpi.promise;
 }
 
+var gLastSystemTimeOffset = 0;  // in seconds // for use in case server1 and server2 fail to provide time
 function signXpi(extid) {
 	var deferredMain_signXpi = new Deferred();
 
@@ -192,21 +193,121 @@ function signXpi(extid) {
 			// secret:
 		};
 
-		var presigned_zip_blob;
 
+		var afterSystemTimeOffsetGot = function() {
+			// go through signing on amo - its errors including especially time not in sync
+
+			console.log('systemTimeOffset:', systemTimeOffset);
+		};
+
+		var getCorrectedSystemTime = function() {
+			// returns seconds
+			return (new Date()).getTime() - systemTimeOffset;
+		};
+		var systemTimeOffset; // in seconds
 		var afterXpiIdModded = function() {
 			// get offset of system clock to unix clock
 				// if server1 fails use server2. if server2 fails continue with system clock (possible last globally stored offset - think about it)
 
-			// go through signing on amo - its errors including especially time not in sync
+			var requestStart; // start time of request
+
+			var tryServer1 = function() {
+				requestStart = (new Date()).getTime();
+				xhrAsync('http://currenttimestamp.com/', {
+					timeout: 10000
+				}, callbackServer1);
+			};
+
+			var tryServer2 = function() {
+				requestStart = (new Date()).getTime();
+				xhrAsync('http://convert-unix-time.com/', {
+					timeout: 10000
+				}, callbackServer2);
+			};
+
+
+			var callbackServer1 = function(xhrArg) {
+				var { request, ok, reason } = xhrArg;
+
+				var onFail = function() {
+					tryServer2();
+				};
+
+				if (!ok) {
+					onFail();
+				} else {
+					var requestEnd = (new Date()).getTime();
+					var requestDuration = requestEnd - requestStart;
+					var html = request.response;
+
+					// start - calc sys offset
+					var nowDateServerMatch = /current_time = (\d+);/.exec(html);
+					if (!nowDateServerMatch) {
+						onFail();
+					}
+					console.log('nowDateServerMatch:', nowDateServerMatch);
+
+					var nowDateServerUncompensated = parseInt(nowDateServerMatch[1]) * 1000;
+					console.log('nowDateServerUncompensated:', nowDateServerUncompensated);
+
+					var nowDateServer = nowDateServerUncompensated - requestDuration;
+					console.log('nowDateServer:', nowDateServer);
+
+					console.log('systemNow:', (new Date(requestStart)).toLocaleString(), 'serverNow:', (new Date(nowDateServer)).toLocaleString(), 'requestDuration seconds:', (requestDuration / 1000))
+					systemTimeOffset = requestStart - nowDateServer;
+					gLastSystemTimeOffset = systemTimeOffset;
+					// end - calc sys offset
+
+					afterSystemTimeOffsetGot();
+				}
+			};
+
+			var callbackServer2 = function(xhrArg) {
+				var { request, ok, reason } = xhrArg;
+
+				var onFail = function() {
+					// rely on whatever gLastSystemTimeOffset is
+					afterSystemTimeOffsetGot();
+				};
+
+				if (!ok) {
+					onFail();
+				} else {
+					var requestEnd = (new Date()).getTime();
+					var requestDuration = requestEnd - requestStart;
+					var html = request.response;
+
+
+					// start - calc sys offset
+					var nowDateServerMatch = /Seconds since 1970 (\d+)/.exec(html);
+					if (!nowDateServerMatch) {
+						onFail();
+					}
+					console.log('nowDateServerMatch:', nowDateServerMatch);
+
+					var nowDateServerUncompensated = parseInt(nowDateServerMatch[1]) * 1000;
+					console.log('nowDateServerUncompensated:', nowDateServerUncompensated);
+
+					var nowDateServer = nowDateServerUncompensated - requestDuration;
+					console.log('nowDateServer:', nowDateServer);
+
+					console.log('systemNow:', (new Date(requestStart)).toLocaleString(), 'serverNow:', (new Date(nowDateServer)).toLocaleString(), 'requestDuration seconds:', (requestDuration / 1000))
+					systemTimeOffset = requestStart - nowDateServer;
+					gLastSystemTimeOffset = systemTimeOffset;
+					// end - calc sys offset
+
+					afterSystemTimeOffsetGot();
+				}
+			};
+
+			tryServer1();
 		};
 
+		var presigned_zip_blob;
 		var afterAmouserPopulated = function() {
 			// modify id in unsigned to use hash of user id
-			var unsigned_buffer = crx_uint8.buffer.slice(i);
+			var unsigned_jszip = new JSZip(unsigned_uint8.buffer);
 			unsigned_uint8 = null;
-
-			var unsigned_jszip = new JSZip(unsigned_buffer);
 
 			var manifest_txt = unsigned_jszip.file('manifest.json').asText();
 
@@ -216,7 +317,7 @@ function signXpi(extid) {
 
 			unsigned_jszip.file('manifest.json', manifest_txt);
 
-			presigned_zip_blob = zip_jszip.generate({type:'blob'});
+			presigned_zip_blob = unsigned_jszip.generate({type:'blob'});
 
 			afterXpiIdModded();
 		};
@@ -259,7 +360,7 @@ function signXpi(extid) {
 							// did generate, and keys are still not there - this is an error
 							rezMain.ok = false;
 							rezMain.reason = 'missing_field';
-							rezMain.reason_details {
+							rezMain.reason_details = {
 								fields: ['key', 'secret']
 							};
 							deferredMain_signXpi.resolve(rezMain);
@@ -269,7 +370,7 @@ function signXpi(extid) {
 							if (!fieldTokenHtml) {
 								rezMain.ok = false;
 								rezMain.reason = 'missing_field';
-								rezMain.reason_details {
+								rezMain.reason_details = {
 									fields: ['token']
 								};
 								deferredMain_signXpi.resolve(rezMain);
@@ -401,6 +502,57 @@ self.onclose = function() {
 // End - Addon Functionality
 
 // start - common helper functions
+// HashString - rev 052816 - not yet updated to gist.github
+var _cache_HashString = {};
+var HashString = (function (){
+	/**
+	 * Javascript implementation of
+	 * https://hg.mozilla.org/mozilla-central/file/0cefb584fd1a/mfbt/HashFunctions.h
+	 * aka. the mfbt hash function.
+	 */
+	// Note: >>>0 is basically a cast-to-unsigned for our purposes.
+	const kGoldenRatio = 0x9E3779B9;
+
+	// Multiply two uint32_t like C++ would ;)
+	const mul32 = (a, b) => {
+	// Split into 16-bit integers (hi and lo words)
+		var ahi = (a >> 16) & 0xffff;
+		var alo = a & 0xffff;
+		var bhi = (b >> 16) & 0xffff
+		var blo = b & 0xffff;
+		// Compute new hi and lo seperately and recombine.
+		return (
+			(((((ahi * blo) + (alo * bhi)) & 0xffff) << 16) >>> 0) +
+			(alo * blo)
+		) >>> 0;
+	};
+
+	// kGoldenRatioU32 * (RotateBitsLeft32(aHash, 5) ^ aValue);
+	const add = (hash, val) => {
+		// Note, cannot >> 27 here, but / (1<<27) works as well.
+		var rotl5 = (
+			((hash << 5) >>> 0) |
+			(hash / (1<<27)) >>> 0
+		) >>> 0;
+		return mul32(kGoldenRatio, (rotl5 ^ val) >>> 0);
+	}
+
+	return function(text) {
+		// Convert to utf-8.
+		// Also decomposes the string into uint8_t values already.
+		if (!(text in _cache_HashString)) {
+			var data = (new TextEncoder()).encode(text);
+
+			// Compute the actual hash
+			var rv = 0;
+			for (var c of data) {
+				rv = add(rv, c | 0);
+			}
+			_cache_HashString[text] = rv;
+		}
+		return _cache_HashString[text];
+	};
+})();
 // rev1 - https://gist.github.com/Noitidart/c4ab4ca10ff5861c720b
 var jQLike = { // my stand alone jquery like functions
 	serialize: function(aSerializeObject) {

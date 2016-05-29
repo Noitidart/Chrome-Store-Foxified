@@ -287,6 +287,8 @@ function convertXpi(extid) {
 			converting_xpi: false,
 			converted_xpi: ok
 		}));
+
+		signXpi(extid);
 	});
 }
 
