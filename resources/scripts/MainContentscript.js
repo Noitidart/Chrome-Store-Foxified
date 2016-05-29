@@ -290,6 +290,28 @@ function convertXpi(extid) {
 	});
 }
 
+function signXpi(extid) {
+	store.dispatch(updateStatus(extid, {
+		signing_xpi: true
+	}));
+	gFsComm.postMessage('callInBootstrap', {
+		method: 'callInWorker',
+		wait: true,
+		arg: {
+			method: 'signXpi',
+			wait: true,
+			arg: extid
+		}
+	}, undefined, function(aArg, aComm) {
+		console.log('back in content after triggering downloadCrx, got back aArg:', aArg);
+		var { request, ok, reason } = aArg; // reason only available when ok==false
+		store.dispatch(updateStatus(extid, {
+			converting_xpi: false,
+			signed_xpi: ok
+		}));
+	});
+}
+
 // start - functions called by framescript
 
 // end - functions called by framescript
@@ -541,7 +563,7 @@ var ExtActions = React.createClass({
 			}
 		}
 		if (status.converted_xpi) {
-			if (status.unsigned_installing) {
+			if (!status.unsigned_installing) {
 				cChildren.push( React.createElement('button', {}, formatStringFromNameCore('unsigned_install', 'main')) );
 			}
 			cChildren.push( React.createElement('button', { onClick:this.save.bind(this, 0) }, formatStringFromNameCore('unsigned_save', 'main')) );

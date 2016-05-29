@@ -3,8 +3,8 @@ importScripts('resource://gre/modules/osfile.jsm');
 
 // Globals
 var core;
-
 var gBsComm;
+const AMODOMAIN = 'https://addons.mozilla.org';
 
 function dummyForInstantInstantiate() {}
 function init(objCore) {
@@ -153,27 +153,161 @@ function signXpi(extid) {
 		/*
 		ok: true or false
 		reason: present only if ok was set to false - current values:
-		 		no_unsigned - no source unsigned xpi found
+		 		no_src_file - no source unsigned xpi found
 				no_login_amo -
 				no_agree_amo -
+				fail_xhr -
+				missing_field -
+		reason_details: // present only for some reason's
+				// fail_xhr
+				{
+					status
+					statusText
+					url
+				}
+				// missing_field
+				{
+					fields: [] - array of strings for field names
+				}
 		*/
 	};
 
 	// read uint8 of core.addon.path.storage_unsigned
 		// error no_unsigned
+	var unsigned_uint8;
+	try {
+		unsigned_uint8 = OS.File.read(OS.Path.join(core.addon.path.storage_unsigned, extid + '.xpi'));
+	} catch (ex) {
+		rez.ok = false;
+		rez.reason = 'no_src_file';
+	}
 
-	// navigate to get amo details - do not store globally, i need to do every time to ensure logged in each time
+	if (unsigned_uint8) {
 
-	// no_login_amo
-	// no_agree_amo
+		// navigate to get amo details - do not store globally, i need to do every time to ensure logged in each time
+			// no_login_amo
+			// no_agree_amo
+		var amo_user = {
+			// key:
+			// secret:
+		};
 
-	// modify id in unsigned to use hash of user id
+		var presigned_zip_blob;
 
-	// get offset of system clock to unix clock
-		// if server1 fails use server2. if server2 fails continue with system clock (possible last globally stored offset - think about it)
+		var afterXpiIdModded = function() {
+			// get offset of system clock to unix clock
+				// if server1 fails use server2. if server2 fails continue with system clock (possible last globally stored offset - think about it)
 
-	// go through signing on amo - its errors including especially time not in sync
+			// go through signing on amo - its errors including especially time not in sync
+		};
 
+		var afterAmouserPopulated = function() {
+			// modify id in unsigned to use hash of user id
+			var unsigned_buffer = crx_uint8.buffer.slice(i);
+			unsigned_uint8 = null;
+
+			var unsigned_jszip = new JSZip(unsigned_buffer);
+
+			var manifest_txt = unsigned_jszip.file('manifest.json').asText();
+
+			manifest_txt.replace(extid + '@chrome-store-foxified-unsigned', extid + '@chrome-store-foxified-' + HashString(amo_user.key));
+
+			// TODO: error points here? JSZip failing? maybe think about it, if there are then handle it
+
+			unsigned_jszip.file('manifest.json', manifest_txt);
+
+			presigned_zip_blob = zip_jszip.generate({type:'blob'});
+
+			afterXpiIdModded();
+		};
+
+		var didGenerate = false;
+		var callbackLoadkey = function(xhrArg) {
+			var { request, ok, reason } = xhrArg;
+			if (!ok) {
+				// xhr failed
+				rezMain.ok = false;
+				rezMain.reason = 'fail_xhr';
+				rezMain.reason_details = {
+					status: request.status,
+					statusText: request.statusText,
+					url: request.responseURL
+				};
+				deferredMain_signXpi.resolve(rezMain);
+			} else {
+				var html = request.response;
+				if (html.includes('accept-agreement')) {
+					rezMain.ok = false;
+					rezMain.reason = 'no_agree_amo';
+					deferredMain_signXpi.resolve(rezMain);
+				} else if (!html.includes('firefox/users/edit')) {
+					rezMain.ok = false;
+					rezMain.reason = 'no_login_amo';
+					deferredMain_signXpi.resolve(rezMain);
+				} else {
+					// logged in and accepted
+					// but may not have generated credentials
+
+					var fieldKeyHtml = /input[^<]+jwtkey[^>]+/i.exec(html);
+					var fieldSecretHtml = /input[^<]+jwtsecret[^>]+/i.exec(html);
+
+					console.log('fieldKeyHtml:', fieldKeyHtml);
+					console.log('fieldSecretHtml:', fieldSecretHtml);
+
+					if (!fieldKeyHtml || !fieldSecretHtml) {
+						if (!didGenerate) {
+							// did generate, and keys are still not there - this is an error
+							rezMain.ok = false;
+							rezMain.reason = 'missing_field';
+							rezMain.reason_details {
+								fields: ['key', 'secret']
+							};
+							deferredMain_signXpi.resolve(rezMain);
+						} else {
+							// keys are not there, need to generate
+							var fieldTokenHtml = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(html);
+							if (!fieldTokenHtml) {
+								rezMain.ok = false;
+								rezMain.reason = 'missing_field';
+								rezMain.reason_details {
+									fields: ['token']
+								};
+								deferredMain_signXpi.resolve(rezMain);
+							} else {
+								var token = /value=["']?(.*?)["' \/<]/i.exec(fieldTokenHtml)[1];
+								didGenerate = true;
+								xhrAsync(AMODOMAIN + '/en-US/developers/addon/api/key/', {
+									timeout: 10000,
+									data: jQLike.serialize({
+										csrfmiddlewaretoken: token,
+										action: 'generate'
+									}),
+									headers: {
+										Referer: AMODOMAIN + '/en-US/developers/addon/api/key/',
+										'Content-Type': 'application/x-www-form-urlencoded'
+									}
+								}, callbackLoadkey);
+							}
+						}
+					} else {
+						var key = /value=["']?(.*?)["' \/<]/i.exec(fieldKeyHtml)[1];
+						var secret = /value=["']?(.*?)["' \/<]/i.exec(fieldSecretHtml)[1];
+
+						amo_user.key = key;
+						amo_user.secret = secret;
+
+						afterAmouserPopulated();
+					}
+				}
+			}
+		};
+
+		xhrAsync(AMODOMAIN + '/en-US/developers/addon/api/key/', {
+			timeout: 10000
+		}, callbackLoadkey);
+	} else {
+		deferredMain_signXpi.resolve(rezMain);
+	}
 
 	return deferredMain_signXpi.promise;
 }
@@ -267,6 +401,23 @@ self.onclose = function() {
 // End - Addon Functionality
 
 // start - common helper functions
+// rev1 - https://gist.github.com/Noitidart/c4ab4ca10ff5861c720b
+var jQLike = { // my stand alone jquery like functions
+	serialize: function(aSerializeObject) {
+		// https://api.jquery.com/serialize/
+
+		// verified this by testing
+			// http://www.w3schools.com/jquery/tryit.asp?filename=tryjquery_ajax_serialize
+			// http://www.the-art-of-web.com/javascript/escape/
+
+		var serializedStrArr = [];
+		for (var cSerializeKey in aSerializeObject) {
+			serializedStrArr.push(encodeURIComponent(cSerializeKey) + '=' + encodeURIComponent(aSerializeObject[cSerializeKey]));
+		}
+		return serializedStrArr.join('&');
+	}
+};
+
 // https://gist.github.com/Noitidart/7810121036595cdc735de2936a7952da -rev1
 function writeThenDir(aPlatPath, aContents, aDirFrom, aOptions={}) {
 	// tries to writeAtomic
