@@ -163,7 +163,8 @@ function browseFile(aArg, aComm) {
 		startDirPlatPath: undefined, // string - platform path to dir the dialog should start in
 		returnDetails: false,
 		async: false, // if set to true, then it wont block main thread while its open, and it will also return a promise
-		win: undefined // null for no parentWin, string for what you want passed to getMostRecentWindow, or a window object. NEGATIVE is special for NativeShot, it is negative iMon
+		win: undefined, // null for no parentWin, string for what you want passed to getMostRecentWindow, or a window object. NEGATIVE is special for NativeShot, it is negative iMon
+		defaultString: undefined
 	}
 
 	validateOptionsObj(aOptions, cOptionsDefaults);
@@ -218,6 +219,10 @@ function browseFile(aArg, aComm) {
 		} else {
 			return retFP;
 		}
+	}
+
+	if (aOptions.defaultString) {
+		fp.defaultString = aOptions.defaultString;
 	}
 
 	if (aOptions.async) {

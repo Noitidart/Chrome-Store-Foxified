@@ -281,11 +281,12 @@ function convertXpi(extid) {
 		}
 	}, undefined, function(aArg, aComm) {
 		console.log('back in content after triggering downloadCrx, got back aArg:', aArg);
-		var { request, ok, reason } = aArg; // reason only available when ok==false
+		var { request, ok, reason, version } = aArg; // reason only available when ok==false
 		store.dispatch(updateStatus(extid, {
 			converting_xpi: false,
 			converted_xpi: ok,
-			asking_perm_or_temp: true
+			asking_perm_or_temp: true,
+			version
 		}));
 
 	});
@@ -517,6 +518,7 @@ var ExtActions = React.createClass({
 		downloadCrx(this.props.extid);
 	},
 	save(which) {
+		var { version, name } = this.props.status;
 		gFsComm.postMessage('callInBootstrap', {
 			method: 'callInWorker',
 			wait: true,
@@ -525,7 +527,9 @@ var ExtActions = React.createClass({
 				wait: true,
 				arg: {
 					extid: this.props.extid,
-					which
+					which,
+					name,
+					version
 				}
 			}
 		}, undefined, function(aArg, aComm) {
@@ -612,7 +616,7 @@ var ExtStatus = React.createClass({
 
 		var cChildren = [];
 
-		cChildren.push(React.createElement('div', undefined, status.name));
+		cChildren.push(React.createElement('div', { className:'foxified-title' }, status.name));
 		cChildren.push(React.createElement('a', { href:'#', className:'foxified-close', onClick:this.close }, '\xD7'));
 		cChildren.push(React.createElement('br'));
 		if (status.asking_perm_or_temp) {
@@ -708,8 +712,9 @@ var Page = React.createClass({
 			default:
 				// pageid is extid, so we show PAGE_EXT
 				var extid = pageid;
-				cChildren.push( React.createElement(ExtStatus, { extid, status, dispatch }) );
-				cChildren.push( React.createElement(ExtActions, { extid, status, dispatch }) );
+				var name = status.name;
+				cChildren.push( React.createElement(ExtStatus, { extid, status, dispatch, name, status }) );
+				cChildren.push( React.createElement(ExtActions, { extid, status, dispatch, name, status }) );
 		}
 
 		return React.createElement('div', { className:'foxified-page' },

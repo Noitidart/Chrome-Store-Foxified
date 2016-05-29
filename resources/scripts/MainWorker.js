@@ -74,12 +74,14 @@ function downloadCrx(extid, aComm) {
 
 function convertXpi(extid) {
 	// creates an unsigned xpi out of a crx
+	// also gets version of crx and sends it to app
 	var deferredMain_convertXpi = new Deferred();
 
 	var rezMain = {
 		/*
 		ok: true or false
-		reason: present only if ok was set to false - current values:
+		version: // actually might be there on fail to. only available if ok==true. is definitely there on success though.
+		reason: present only if ok==false - current values:
 		 		no_crx - no source crx found
 		*/
 	};
@@ -112,7 +114,8 @@ function convertXpi(extid) {
 		var zip_jszip = new JSZip(zip_buffer);
 
 		var manifest = JSON.parse(zip_jszip.file('manifest.json').asText());
-
+		var version = manifest.version;
+		rezMain.version = version;
 		// TODO: possible error point, if the JSON.parse fails
 
 		manifest.applications = {
@@ -414,7 +417,7 @@ function signXpi(extid) {
 }
 
 function saveToFile(aArg, aComm) {
-	var { extid, which } = aArg;
+	var { extid, which, name, version } = aArg;
 	// which is: 0-unsigned, 1-signed, 2-crx
 
 	var deferredMain_saveToFile = new Deferred();
@@ -427,25 +430,32 @@ function saveToFile(aArg, aComm) {
 		*/
 	};
 
+	if (version === undefined) {
+		version = 'Unknown'
+	}
 	// get path
 	var path;
 	var browseFilters;
+	var recommendSaveAs;
 	var saveExtension; // must be set in lower case due to link11193333
 	switch (which) {
 		case 0:
 				path = OS.Path.join(core.addon.path.storage_unsigned, extid + '.xpi');
 				browseFilters = [formatStringFromName('mozilla_firefox_addon', 'main'), '*.xpi'];
 				saveExtension = '.xpi';
+				recommendSaveAs = formatStringFromName('save_as_rec_unsigned', 'main', [safedForPlatFS(name, {repStr:'_'}), version]) + saveExtension;
 			break;
 		case 1:
 				path = OS.Path.join(core.addon.path.storage_signed, extid + '.xpi');
 				browseFilters = [formatStringFromName('mozilla_firefox_addon', 'main'), '*.xpi'];
 				saveExtension = '.xpi';
+				recommendSaveAs = formatStringFromName('save_as_rec_signed', 'main', [safedForPlatFS(name, {repStr:'_'}), version]) + saveExtension;
 			break;
 		case 2:
 				path = OS.Path.join(core.addon.path.storage_crx, extid + '.crx');
 				browseFilters = [formatStringFromName('google_chrome_extension', 'main'), '*.crx'];
 				saveExtension = '.crx';
+				recommendSaveAs = formatStringFromName('save_as_rec_crx', 'main', [safedForPlatFS(name, {repStr:'_'}), version]) + saveExtension;
 			break;
 	}
 
@@ -465,7 +475,8 @@ function saveToFile(aArg, aComm) {
 					mode: 'modeSave',
 					filters: browseFilters,
 					async: true,
-					win: 'navigator:browser'
+					win: 'navigator:browser',
+					defaultString: recommendSaveAs
 				}
 			},
 			undefined,
@@ -502,6 +513,40 @@ self.onclose = function() {
 // End - Addon Functionality
 
 // start - common helper functions
+// rev3 - _ff-addon-snippet-safedForPlatFS.js - https://gist.github.com/Noitidart/e6dbbe47fbacc06eb4ca
+var _safedForPlatFS_pattWIN = /([\\*:?<>|\/\"])/g;
+var _safedForPlatFS_pattNIXMAC = /[\/:]/g;
+function safedForPlatFS(aStr, aOptions={}) {
+	// depends on core.os.mname - expects it to be lower case
+	// short for getSafedForPlatformFilesystem - meaning after running this on it, you can safely use the return in a filename on this current platform
+	// aOptions
+	//	repStr - use this string, in place of the default repCharForSafePath in place of non-platform safe characters
+	//	allPlatSafe - by default it will return a path safed for the current OS. Set this to true if you want to to get a string that can be used on ALL platforms filesystems. A Windows path is safe on all other platforms
+
+	// 022816 - i added : to _safedForPlatFS_pattNIXMAC because on mac it was replacing it with a `/` which is horrible it will screw up OS.Path.join .split etc
+
+	// set defaults on aOptions
+	if (!('allPlatSafe' in aOptions)) {
+		aOptions.allPlatSafe = false;
+	}
+	if (!('repStr' in aOptions)) {
+		aOptions.repStr = '-';
+	}
+
+	var usePlat = aOptions.allPlatSafe ? 'winnt' : core.os.mname; // a windows path is safe in all platforms so force that. IF they dont want all platforms then use the current platform
+	switch (usePlat) {
+		case 'winnt':
+		case 'winmo':
+		case 'wince':
+
+				return aStr.replace(_safedForPlatFS_pattWIN, aOptions.repStr);
+
+			break;
+		default:
+
+				return aStr.replace(_safedForPlatFS_pattNIXMAC, aOptions.repStr);
+	}
+}
 // HashString - rev 052816 - not yet updated to gist.github
 var _cache_HashString = {};
 var HashString = (function (){
