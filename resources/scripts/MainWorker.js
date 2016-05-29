@@ -184,6 +184,7 @@ function signXpi(extid) {
 	} catch (ex) {
 		rez.ok = false;
 		rez.reason = 'no_src_file';
+		deferredMain_signXpi.resolve(rezMain);
 	}
 
 	if (unsigned_uint8) {
@@ -201,10 +202,13 @@ function signXpi(extid) {
 			// go through signing on amo - its errors including especially time not in sync
 
 			console.log('systemTimeOffset:', systemTimeOffset);
+			updateStatus(extid, {
+				signing_xpi: formatStringFromName('signing_xpi_uploading', 'main')
+			});
 		};
 
 		var getCorrectedSystemTime = function() {
-			// returns seconds
+			// returns milliseconds
 			return (new Date()).getTime() - systemTimeOffset;
 		};
 		var systemTimeOffset; // in seconds
@@ -222,6 +226,9 @@ function signXpi(extid) {
 			};
 
 			var tryServer2 = function() {
+				updateStatus(extid, {
+					signing_xpi: formatStringFromName('signing_xpi_unix_server_2', 'main')
+				});
 				requestStart = (new Date()).getTime();
 				xhrAsync('http://convert-unix-time.com/', {
 					timeout: 10000
@@ -303,12 +310,20 @@ function signXpi(extid) {
 				}
 			};
 
+			updateStatus(extid, {
+				signing_xpi: formatStringFromName('signing_xpi_unix_server_1', 'main')
+			});
 			tryServer1();
 		};
 
 		var presigned_zip_blob;
 		var afterAmouserPopulated = function() {
 			// modify id in unsigned to use hash of user id
+
+			updateStatus(extid, {
+				signing_xpi: formatStringFromName('signing_xpi_setting_id', 'main')
+			});
+
 			var unsigned_jszip = new JSZip(unsigned_uint8.buffer);
 			unsigned_uint8 = null;
 
@@ -359,7 +374,7 @@ function signXpi(extid) {
 					console.log('fieldSecretHtml:', fieldSecretHtml);
 
 					if (!fieldKeyHtml || !fieldSecretHtml) {
-						if (!didGenerate) {
+						if (didGenerate) {
 							// did generate, and keys are still not there - this is an error
 							rezMain.ok = false;
 							rezMain.reason = 'missing_field';
@@ -380,6 +395,11 @@ function signXpi(extid) {
 							} else {
 								var token = /value=["']?(.*?)["' \/<]/i.exec(fieldTokenHtml)[1];
 								didGenerate = true;
+
+								updateStatus(extid, {
+									signing_xpi: formatStringFromName('signing_xpi_generating_amo', 'main')
+								});
+
 								xhrAsync(AMODOMAIN + '/en-US/developers/addon/api/key/', {
 									timeout: 10000,
 									data: jQLike.serialize({
@@ -406,14 +426,29 @@ function signXpi(extid) {
 			}
 		};
 
+		updateStatus(extid, {
+			signing_xpi: formatStringFromName('signing_xpi_checking_loggedin', 'main')
+		});
 		xhrAsync(AMODOMAIN + '/en-US/developers/addon/api/key/', {
 			timeout: 10000
 		}, callbackLoadkey);
-	} else {
-		deferredMain_signXpi.resolve(rezMain);
 	}
 
 	return deferredMain_signXpi.promise;
+}
+
+function updateStatus(extid, obj) {
+	// i shouldnt have to do method and arg objects, but i do here because .... // TODO: explain why
+	gBsComm.postMessage('callInAllContent', {
+		method: 'dispatchInContent',
+		arg: {
+			creator: 'updateStatus',
+			argarr: [
+				extid,
+				obj
+			]
+		}
+	});
 }
 
 function saveToFile(aArg, aComm) {
@@ -431,7 +466,7 @@ function saveToFile(aArg, aComm) {
 	};
 
 	if (version === undefined) {
-		version = 'Unknown'
+		version = formatStringFromName('version_unknown', 'main');
 	}
 	// get path
 	var path;

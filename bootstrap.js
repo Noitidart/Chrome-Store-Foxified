@@ -143,6 +143,18 @@ function callInWorker(aArg, aComm) {
 function beautifyManifest(aJsStr) {
 	return gBeautify.js(aJsStr);
 }
+function callInAllContent(aArg, aComm) {
+	// called by worker
+	var {method, arg} = aArg;
+
+	// callback not allowed
+
+	Services.mm.broadcastAsyncMessage(core.addon.id, {
+		method: 'callInContent',
+		arg: {method, arg}
+	});
+
+}
 // rev2 - not yet commited to gist.github
 function browseFile(aArg, aComm) {
 	var { aDialogTitle, aOptions } = aArg

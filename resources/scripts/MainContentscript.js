@@ -292,7 +292,9 @@ function convertXpi(extid) {
 	});
 }
 
-function signXpi(extid) {
+function signXpi(extid, install) {
+	// install is bool, set to true if you want it to go to install after succesful signing_xpi
+
 	store.dispatch(updateStatus(extid, {
 		signing_xpi: true
 	}));
@@ -308,9 +310,13 @@ function signXpi(extid) {
 		console.log('back in content after triggering downloadCrx, got back aArg:', aArg);
 		var { request, ok, reason } = aArg; // reason only available when ok==false
 		store.dispatch(updateStatus(extid, {
-			converting_xpi: false,
+			signing_xpi: undefined,
 			signed_xpi: ok
 		}));
+
+		if (ok && install) {
+			// TODO: go to install function
+		}
 	});
 }
 
@@ -319,6 +325,13 @@ function signXpi(extid) {
 // end - functions called by framescript
 
 // start - react-redux
+
+function dispatchInContent(aArg, aComm) {
+	// called by framescript
+	var { creator, argarr } = aArg;
+	store.dispatch(gSubContent[creator].apply(null, argarr))
+}
+
 // ACTIONS
 const TOGGLE_DISPLAY = 'TOGGLE_DISPLAY'; // should set true or false
 const SHOW_PAGE = 'SHOW_PAGE'; // should be a extension id, or any other special ids i give like "all exts" or "prefs" or something
@@ -569,6 +582,7 @@ var ExtActions = React.createClass({
 				cChildren.push( React.createElement('button', {}, formatStringFromNameCore('unsigned_install', 'main')) );
 			}
 			cChildren.push( React.createElement('button', { onClick:this.save.bind(this, 0) }, formatStringFromNameCore('unsigned_save', 'main')) );
+			cChildren.push( React.createElement('button', { onClick:signXpi.bind(null, extid) }, formatStringFromNameCore('sign_unsigned_addon', 'main')) );
 		}
 		if (status.downloaded_signed) {
 			if (!status.signed_installing) {
@@ -601,7 +615,7 @@ var ExtStatus = React.createClass({
 		store.dispatch(updateStatus(extid, {
 			asking_perm_or_temp: undefined
 		}));
-		signXpi(this.props.extid);
+		signXpi(this.props.extid, true);
 	},
 	close(e) {
 		var { dispatch } = this.props;
@@ -641,7 +655,8 @@ var ExtStatus = React.createClass({
 						formatStringFromNameCore('asking_perm_or_temp2', 'main'),
 						React.createElement('a', { href:'http://addons.mozilla.org/', target:'_blank' },
 							'addons.mozilla.org'
-						)
+						),
+						formatStringFromNameCore('asking_perm_or_temp3', 'main')
 					)
 				)
 			);
@@ -651,6 +666,15 @@ var ExtStatus = React.createClass({
 		}
 		if (status.converting_xpi && !status.converted_xpi) {
 			cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('converting_xpi', 'main')) );
+		}
+		if (status.signing_xpi) {
+			var signing_status;
+			if (status.signing_xpi === true) {
+				signing_status = formatStringFromNameCore('signing_xpi', 'main');
+			} else {
+				signing_status = status.signing_xpi; // note: so signing_xpi can be a string
+			}
+			cChildren.push( React.createElement('div', undefined, signing_status) );
 		}
 		if (status.signing_failed) {
 			if (status.signing_failed == formatStringFromNameCore('signing_failed_agreement')) {
