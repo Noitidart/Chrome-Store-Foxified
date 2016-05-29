@@ -229,7 +229,8 @@ function installClick(e) {
 		// ok do with the extid now
 		// store.dispatch(addExt(extid, name));
 		store.dispatch(updateStatus(extid, {
-			name
+			name,
+			asking_perm_or_temp: undefined
 		}));
 		store.dispatch(showPage(extid));
 		store.dispatch(toggleDisplay(true));
@@ -285,10 +286,10 @@ function convertXpi(extid) {
 		var { request, ok, reason } = aArg; // reason only available when ok==false
 		store.dispatch(updateStatus(extid, {
 			converting_xpi: false,
-			converted_xpi: ok
+			converted_xpi: ok,
+			asking_perm_or_temp: true
 		}));
 
-		signXpi(extid);
 	});
 }
 
@@ -513,9 +514,6 @@ var Modal = React.createClass({
 });
 
 var ExtActions = React.createClass({
-	close() {
-		this.props.dispatch(toggleDisplay(false));
-	},
 	retry() {
 		// short for retryDownloadInstallFlow
 		downloadCrx(this.props.extid);
@@ -577,22 +575,75 @@ var ExtActions = React.createClass({
 			cChildren.push( React.createElement('button', { onClick:this.save.bind(this, 1) }, formatStringFromNameCore('signed_save', 'main')) );
 		}
 
-		cChildren.push( React.createElement('button', { onClick:this.close }, 'Close') );
-
 		return React.createElement('div', { clssName:'foxified-ext-actions' },
 			cChildren
 		);
 	}
 });
 var ExtStatus = React.createClass({
+	installTemp(e) {
+		var { extid } = this.props;
+
+		e.preventDefault(); // so it doesnt changel locaiton to "#"
+
+		store.dispatch(updateStatus(extid, {
+			asking_perm_or_temp: undefined,
+			unsigned_installing: true
+		}));
+	},
+	installPerm(e) {
+		var { extid } = this.props;
+
+		e.preventDefault(); // so it doesnt changel locaiton to "#"
+
+		store.dispatch(updateStatus(extid, {
+			asking_perm_or_temp: undefined
+		}));
+		signXpi(this.props.extid);
+	},
+	close(e) {
+		var { dispatch } = this.props;
+
+		e.preventDefault(); // so it doesnt changel locaiton to "#"
+
+		dispatch(toggleDisplay(false));
+	},
 	render() {
 		// downloading_crx_failed - is set to string when failed
-		var { extid, status } = this.props;
+		var { extid, status, dispatch } = this.props;
 
 		var cChildren = [];
 
 		cChildren.push(React.createElement('div', undefined, status.name));
+		cChildren.push(React.createElement('a', { href:'#', className:'foxified-close', onClick:this.close }, '\xD7'));
 		cChildren.push(React.createElement('br'));
+		if (status.asking_perm_or_temp) {
+			cChildren.push(
+				React.createElement('div', undefined,
+					formatStringFromNameCore('asking_perm_or_temp0', 'main'),
+					React.createElement('br'),
+					React.createElement('br'),
+					React.createElement('div', {style:{fontWeight:'bold', textAlign:'center'}}, formatStringFromNameCore('asking_perm_or_temp1', 'main')),
+					React.createElement('br'),
+					React.createElement('div', {style:{textAlign:'center'}},
+						React.createElement('a', { href:'#', onClick:this.installPerm },
+							formatStringFromNameCore('perm_install', 'main')
+						),
+						React.createElement('br'),
+						React.createElement('a', { href:'#', onClick:this.installTemp },
+							formatStringFromNameCore('temp_install', 'main')
+						)
+					),
+					React.createElement('br'),
+					React.createElement('div', {style:{fontStyle:'italic',textAlign:'center',fontSize:'.9em'}},
+						formatStringFromNameCore('asking_perm_or_temp2', 'main'),
+						React.createElement('a', { href:'http://addons.mozilla.org/', target:'_blank' },
+							'addons.mozilla.org'
+						)
+					)
+				)
+			);
+		}
 		if (status.downloading_crx && !status.downloaded_crx) {
 			cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('downloading_crx', 'main')) );
 		}
@@ -659,7 +710,7 @@ var Page = React.createClass({
 			default:
 				// pageid is extid, so we show PAGE_EXT
 				var extid = pageid;
-				cChildren.push( React.createElement(ExtStatus, { extid, status }) );
+				cChildren.push( React.createElement(ExtStatus, { extid, status, dispatch }) );
 				cChildren.push( React.createElement(ExtActions, { extid, status, dispatch }) );
 		}
 

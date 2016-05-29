@@ -16,7 +16,7 @@
 	align-items: start;
 	background-color: #fff;
 	border: 1px solid #000;
-	height: 200px;
+	min-height: 200px;
 	width: 400px;
 	position: relative;
 	padding: 5px;
@@ -32,4 +32,16 @@
 }
 .foxified-page {
 	flex: 1 0 auto;
+}
+.foxified-close {
+	position: absolute;
+	z-index: 1;
+	top: -0.2em;
+	right: 3px;
+	font-size: 3em;
+	font-weight: 900;
+	text-decoration: none;
+}
+.foxified-close:hover {
+	color: red;
 }
