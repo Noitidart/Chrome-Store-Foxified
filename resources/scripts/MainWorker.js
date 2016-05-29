@@ -55,14 +55,17 @@ function downloadCrx(extid, aComm) {
 				statusText: request.statusText
 			}
 		};
-		// if (!ok) {
-		// 	rezObj.status
-		// 	rezObj.updateStatus.downloading_crx_failed = formatStringFromName('downloading_crx_failed_server', 'main');
-		// }
 
-		writeThenDir(OS.Path.join(core.addon.path.storage_crx, extid + '.crx'));
+		if (ok) {
+			try {
+				writeThenDir(OS.Path.join(core.addon.path.storage_crx, extid + '.crx'), new Uint8Array(request.response), OS.Constants.Path.profileDir);
+			} catch(ex) {
+				console.error('ex:', ex, uneval(ex), ex.toString());
+				throw ex;
+			}
+		}
 
-		deferredMain_downloadCrx.resolve(rezObj)
+		deferredMain_downloadCrx.resolve(rezObj);
 	});
 
 	return deferredMain_downloadCrx.promise;
@@ -124,7 +127,12 @@ function convertXpi(extid) {
 
 			var zip_uint8 = zip_jszip.generate({type:'uint8array'});
 
-			writeThenDir(OS.Path.join(core.addon.path.storage_unsigned, extid + '.xpi'));
+			try {
+				writeThenDir(OS.Path.join(core.addon.path.storage_unsigned, extid + '.xpi'), zip_uint8, OS.Constants.Path.profileDir);
+			} catch(ex) {
+				console.error('ex:', ex, uneval(ex), ex.toString());
+				throw ex;
+			}
 
 			rezMain.ok = true;
 
@@ -177,11 +185,76 @@ function saveToFile(aArg, aComm) {
 
 	var rez = {
 		/*
-		ok: bool
+		ok: bool - true even when cancelled
 		reason: only present on fail, current values:
 				no_src_file - meaning the source for the one requested is not there yet
 		*/
 	};
+
+	// get path
+	var path;
+	var browseFilters;
+	var saveExtension; // must be set in lower case due to link11193333
+	switch (which) {
+		case 0:
+				path = OS.Path.join(core.addon.path.storage_unsigned, extid + '.xpi');
+				browseFilters = [formatStringFromName('mozilla_firefox_addon', 'main'), '*.xpi'];
+				saveExtension = '.xpi';
+			break;
+		case 1:
+				path = OS.Path.join(core.addon.path.storage_signed, extid + '.xpi');
+				browseFilters = [formatStringFromName('mozilla_firefox_addon', 'main'), '*.xpi'];
+				saveExtension = '.xpi';
+			break;
+		case 2:
+				path = OS.Path.join(core.addon.path.storage_crx, extid + '.crx');
+				browseFilters = [formatStringFromName('google_chrome_extension', 'main'), '*.crx'];
+				saveExtension = '.crx';
+			break;
+	}
+
+	// check existance
+	var exists = OS.File.exists(path);
+
+	if (!exists) {
+		rez.ok = false;
+		rez.reason = 'no_src_file';
+		deferredMain_saveToFile.resolve(rez);
+	} else {
+		gBsComm.postMessage(
+			'browseFile',
+			{
+				aDialogTitle: formatStringFromName('save_to_file_as', 'main'),
+				aOptions: {
+					mode: 'modeSave',
+					filters: browseFilters,
+					async: true,
+					win: 'navigator:browser'
+				}
+			},
+			undefined,
+			function(aArg, aComm) {
+				var path_target = aArg;
+				if (!path_target) {
+					// user cancelled
+					rez.ok = true;
+					deferredMain_saveToFile.resolve(rez);
+				} else {
+					if (!path_target.toLowerCase().endsWith(saveExtension)) { // link11193333
+						path_target += saveExtension;
+					}
+					try {
+						OS.File.copy(path, path_target, {noOverwrite:false});
+						rez.ok = true;
+					} catch(ex) {
+						rez.ok = false;
+						rez.reason = 'filesystem';
+					}
+					deferredMain_saveToFile.resolve(rez);
+				}
+			}
+		)
+	}
 
 	return deferredMain_saveToFile.promise;
 }

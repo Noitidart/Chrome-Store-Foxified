@@ -263,7 +263,7 @@ function downloadCrx(extid) {
 			downloaded_crx: ok,
 			downloading_crx_failed: ok ? undefined : formatStringFromNameCore('downloading_crx_failed_server', 'main', [request.statusText, request.status, reason])
 		}));
-	})
+	});
 }
 
 // start - functions called by framescript
@@ -472,12 +472,45 @@ var ExtActions = React.createClass({
 		// short for retryDownloadInstallFlow
 		downloadCrx(this.props.extid);
 	},
+	save(which) {
+		gFsComm.postMessage('callInBootstrap', {
+			method: 'callInWorker',
+			wait: true,
+			arg: {
+				method: 'saveToFile',
+				wait: true,
+				arg: {
+					extid: this.props.extid,
+					which
+				}
+			}
+		}, undefined, function(aArg, aComm) {
+			console.log('back in content after triggering saveToFile, got back aArg:', aArg);
+			var { ok, reason } = aArg; // reason only available when ok==false
+			if (!ok) {
+				switch (reason) {
+					case 'no_src_file':
+							var noSrcFileArr;
+							switch (which) {
+								case 0:
+									noSrcFileArr = [formatStringFromNameCore('no_unsigned_file', 'main')]
+								case 1:
+									noSrcFileArr = [formatStringFromNameCore('no_signed_file', 'main')]
+								case 2:
+									noSrcFileArr = [formatStringFromNameCore('no_crx_file', 'main')]
+							}
+							alert(formatStringFromNameCore('failed_save', 'main', noSrcFileArr))
+						break;
+				}
+			}
+		});
+	},
 	render() {
 		var { extid, status, dispatch } = this.props;
 
 		var cChildren = [];
 		if (status.downloaded_crx) {
-			cChildren.push( React.createElement('button', {}, formatStringFromNameCore('crx_save', 'main')) );
+			cChildren.push( React.createElement('button', { onClick:this.save.bind(this, 2) }, formatStringFromNameCore('crx_save', 'main')) );
 		} else {
 			if (!status.downloading_crx) {
 				cChildren.push( React.createElement('button', { onClick:this.retry }, formatStringFromNameCore('retry', 'main')) );
@@ -487,13 +520,13 @@ var ExtActions = React.createClass({
 			if (status.unsigned_installing) {
 				cChildren.push( React.createElement('button', {}, formatStringFromNameCore('unsigned_install', 'main')) );
 			}
-			cChildren.push( React.createElement('button', {}, formatStringFromNameCore('unsigned_save', 'main')) );
+			cChildren.push( React.createElement('button', { onClick:this.save.bind(this, 0) }, formatStringFromNameCore('unsigned_save', 'main')) );
 		}
 		if (status.downloaded_signed) {
 			if (!status.signed_installing) {
 				cChildren.push( React.createElement('button', {}, formatStringFromNameCore('signed_install', 'main')) );
 			}
-			cChildren.push( React.createElement('button', {}, formatStringFromNameCore('signed_save', 'main')) );
+			cChildren.push( React.createElement('button', { onClick:this.save.bind(this, 1) }, formatStringFromNameCore('signed_save', 'main')) );
 		}
 
 		cChildren.push( React.createElement('button', { onClick:this.close }, 'Close') );
