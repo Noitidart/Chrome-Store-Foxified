@@ -34,6 +34,49 @@ function init(objCore) {
 
 // Start - Addon Functionality
 
+function b64utoa(aStr) {
+	// base64url encode
+	return btoa(aStr)
+		.replace(/\+/g, '-')
+		.replace(/\//g, '_')
+		.replace(/\=+$/m, '')
+}
+
+function JSON_stringify_sorted(aObj) {
+	var keys = Object.keys(aObj);
+	keys.sort();
+	var strArr = [];
+	var l = keys.length;
+	for(var i = 0; i < l; i++) {
+		var stry = JSON.stringify({
+			[keys[i]]: aObj[keys[i]]
+		});
+		stry = stry.substr(1, stry.length - 2); // remove the opening and closing curly
+		strArr.push(stry);
+	}
+	return '{' + strArr.join(',') + '}'
+}
+
+function jwtSignOlympia(aKey, aSecret, aDateMs) {
+	// aKey and aSecret should both be strings
+	// jwt signature function for using with signing addons on AMO (addons.mozilla.org)
+	var part1 = b64utoa(JSON_stringify_sorted({
+		typ: 'JWT',
+		alg: 'HS256'
+	}));
+
+	var iat = Math.ceil(aDateMs / 1000); // in seconds
+	var part2 = b64utoa(JSON_stringify_sorted({
+		iss: aKey,
+		jti: Math.random().toString(),
+		iat,
+		exp: iat + 60
+	}));
+
+	var part3 = CryptoJS.HmacSHA256(part1 + '.' + part2, aSecret).toString(CryptoJS.enc.Base64).replace(/\=+$/m, '');
+	return part1 + '.' + part2 + '.' + part3;
+}
+
 function downloadCrx(extid, aComm) {
 	// called by bootstrap
 	var deferredMain_downloadCrx = new Deferred();
@@ -184,16 +227,22 @@ function signXpi(extid) {
 				no_agree_amo -
 				fail_xhr -
 				missing_field -
+				failed_approval - uploaded, and the review process came back as "reject"
 		reason_details: // present only for some reason's
 				// fail_xhr
 				{
 					status
 					statusText
 					url
+					response - available when fail upload to amo
 				}
 				// missing_field
 				{
 					fields: [] - array of strings for field names
+				}
+				// failed_approval
+				{
+					report: {} - json of report of the review
 				}
 		*/
 	};
@@ -316,8 +365,10 @@ function signXpi(extid) {
 		};
 
 		var presigned_zip_blob;
+		var xpiid;
+		var xpiversion;
 		var afterAmouserPopulated = function() {
-			// modify id in unsigned to use hash of user id
+			// modify id in unsigned to use hash of user id - and get version of xpi
 
 			updateStatus(extid, {
 				signing_xpi: formatStringFromName('signing_xpi_setting_id', 'main')
@@ -328,7 +379,11 @@ function signXpi(extid) {
 
 			var manifest_txt = unsigned_jszip.file('manifest.json').asText();
 
-			manifest_txt.replace(extid + '@chrome-store-foxified-unsigned', extid + '@chrome-store-foxified-' + HashString(amo_user.key));
+			var manifest_json = JSON.parse(manifest_txt);
+			xpiversion = manifest_json.version;
+
+			xpiid = extid + '@chrome-store-foxified-' + HashString(amo_user.key);
+			manifest_txt.replace(extid + '@chrome-store-foxified-unsigned', xpiid);
 
 			// TODO: error points here? JSZip failing? maybe think about it, if there are then handle it
 
@@ -456,6 +511,140 @@ function signXpi(extid) {
 			updateStatus(extid, {
 				signing_xpi: formatStringFromName('signing_xpi_uploading', 'main')
 			});
+
+			var presigned_zip_file = new File([presigned_zip_blob], 'dummyname.xpi');
+			var data = new FormData();
+			data.append('Content-Type', 'multipart/form-data');
+			data.append('upload', presigned_zip_file); // http://stackoverflow.com/a/24746459/1828637
+			console.error('doing submit');
+			xhrAsync(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/', { // only on first time upload, the aAddonVersionInXpi can be anything
+				method: 'PUT',
+				data,
+				responseType: 'json',
+				headers: {
+					Authorization: 'JWT ' + jwtSignOlympia(amo_user.key, amo_user.secret, getCorrectedSystemTime())
+				}
+			}, verifyUploaded);
+
+		};
+
+		var verifyUploaded = function(xhrArg) {
+			console.error('doing verifyUploaded');
+			var { request, ok, reason } = xhrArg;
+			if (!ok || (request.status != 201 && request.status != 202)) {
+				// TODO: detail why it failed here, so it tells user, it would failed to upload, maybe bad status token etc
+				// xhr failed
+				rezMain.ok = false;
+				rezMain.reason = 'fail_xhr';
+				rezMain.reason_details = {
+					status: request.status,
+					statusText: request.statusText,
+					url: request.responseURL,
+					response: request.response
+				};
+				deferredMain_signXpi.resolve(rezMain);
+			} else {
+				// status is 201 or 202 - meaning ok new submission went through
+				// wait for review to complete
+				console.error('ok good uploaded, status:', request.status, request.response, request.statusText);
+				requestReviewStatus();
+			}
+		};
+
+		var request_status_cnt = 0;
+		var requestReviewStatus = function() {
+			// sends xhr to check if review is complete
+			request_status_cnt++;
+			console.error('doing requestReviewStatus, request_status_cnt:',request_status_cnt);
+
+			xhrAsync(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/', {
+				responseType: 'json',
+				headers: {
+					Authorization: 'JWT ' + jwtSignOlympia(amo_user.key, amo_user.secret, getCorrectedSystemTime())
+				}
+			}, callbackReviewStatus);
+		};
+
+		var callbackReviewStatus = function(xhrArg) {
+			console.error('doing callbackReviewStatus');
+			var { request, ok, reason } = xhrArg;
+			if (!ok || (request.status != 200 && request.status != 404)) {
+				// TODO: detail why it failed here, so it tells user, failed checking status
+				// xhr failed
+				rezMain.ok = false;
+				rezMain.reason = 'fail_xhr';
+				rezMain.reason_details = {
+					status: request.status,
+					statusText: request.statusText,
+					url: request.responseURL,
+					response: request.response
+				};
+				deferredMain_signXpi.resolve(rezMain);
+			} else {
+				// TODO: right now i check for files, i should check if review passed. because review can i fail i guess, if like they do some bad stuff
+				if (request.status == 404) {
+					// the review of the upload has not yet started
+					console.log('the review of the upload has not yet started, wait then check again, status:', request.status, request.response, request.statusText);
+					setTimeout(requestReviewStatus, 10000);
+				} else if (request.status == 200) {
+					console.error('ok good found on review status check, status:', request.status, request.response, request.statusText);
+					if (request.response.files) {
+						if (request.response.files.length === 1) {
+							// ok review complete and approved - download it
+							xhrAsync(request.response.files[0].download_url, {
+								responseType: 'arraybuffer',
+								headers: {
+									Authorization: 'JWT ' + jwtSignOlympia(amo_user.key, amo_user.secret, getCorrectedSystemTime())
+								}
+							}, callbackDownloadSigned);
+						} else {
+							console.error('addon existing, and successfully got exiswting status check, but files are not yet ready! not yet handled :todo:')
+
+							if (Array.isArray(request_fetchExisting.response.files) && request_fetchExisting.response.reviewed && !request_fetchExisting.response.passed_review) { // i was using .response.processed however it was not right, as it gets processed before reviewed. so updated to .response.reviewed. as with fullscreenshot thing i got that warning for binary - https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl
+								// throw new Error('failed validation of the signing process');
+								rezMain.ok = false;
+								rezMain.reason = 'failed-approval';
+								rezMain.reason_details = {
+									report: request.response
+								};
+								deferredMain_signXpi.resolve(rezMain);
+							} else {
+								// review is in process, check again after waiting
+								console.error('review is in process, check after waiting');
+								setTimeout(requestReviewStatus, 1000);
+							}
+						}
+					}
+				}
+			}
+		};
+
+		var callbackDownloadSigned = function(xhrArg) {
+			var { request, ok, reason } = xhrArg;
+			if (!ok || request.status != 200) {
+				// TODO: detail why it failed here, so it tells user, failed downloading signed
+				// xhr failed
+				rezMain.ok = false;
+				rezMain.reason = 'fail_xhr';
+				rezMain.reason_details = {
+					status: request.status,
+					statusText: request.statusText,
+					url: request.responseURL,
+					response: request.response
+				};
+				deferredMain_signXpi.resolve(rezMain);
+			} else {
+
+				// save to disk
+				try {
+					writeThenDir(OS.Path.join(core.addon.path.storage_signed, extid + '.xpi'), new Uint8Array(request.response), OS.Constants.Path.profileDir);
+				} catch(ex) {
+					console.error('ex:', ex, uneval(ex), ex.toString());
+					throw ex;
+				}
+
+				rezMain.ok = true;
+			}
 		};
 
 		asynProc25830();
