@@ -228,6 +228,8 @@ function signXpi(extid) {
 				fail_xhr -
 				missing_field -
 				failed_approval - uploaded, and the review process came back as "reject"
+				fail_upload_toolong - failed to upload, it took so long that the singature expired, tell user its ok it happens, retrying is the solution here. it took so long that the signature expired.
+				fail_upload_unknown - failed to upload for some unknown reason
 		reason_details: // present only for some reason's
 				// fail_xhr
 				{
@@ -383,8 +385,9 @@ function signXpi(extid) {
 			xpiversion = manifest_json.version;
 
 			xpiid = extid + '@chrome-store-foxified-' + HashString(amo_user.key);
-			manifest_txt.replace(extid + '@chrome-store-foxified-unsigned', xpiid);
-
+			console.log('index of unsigned id:', manifest_txt.indexOf(extid + '@chrome-store-foxified-unsigned'));
+			manifest_txt = manifest_txt.replace(extid + '@chrome-store-foxified-unsigned', xpiid);
+			console.log('index of unsigned id afte replace:', manifest_txt.indexOf(extid + '@chrome-store-foxified-unsigned'));
 			// TODO: error points here? JSZip failing? maybe think about it, if there are then handle it
 
 			unsigned_jszip.file('manifest.json', manifest_txt);
@@ -512,26 +515,42 @@ function signXpi(extid) {
 				signing_xpi: formatStringFromName('signing_xpi_uploading', 'main')
 			});
 
+			var onprogress = function(e) {
+				var percent;
+				if (e.lengthComputable) {
+					percent = Math.round((e.loaded / e.total) * 100);
+				}
+
+				updateStatus(extid, {
+					signing_xpi: [formatBytes(e.loaded, 1), percent]
+				});
+			};
+
 			var presigned_zip_file = new File([presigned_zip_blob], 'dummyname.xpi');
 			var data = new FormData();
 			data.append('Content-Type', 'multipart/form-data');
 			data.append('upload', presigned_zip_file); // http://stackoverflow.com/a/24746459/1828637
+
 			console.error('doing submit');
+
 			xhrAsync(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/', { // only on first time upload, the aAddonVersionInXpi can be anything
 				method: 'PUT',
 				data,
 				responseType: 'json',
 				headers: {
 					Authorization: 'JWT ' + jwtSignOlympia(amo_user.key, amo_user.secret, getCorrectedSystemTime())
-				}
+				},
+				// timout: null - DO NOT set timeout, as the signature expiry will tell us of timeout link88444576
+				// onprogress
 			}, verifyUploaded);
 
 		};
 
+		var possible_uploadFailedDueToTooLong_if404onCheck = false;
 		var verifyUploaded = function(xhrArg) {
 			console.error('doing verifyUploaded');
 			var { request, ok, reason } = xhrArg;
-			if (!ok || (request.status != 201 && request.status != 202)) {
+			if (!ok && (request.status != 409)) { // link3922222
 				// TODO: detail why it failed here, so it tells user, it would failed to upload, maybe bad status token etc
 				// xhr failed
 				rezMain.ok = false;
@@ -545,9 +564,25 @@ function signXpi(extid) {
 				deferredMain_signXpi.resolve(rezMain);
 			} else {
 				// status is 201 or 202 - meaning ok new submission went through
-				// wait for review to complete
-				console.error('ok good uploaded, status:', request.status, request.response, request.statusText);
-				requestReviewStatus();
+				// status 409 - ok is false, as i expect 4xx status codes to be, so i add in check for 409 on link3922222 means version is already there, so go straight to check requestReviewStatus to get url to download
+				// status 401 - ok is true for some reason - it means signature has expired `401 Object { detail: "Signature has expired." } UNAUTHORIZED` this happens when upload takes to long. in all my test cases, the upload did go through OR version was already existing
+
+				if (request.status == 401) {
+					// this happens when upload takes too long. however in all cases i saw where it took too long, the upload happend, its just that the response could not be recieved because of signature expired, so lets go ahead to requestReviewStatus to check if its there. if it gets a 404, it indeed means the upload failed
+					// because of this reason i do not supply a timeout to the xhrAsync link88444576
+
+					// TODO: tell user it failed to upload because it took too long (probably due to amo server being slow) - explain that the only solution here is to retry, and if still, then wait 15 min and try again, and if still then repet waiting and retrying
+					rezMain.ok = false;
+					rezMain.reason = 'fail_upload_toolong';
+					deferredMain_signXpi.resolve(rezMain);
+
+					// possible_uploadFailedDueToTooLong_if404onCheck = true;
+					// requestReviewStatus();
+				} else {
+					// wait for review to complete
+					console.error('ok good uploaded, status:', request.status, request.response, request.statusText);
+					requestReviewStatus();
+				}
 			}
 		};
 
@@ -556,7 +591,7 @@ function signXpi(extid) {
 			// sends xhr to check if review is complete
 			request_status_cnt++;
 			console.error('doing requestReviewStatus, request_status_cnt:',request_status_cnt);
-
+			console.log('url:', AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/');
 			xhrAsync(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/', {
 				responseType: 'json',
 				headers: {
@@ -568,7 +603,7 @@ function signXpi(extid) {
 		var callbackReviewStatus = function(xhrArg) {
 			console.error('doing callbackReviewStatus');
 			var { request, ok, reason } = xhrArg;
-			if (!ok || (request.status != 200 && request.status != 404)) {
+			if (!ok) {
 				// TODO: detail why it failed here, so it tells user, failed checking status
 				// xhr failed
 				rezMain.ok = false;
@@ -582,13 +617,18 @@ function signXpi(extid) {
 				deferredMain_signXpi.resolve(rezMain);
 			} else {
 				// TODO: right now i check for files, i should check if review passed. because review can i fail i guess, if like they do some bad stuff
-				if (request.status == 404) {
-					// the review of the upload has not yet started
-					console.log('the review of the upload has not yet started, wait then check again, status:', request.status, request.response, request.statusText);
-					setTimeout(requestReviewStatus, 10000);
-				} else if (request.status == 200) {
-					console.error('ok good found on review status check, status:', request.status, request.response, request.statusText);
-					if (request.response.files) {
+
+				// state changes of reponse.jon for eventual approved
+				// active=false	processed=false	passed_review=false	files=[0]	reviewed=false	validation_results=null		valid:false	// immediately after upload
+				// active=false	processed=true	passed_review=false	files=[0]	reviewed=false	validation_results={...}	valid:true 	// processing complete - takes some time
+				// active=true	processed=true	passed_review=true	files=[1]	reviewed=true	validation_results={...}	valid:true 	// approved and file ready to download - takes some time
+
+				// TODO: state changes of reponse.jon for eventual rejected
+				// TODO: state changes of reponse.jon for eventual other non-approved (like error)
+
+				console.error('review status check, xhr details:', request.status, request.response, request.statusText);
+				if (request.status == 200) {
+					// if (request.response.files) {
 						if (request.response.files.length === 1) {
 							// ok review complete and approved - download it
 							xhrAsync(request.response.files[0].download_url, {
@@ -597,10 +637,10 @@ function signXpi(extid) {
 									Authorization: 'JWT ' + jwtSignOlympia(amo_user.key, amo_user.secret, getCorrectedSystemTime())
 								}
 							}, callbackDownloadSigned);
-						} else {
-							console.error('addon existing, and successfully got exiswting status check, but files are not yet ready! not yet handled :todo:')
+						} else if (request.response.files.length === 0) {
+							console.error('addon not yet signed, wait, then check again')
 
-							if (Array.isArray(request_fetchExisting.response.files) && request_fetchExisting.response.reviewed && !request_fetchExisting.response.passed_review) { // i was using .response.processed however it was not right, as it gets processed before reviewed. so updated to .response.reviewed. as with fullscreenshot thing i got that warning for binary - https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl
+							if (request.response.reviewed && !request.response.passed_review) { // i was using .response.processed however it was not right, as it gets processed before reviewed. so updated to .response.reviewed. as with fullscreenshot thing i got that warning for binary - https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl
 								// throw new Error('failed validation of the signing process');
 								rezMain.ok = false;
 								rezMain.reason = 'failed-approval';
@@ -613,15 +653,30 @@ function signXpi(extid) {
 								console.error('review is in process, check after waiting');
 								setTimeout(requestReviewStatus, 1000);
 							}
+						} else {
+							// files are > 1 - how on earth?? // TODO: handle this with error to user
 						}
-					}
+					// }
+				} else if (request.status == 404) {
+					// failed to upload
+					// if (possible_uploadFailedDueToTooLong_if404onCheck) {
+					// 	// TODO: tell user it failed to upload because it took too long (probably due to amo server being slow) - explain that the only solution here is to retry, and if still, then wait 15 min and try again, and if still then repet waiting and retrying
+					// 	rezMain.ok = false;
+					// 	rezMain.reason = 'fail_upload_toolong';
+					// 	deferredMain_signXpi.resolve(rezMain);
+					// } else {
+						// tell user it failed to upload for some unknown reason
+						rezMain.ok = false;
+						rezMain.reason = 'fail_upload_unknown';
+						deferredMain_signXpi.resolve(rezMain);
+					// }
 				}
 			}
 		};
 
 		var callbackDownloadSigned = function(xhrArg) {
 			var { request, ok, reason } = xhrArg;
-			if (!ok || request.status != 200) {
+			if (!ok) {
 				// TODO: detail why it failed here, so it tells user, failed downloading signed
 				// xhr failed
 				rezMain.ok = false;
@@ -636,6 +691,7 @@ function signXpi(extid) {
 			} else {
 
 				// save to disk
+				console.error('ok downloaded data, saving to disk');
 				try {
 					writeThenDir(OS.Path.join(core.addon.path.storage_signed, extid + '.xpi'), new Uint8Array(request.response), OS.Constants.Path.profileDir);
 				} catch(ex) {
@@ -644,6 +700,7 @@ function signXpi(extid) {
 				}
 
 				rezMain.ok = true;
+				deferredMain_signXpi.resolve(rezMain);
 			}
 		};
 

@@ -313,7 +313,7 @@ function signXpi(extid, install) {
 		var { request, ok, reason } = aArg; // reason only available when ok==false
 		store.dispatch(updateStatus(extid, {
 			signing_xpi: undefined,
-			signed_xpi: ok
+			downloaded_signed: ok
 		}));
 
 		if (ok && install) {
@@ -600,7 +600,7 @@ var ExtActions = React.createClass({
 				cChildren.push( React.createElement('button', {}, formatStringFromNameCore('unsigned_install', 'main')) );
 			}
 			cChildren.push( React.createElement('button', { onClick:this.saveUnsigned }, formatStringFromNameCore('unsigned_save', 'main')) );
-			if (!status.signing_xpi) {
+			if (!status.signing_xpi && !status.downloaded_signed) {
 				cChildren.push( React.createElement('button', { onClick:this.sign }, formatStringFromNameCore('sign_unsigned_addon', 'main')) );
 			}
 		}
