@@ -15,6 +15,7 @@ function init(objCore) {
 	importScripts(core.addon.path.scripts + '3rd/hmac-sha256.js');
 	importScripts(core.addon.path.scripts + '3rd/enc-base64-min.js');
 	importScripts(core.addon.path.scripts + '3rd/jszip.min.js');
+	importScripts(core.addon.path.scripts + 'cws_pattern__firefox-worker.js');
 
 	core.addon.path.storage = OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id, 'simple-storage');
 	core.addon.path.storage_crx = OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id, 'simple-storage', 'crx');
@@ -37,7 +38,8 @@ function downloadCrx(extid, aComm) {
 	// called by bootstrap
 	var deferredMain_downloadCrx = new Deferred();
 
-	xhrAsync('https://clients2.google.com/service/update2/crx?response=redirect&prodversion=38.0&x=id%3D' + extid + '%26installsource%3Dondemand%26uc', {
+	console.log('get_crx_url(extid):', get_crx_url(extid));
+	xhrAsync(get_crx_url(extid), {
 		responseType: 'arraybuffer',
 		timeout: 30000,
 	}, function(xhrArg) {
