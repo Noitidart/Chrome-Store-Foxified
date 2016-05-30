@@ -39,17 +39,17 @@ function downloadCrx(extid, aComm) {
 	var deferredMain_downloadCrx = new Deferred();
 
 	var onprogress = function(e) {
-		var percent;
-		if (e.lengthComputable) {
-			percent = Math.round(e.loaded / e.total);
-		}
+		// var percent;
+		// if (e.lengthComputable) {
+		// 	percent = Math.round((e.loaded / e.total) * 100);
+		// }
 
-		console.log('percent:', percent, 'loaded:', e.loaded, 'total:', e.total);
-		if (percent !== 1) {
+		// console.log('percent:', percent, 'loaded:', e.loaded, 'total:', e.total);
+		// if (percent !== 100) {
 			updateStatus(extid, {
 				downloading_crx: formatBytes(e.loaded, 1)
 			});
-		}
+		// }
 	};
 
 	console.log('get_crx_url(extid):', get_crx_url(extid));
