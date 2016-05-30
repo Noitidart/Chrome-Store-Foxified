@@ -1,3 +1,4 @@
+// copied verbatim from - https://raw.githubusercontent.com/Rob--W/crxviewer/6f741466f75d7ca48bfa21cba4d0207153073147/src/cws_pattern.js
 /**
  * (c) 2013 Rob Wu <gwnRob@gmail.com>
  */
