@@ -679,7 +679,11 @@ var ExtStatus = React.createClass({
 			);
 		}
 		if (status.downloading_crx && !status.downloaded_crx) {
-			cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('downloading_crx', 'main')) );
+			if (typeof(status.downloading_crx) == 'string') {
+				cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('downloading_crx_progress', 'main', [status.downloading_crx])) );
+			} else {
+				cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('downloading_crx', 'main')) );
+			}
 		}
 		if (status.converting_xpi && !status.converted_xpi) {
 			cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('converting_xpi', 'main')) );

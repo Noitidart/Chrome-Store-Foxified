@@ -38,10 +38,25 @@ function downloadCrx(extid, aComm) {
 	// called by bootstrap
 	var deferredMain_downloadCrx = new Deferred();
 
+	var onprogress = function(e) {
+		var percent;
+		if (e.lengthComputable) {
+			percent = Math.round(e.loaded / e.total);
+		}
+
+		console.log('percent:', percent, 'loaded:', e.loaded, 'total:', e.total);
+		if (percent !== 1) {
+			updateStatus(extid, {
+				downloading_crx: formatBytes(e.loaded, 1)
+			});
+		}
+	};
+
 	console.log('get_crx_url(extid):', get_crx_url(extid));
 	xhrAsync(get_crx_url(extid), {
 		responseType: 'arraybuffer',
-		timeout: 30000,
+		timeout: 300000, // 5 minutes
+		onprogress
 	}, function(xhrArg) {
 		var { request, ok, reason } = xhrArg; // reason is undefined if ok==true
 		console.log('xhrArg:', xhrArg);
@@ -562,6 +577,15 @@ self.onclose = function() {
 // End - Addon Functionality
 
 // start - common helper functions
+function formatBytes(bytes,decimals) {
+   if(bytes == 0) return '0 Byte';
+   var k = 1024; // or 1024 for binary
+   var dm = decimals + 1 || 3;
+   var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+   var i = Math.floor(Math.log(bytes) / Math.log(k));
+   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
 // rev3 - _ff-addon-snippet-safedForPlatFS.js - https://gist.github.com/Noitidart/e6dbbe47fbacc06eb4ca
 var _safedForPlatFS_pattWIN = /([\\*:?<>|\/\"])/g;
 var _safedForPlatFS_pattNIXMAC = /[\/:]/g;
@@ -840,7 +864,8 @@ function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052716 - added tim
 		timeout: 0, // integer, milliseconds, 0 means never timeout, value is in milliseconds
 		headers: null, // make it an object of key value pairs
 		method: 'GET', // string
-		data: null // make it whatever you want (formdata, null, etc), but follow the rules, like if aMethod is 'GET' then this must be null
+		data: null, // make it whatever you want (formdata, null, etc), but follow the rules, like if aMethod is 'GET' then this must be null
+		onprogress: undefined // set to callback you want called
 	};
 	Object.assign(aOptionsDefaults, aOptions);
 	aOptions = aOptionsDefaults;
@@ -910,6 +935,9 @@ function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052716 - added tim
 	var evf = f => ['load', 'error', 'abort', 'timeout'].forEach(f);
 	evf(m => request.addEventListener(m, handler, false));
 
+	if (aOptions.onprogress) {
+		request.addEventListener('progress', aOptions.onprogress, false);
+	}
 	request.open(aOptions.method, aUrlOrFileUri, true); // 3rd arg is false for async
 
 	if (aOptions.headers) {
