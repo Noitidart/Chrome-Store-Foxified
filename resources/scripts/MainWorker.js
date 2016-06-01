@@ -299,7 +299,7 @@ function signXpi(extid) {
 					rezMain.ok = false;
 					rezMain.reason = 'no_agree_amo';
 					deferredMain_signXpi.resolve(rezMain);
-				} else if (!html.includes('firefox/users/edit')) {
+				} else if (!html.includes('firefox/users/edit') && !html.includes('android/users/edit')) {
 					rezMain.ok = false;
 					rezMain.reason = 'no_login_amo';
 					deferredMain_signXpi.resolve(rezMain);
