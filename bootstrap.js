@@ -1,6 +1,9 @@
 // Imports
 const {interfaces: Ci, utils: Cu, classes:Cc} = Components;
 Cu.import('resource://gre/modules/Services.jsm');
+Cu.import('resource://gre/modules/AddonManager.jsm');
+Cu.import('resource://gre/modules/Downloads.jsm');
+Cu.import('resource://gre/modules/Task.jsm');
 
 // start - beutify stuff
 var gBeautify = {};
@@ -263,6 +266,32 @@ function browseFile(aArg, aComm) {
 		return fpDoneCallback(fp.show());
 	}
 }
+
+function downloadFile(aArg, aComm) {
+	var { aSourceURL, aTargetOSPath } = aArg;
+	Task.spawn(function() {
+
+	    var list = yield Downloads.getList(Downloads.ALL);
+
+	    try {
+	        var download = yield Downloads.createDownload({
+	            source: aSourceURL,
+	            target: aTargetOSPath
+	        });
+	        list.add(download);
+	        try {
+	            download.start();
+	        } finally {
+				gWkComm.postMessage('bootstrapTimeout', 1000, undefined, function() {
+	            	download.finalize(true);
+				});
+	        }
+	    } finally {
+
+	    }
+
+	}).then(null, console.error);
+}
 // end - functions called by worker
 
 //start - common helper functions
@@ -271,7 +300,6 @@ function getDownloadsDir() {
 	try {
 		deferredMain_getDownloadsDir.resolve(Services.dirsvc.get('DfltDwnld', Ci.nsIFile).path);
 	} catch(ex) {
-		Cu.import('resource://gre/modules/Downloads.jsm');
 		Downloads.getSystemDownloadsDirectory().then(
 			function(path) {
 				deferredMain_getDownloadsDir.resolve(path);

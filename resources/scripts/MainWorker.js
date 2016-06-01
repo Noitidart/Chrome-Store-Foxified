@@ -788,13 +788,10 @@ function saveToFile(aArg, aComm) {
 			if (!aOsPath.toLowerCase().endsWith(saveExtension)) { // link11193333
 				aOsPath += saveExtension;
 			}
-			try {
-				OS.File.copy(path, aOsPath, {noOverwrite:false});
-				rez.ok = true;
-			} catch(ex) {
-				rez.ok = false;
-				rez.reason = 'filesystem';
-			}
+			gBsComm.postMessage('downloadFile', {
+				aSourceURL: OS.Path.toFileURI(path),
+				aTargetOSPath: aOsPath
+			});
 			deferredMain_saveToFile.resolve(rez);
 		};
 
@@ -834,6 +831,13 @@ function saveToFile(aArg, aComm) {
 	return deferredMain_saveToFile.promise;
 }
 
+function bootstrapTimeout(milliseconds) {
+	var mainDeferred_bootstrapTimeout = new Deferred();
+	setTimeout(function() {
+		mainDeferred_bootstrapTimeout.resolve();
+	}, milliseconds)
+	return mainDeferred_bootstrapTimeout.promise;
+}
 self.onclose = function() {
 	console.log('ok ready to terminate');
 }
