@@ -31,7 +31,7 @@ var pageLoader = {
 		var principal = contentWindow.location.origin; // docShell.chromeEventHandler.contentPrincipal;
 		console.error('principal:', principal);
 		gSandbox = Cu.Sandbox(principal, {
-			sandboxPrototype: content,
+			sandboxPrototype: contentWindow,
 			wantXrays: true, // only set this to false if you need direct access to the page's javascript. true provides a safer, isolated context.
 			sameZoneAs: content,
 			wantComponents: false
@@ -42,11 +42,11 @@ var pageLoader = {
 		Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-redux.js?' + core.addon.cache_key, gSandbox, 'UTF-8');
 		Services.scriptloader.loadSubScript(core.addon.path.scripts + 'MainContentscript.js?' + core.addon.cache_key, gSandbox, 'UTF-8');
 
-		// Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-with-addons.js?' + core.addon.cache_key, content, 'UTF-8');
-		// Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-dom.js?' + core.addon.cache_key, content, 'UTF-8');
-		// Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/redux.js?' + core.addon.cache_key, content, 'UTF-8');
-		// Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-redux.js?' + core.addon.cache_key, content, 'UTF-8');
-		// Services.scriptloader.loadSubScript(core.addon.path.scripts + 'MainContentscript.js?' + core.addon.cache_key, content, 'UTF-8');
+		// Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-with-addons.js?' + core.addon.cache_key, contentWindow, 'UTF-8');
+		// Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-dom.js?' + core.addon.cache_key, contentWindow, 'UTF-8');
+		// Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/redux.js?' + core.addon.cache_key, contentWindow, 'UTF-8');
+		// Services.scriptloader.loadSubScript(core.addon.path.scripts + '3rd/react-redux.js?' + core.addon.cache_key, contentWindow, 'UTF-8');
+		// Services.scriptloader.loadSubScript(core.addon.path.scripts + 'MainContentscript.js?' + core.addon.cache_key, contentWindow, 'UTF-8');
 
 		gWinComm = new contentComm(contentWindow); // cross-file-link884757009
 

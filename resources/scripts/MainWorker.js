@@ -657,7 +657,7 @@ function signXpi(extid) {
 							} else {
 								// review is in process, check again after waiting
 								console.error('review is in process, check after waiting');
-								setTimeout(requestReviewStatus, 1000);
+								setTimeout(requestReviewStatus, 10000);
 							}
 						} else {
 							// files are > 1 - how on earth?? // TODO: handle this with error to user

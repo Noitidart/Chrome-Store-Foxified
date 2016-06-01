@@ -89,19 +89,33 @@ function startup(aData, aReason) {
 	// 	Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.donotsign', false);
 	// }
 
-	core.addon.path.downloads = Services.dirsvc.get('DfltDwnld', Ci.nsIFile).path;
+	// start async-proc21
+	var getDownloadsDirPath = function() {
+		getDownloadsDir().then(
+			function(os_path_downloads) {
+				core.addon.path.downloads = os_path_downloads;
+				console.log('core.addon.path.downloads:', core.addon.path.downloads);
+				startWorker();
+			}
+		);
+	};
 
-	gWkComm = new workerComm(core.addon.path.scripts + 'MainWorker.js', ()=>{return core}, function(aArg, aComm) {
+	var startWorker = function() {
+		gWkComm = new workerComm(core.addon.path.scripts + 'MainWorker.js', ()=>{return core}, function(aArg, aComm) {
 
-		core = aArg;
+			core = aArg;
 
-		gFsComm = new crossprocComm(core.addon.id);
+			gFsComm = new crossprocComm(core.addon.id);
 
-		Services.mm.loadFrameScript(core.addon.path.scripts + 'MainFramescript.js?' + core.addon.cache_key, true);
+			Services.mm.loadFrameScript(core.addon.path.scripts + 'MainFramescript.js?' + core.addon.cache_key, true);
 
-	});
+		});
 
-	gWkComm.postMessage('dummyForInstantInstantiate');
+		gWkComm.postMessage('dummyForInstantInstantiate');
+	};
+
+	getDownloadsDirPath();
+	// end async-proc21
 
 }
 
@@ -252,6 +266,20 @@ function browseFile(aArg, aComm) {
 // end - functions called by worker
 
 //start - common helper functions
+function getDownloadsDir() {
+	var deferredMain_getDownloadsDir = new Deferred();
+	try {
+		deferredMain_getDownloadsDir.resolve(Services.dirsvc.get('DfltDwnld', Ci.nsIFile).path);
+	} catch(ex) {
+		Cu.import('resource://gre/modules/Downloads.jsm');
+		Downloads.getSystemDownloadsDirectory().then(
+			function(path) {
+				deferredMain_getDownloadsDir.resolve(path);
+			}
+		);
+	}
+	return deferredMain_getDownloadsDir.promise;
+}
 //rev1 - https://gist.github.com/Noitidart/c4ab4ca10ff5861c720b
 function validateOptionsObj(aOptions, aOptionsDefaults) {
 	// ensures no invalid keys are found in aOptions, any key found in aOptions not having a key in aOptionsDefaults causes throw new Error as invalid option
