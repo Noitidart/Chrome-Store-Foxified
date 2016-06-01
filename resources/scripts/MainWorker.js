@@ -574,6 +574,12 @@ function signXpi(extid) {
 					// TODO: tell user it failed to upload because it took too long (probably due to amo server being slow) - explain that the only solution here is to retry, and if still, then wait 15 min and try again, and if still then repet waiting and retrying
 					rezMain.ok = false;
 					rezMain.reason = 'fail_upload_toolong';
+					rezMain.reason_details = {
+						status: request.status,
+						statusText: request.statusText,
+						url: request.responseURL,
+						response: request.response
+					};
 					deferredMain_signXpi.resolve(rezMain);
 
 					// possible_uploadFailedDueToTooLong_if404onCheck = true;
@@ -777,40 +783,52 @@ function saveToFile(aArg, aComm) {
 		rez.reason = 'no_src_file';
 		deferredMain_saveToFile.resolve(rez);
 	} else {
-		gBsComm.postMessage(
-			'browseFile',
-			{
-				aDialogTitle: formatStringFromName('save_to_file_as', 'main'),
-				aOptions: {
-					mode: 'modeSave',
-					filters: browseFilters,
-					async: true,
-					win: 'navigator:browser',
-					defaultString: recommendSaveAs
-				}
-			},
-			undefined,
-			function(aArg, aComm) {
-				var path_target = aArg;
-				if (!path_target) {
-					// user cancelled
-					rez.ok = true;
-					deferredMain_saveToFile.resolve(rez);
-				} else {
-					if (!path_target.toLowerCase().endsWith(saveExtension)) { // link11193333
-						path_target += saveExtension;
-					}
-					try {
-						OS.File.copy(path, path_target, {noOverwrite:false});
-						rez.ok = true;
-					} catch(ex) {
-						rez.ok = false;
-						rez.reason = 'filesystem';
-					}
-					deferredMain_saveToFile.resolve(rez);
-				}
+		// start - async-proc993
+		var afterTargetPath = function(aOsPath) {
+			if (!aOsPath.toLowerCase().endsWith(saveExtension)) { // link11193333
+				aOsPath += saveExtension;
 			}
-		)
+			try {
+				OS.File.copy(path, aOsPath, {noOverwrite:false});
+				rez.ok = true;
+			} catch(ex) {
+				rez.ok = false;
+				rez.reason = 'filesystem';
+			}
+			deferredMain_saveToFile.resolve(rez);
+		};
+
+		if (OS.Constants.Sys.Name != 'Android') {
+			gBsComm.postMessage(
+				'browseFile',
+				{
+					aDialogTitle: formatStringFromName('save_to_file_as', 'main'),
+					aOptions: {
+						mode: 'modeSave',
+						filters: browseFilters,
+						async: true,
+						win: 'navigator:browser',
+						defaultString: recommendSaveAs
+					}
+				},
+				undefined,
+				function(aArg, aComm) {
+					var path_target = aArg;
+					if (!path_target) {
+						// user cancelled
+						rez.ok = true;
+						deferredMain_saveToFile.resolve(rez);
+					} else {
+						var path_target = aArg;
+						afterTargetPath(path_target);
+					}
+				}
+			);
+		} else {
+			afterTargetPath(OS.Path.join(core.addon.path.downloads, recommendSaveAs));
+		}
+
+		// end - async-proc993
 	}
 
 	return deferredMain_saveToFile.promise;

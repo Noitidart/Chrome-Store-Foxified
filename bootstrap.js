@@ -89,6 +89,8 @@ function startup(aData, aReason) {
 	// 	Services.prefs.setBoolPref('extensions.chrome-store-foxified@jetpack.donotsign', false);
 	// }
 
+	core.addon.path.downloads = Services.dirsvc.get('DfltDwnld', Ci.nsIFile).path;
+
 	gWkComm = new workerComm(core.addon.path.scripts + 'MainWorker.js', ()=>{return core}, function(aArg, aComm) {
 
 		core = aArg;
