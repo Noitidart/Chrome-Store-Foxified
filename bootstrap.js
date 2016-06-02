@@ -327,6 +327,7 @@ function installAddonAsTemp(aArg, aComm) {
 				});
 			}
 		);
+
 	};
 
 	// end - async-proc33
@@ -348,8 +349,18 @@ function installAddonAsNormal(aArg, aComm) {
 	).catch(genericCatch.bind(null, 'promise_uninstall', mainDeferred_installAddonAsNormal));
 
 	var install = function() {
-		var xpinsi = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
-		xpinsi.initWithPath(path);
+		AddonManager.getInstallForURL(path, function(aInstall) {
+			var tab;
+			if (core.os.mname == 'android') {
+				tab = Services.wm.getMostRecentWindow('navigator:browser').BrowserApp.selectedTab.linkedBrowser;
+			} else {
+				tab = Services.wm.getMostRecentWindow('navigator:browser').gBrowser.selectedBrowser;
+			}
+			AddonManager.installAddonsFromWebpage('application/x-xpinstall', tab, tab.contentPrincipal, [aInstall]);
+			mainDeferred_installAddonAsNormal.resolve({
+				ok: true
+			});
+		}, 'application/x-xpinstall');
 	};
 
 	// end - async-proc22

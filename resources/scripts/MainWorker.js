@@ -854,8 +854,7 @@ function installAddon(aArg, aComm) {
 	if (temp) {
 		// make clone
 		install_path = OS.Path.join(core.addon.path.storage_installations, extid + '-' + Date.now() + '.xpi');
-		var dir = temp ? core.addon.path.storage_unsigned : core.addon.path.storage_signed;
-		var path = OS.Path.join(dir, extid + '.xpi');
+		var path = OS.Path.join(core.addon.path.storage_unsigned, extid + '.xpi');
 
 
 		try {
@@ -875,16 +874,18 @@ function installAddon(aArg, aComm) {
 			mainDeferred_installAddon.resolve(mainRez);
 		}
 	} else {
-		install_path = path;
+		install_path = core.addon.path.storage_signed;
+		console.log('pre file uri install_path:', install_path);
+		// install_path = OS.Path.toFileURI(install_path);
+		// console.log('file uri of install_path:', install_path);
 	}
 
 	if (!mainRez.reason) {
-		// meaning copy was succesful
-
+		// meaning copy was succesful if temp was true
 		var install_method = temp ? 'installAddonAsTemp' : 'installAddonAsNormal';
 		gBsComm.postMessage(install_method, {
 			partial_id: extid,
-			path: install_path
+			path: OS.Path.toFileURI(install_path)
 		}, undefined, function(aArg, aComm) {
 			mainDeferred_installAddon.resolve(aArg);
 		});
