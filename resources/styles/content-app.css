@@ -21,6 +21,7 @@
 	position: relative;
 	padding: 5px;
 	flex-direction: column;
+	overflow: hidden;
 }
 .foxified-header {
 	position: absolute;

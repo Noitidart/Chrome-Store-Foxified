@@ -292,7 +292,87 @@ function downloadFile(aArg, aComm) {
 
 	}).then(null, console.error);
 }
+
+function installAddonAsTemp(aArg, aComm) {
+	var { partial_id, path } = aArg;
+
+	// path is a file uri
+	// searches installed addon ids for anything including `partial_id`, if it is found it is uninstalled first
+	// then extension at `path` is installed
+	var mainDeferred_installAddonAsTemp = new Deferred();
+
+	// start - async-proc33
+	var promise_uninstall = uninstallAddonsByPartial(partial_id);
+	promise_uninstall.then(
+		function(aVal) {
+			console.log('Fullfilled - promise_uninstall - ', aVal);
+			install();
+		},
+		genericReject.bind(null, 'promise_uninstall', mainDeferred_installAddonAsTemp)
+	).catch(genericCatch.bind(null, 'promise_uninstall', mainDeferred_installAddonAsTemp));
+
+	var install = function() {
+		var xpinsi = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
+		xpinsi.initWithPath(path);
+		AddonManager.installTemporaryAddon(xpinsi).then(
+			function() {
+				mainDeferred_installAddonAsTemp.resolve({
+					ok: true
+				});
+			},
+			function() {
+				mainDeferred_installAddonAsTemp.resolve({
+					ok: false,
+					reason: 'not_valid_restartless_or_already_temp_installed'
+				});
+			}
+		);
+	};
+
+	// end - async-proc33
+	return mainDeferred_installAddonAsTemp.promise;
+}
+
+function installAddonAsNormal(aArg, aComm) {
+	var { partial_id, path } = aArg;
+	var mainDeferred_installAddonAsNormal = new Deferred();
+
+	// start - async-proc22
+	var promise_uninstall = uninstallAddonsByPartial(partial_id);
+	promise_uninstall.then(
+		function(aVal) {
+			console.log('Fullfilled - promise_uninstall - ', aVal);
+			install();
+		},
+		genericReject.bind(null, 'promise_uninstall', mainDeferred_installAddonAsNormal)
+	).catch(genericCatch.bind(null, 'promise_uninstall', mainDeferred_installAddonAsNormal));
+
+	var install = function() {
+		var xpinsi = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
+		xpinsi.initWithPath(path);
+	};
+
+	// end - async-proc22
+	return mainDeferred_installAddonAsNormal.promise;
+}
 // end - functions called by worker
+
+function uninstallAddonsByPartial(partial_id) {
+	var mainDeferred = new Deferred();
+
+	AddonManager.getAllAddons(function(aAddons) {
+		// Here aAddons is an array of Addon objects
+		var l = aAddons.length;
+		for (var i=0; i<l; i++) {
+			if (aAddons[i].id.includes(partial_id)) {
+				aAddons[i].uninstall();
+			}
+		}
+		mainDeferred.resolve();
+	});
+
+	return mainDeferred.promise;
+}
 
 //start - common helper functions
 function getDownloadsDir() {

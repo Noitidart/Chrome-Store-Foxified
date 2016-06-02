@@ -294,8 +294,8 @@ function convertXpi(extid) {
 	});
 }
 
-function signXpi(extid, install) {
-	// install is bool, set to true if you want it to go to install after succesful signing_xpi
+function signXpi(extid, install_normal) {
+	// install_normal is bool, set to true if you want it to go to install_normal after succesful signing_xpi
 
 	store.dispatch(updateStatus(extid, {
 		signing_xpi: true
@@ -316,9 +316,35 @@ function signXpi(extid, install) {
 			downloaded_signed: ok
 		}));
 
-		if (ok && install) {
-			// TODO: go to install function
+		if (ok && install_normal) {
+			// TODO: go to install_normal function as perm
+			installXpi(extid, false);
 		}
+	});
+}
+
+function installXpi(extid, temp) {
+	// install is bool, set to true if you want it to go to install after succesful signing_xpi
+
+	store.dispatch(updateStatus(extid, {
+		[temp ? 'unsigned_installing' : 'signed_installing']: true,
+		asking_perm_or_temp: undefined
+	}));
+	gFsComm.postMessage('callInBootstrap', {
+		method: 'callInWorker',
+		wait: true,
+		arg: {
+			method: 'installAddon',
+			wait: true,
+			arg: { extid, temp }
+		}
+	}, undefined, function(aArg, aComm) {
+		console.log('back in content after installing, aArg:', aArg);
+		var { request, ok, reason } = aArg; // reason only available when ok==false
+		store.dispatch(updateStatus(extid, {
+			[temp ? 'unsigned_installing' : 'signed_installing']: undefined,
+			[temp ? 'unsigned_installed' : 'signed_installed']: ok
+		}));
 	});
 }
 
@@ -584,6 +610,12 @@ var ExtActions = React.createClass({
 		}
 		signXpi(extid);
 	},
+	tempInstall: function() {
+		installXpi(this.props.extid, true);
+	},
+	normInstall: function() {
+		installXpi(this.props.extid, false);
+	},
 	render() {
 		var { extid, status, dispatch } = this.props;
 
@@ -596,8 +628,8 @@ var ExtActions = React.createClass({
 			}
 		}
 		if (status.converted_xpi) {
-			if (!status.unsigned_installing) {
-				cChildren.push( React.createElement('button', {}, formatStringFromNameCore('unsigned_install', 'main')) );
+			if (!status.unsigned_installing && !status.unsigned_installed) {
+				cChildren.push( React.createElement('button', { onClick:this.tempInstall }, formatStringFromNameCore('unsigned_install', 'main')) );
 			}
 			cChildren.push( React.createElement('button', { onClick:this.saveUnsigned }, formatStringFromNameCore('unsigned_save', 'main')) );
 			if (!status.signing_xpi && !status.downloaded_signed) {
@@ -605,8 +637,8 @@ var ExtActions = React.createClass({
 			}
 		}
 		if (status.downloaded_signed) {
-			if (!status.signed_installing) {
-				cChildren.push( React.createElement('button', {}, formatStringFromNameCore('signed_install', 'main')) );
+			if (!status.signed_installing && !status.signed_installed) {
+				cChildren.push( React.createElement('button', { onClick:this.normInstall }, formatStringFromNameCore('signed_install', 'main')) );
 			}
 			cChildren.push( React.createElement('button', { onClick:this.saveSigned }, formatStringFromNameCore('signed_save', 'main')) );
 		}
@@ -622,16 +654,13 @@ var ExtStatus = React.createClass({
 
 		e.preventDefault(); // so it doesnt changel locaiton to "#"
 
-		store.dispatch( updateStatus(extid, { asking_perm_or_temp:undefined, unsigned_installing:true }) );
+		installXpi(extid, true);
 	},
 	installPerm(e) {
 		var { extid } = this.props;
 
 		e.preventDefault(); // so it doesnt changel locaiton to "#"
 
-		store.dispatch(updateStatus(extid, {
-			asking_perm_or_temp: undefined
-		}));
 		signXpi(this.props.extid, true);
 	},
 	close(e) {

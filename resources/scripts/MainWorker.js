@@ -838,6 +838,61 @@ function bootstrapTimeout(milliseconds) {
 	}, milliseconds)
 	return mainDeferred_bootstrapTimeout.promise;
 }
+
+function installAddon(aArg, aComm) {
+	var { temp, extid } = aArg;
+
+	// xpi at `path` is opened to extract addon id from it
+	// `temp` is bool, set to true for temp install, or false for normal install
+
+	// a clone of the xpi at `path` is made in core.addon.path.storage_installations - this is because of a bug in that firefox locks the file on disk, and it cannot be modified while the lock is held by the "load as temporary addon" feature
+
+	var mainDeferred_installAddon = new Deferred();
+	var mainRez = {};
+
+	var install_path;
+	if (temp) {
+		// make clone
+		install_path = OS.Path.join(core.addon.path.storage_installations, extid + '-' + Date.now() + '.xpi');
+		var dir = temp ? core.addon.path.storage_unsigned : core.addon.path.storage_signed;
+		var path = OS.Path.join(dir, extid + '.xpi');
+
+
+		try {
+			OS.File.copy(path, install_path);
+		} catch(ex) {
+			if (ex.becauseNoSuchFile) {
+				try {
+					OS.File.makeDir(core.addon.path.storage_installations, {from:OS.Constants.Path.profileDir});
+					OS.File.copy(path, install_path);
+				} catch(ex) {
+					mainRez.reason = 'no_src_file';
+				}
+			} else {
+				mainRez.reason = 'filesystem';
+			}
+			mainRez.ok = false;
+			mainDeferred_installAddon.resolve(mainRez);
+		}
+	} else {
+		install_path = path;
+	}
+
+	if (!mainRez.reason) {
+		// meaning copy was succesful
+
+		var install_method = temp ? 'installAddonAsTemp' : 'installAddonAsNormal';
+		gBsComm.postMessage(install_method, {
+			partial_id: extid,
+			path: install_path
+		}, undefined, function(aArg, aComm) {
+			mainDeferred_installAddon.resolve(aArg);
+		});
+	}
+
+	return mainDeferred_installAddon.promise;
+}
+
 self.onclose = function() {
 	console.log('ok ready to terminate');
 }
