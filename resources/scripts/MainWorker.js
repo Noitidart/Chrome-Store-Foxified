@@ -515,14 +515,14 @@ function signXpi(extid) {
 				signing_xpi: formatStringFromName('signing_xpi_uploading', 'main')
 			});
 
-			var onprogress = function(e) {
+			var onuploadprogress = function(e) {
 				var percent;
 				if (e.lengthComputable) {
 					percent = Math.round((e.loaded / e.total) * 100);
 				}
 
 				updateStatus(extid, {
-					signing_xpi: [formatBytes(e.loaded, 1), percent]
+					signing_xpi: formatStringFromName('signing_xpi_uploading_progress', 'main', [percent, formatBytes(e.loaded, 1)])
 				});
 			};
 
@@ -541,7 +541,7 @@ function signXpi(extid) {
 					Authorization: 'JWT ' + jwtSignOlympia(amo_user.key, amo_user.secret, getCorrectedSystemTime())
 				},
 				// timout: null - DO NOT set timeout, as the signature expiry will tell us of timeout link88444576
-				// onprogress
+				onuploadprogress
 			}, verifyUploaded);
 
 		};
@@ -1198,7 +1198,8 @@ function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052716 - added tim
 		headers: null, // make it an object of key value pairs
 		method: 'GET', // string
 		data: null, // make it whatever you want (formdata, null, etc), but follow the rules, like if aMethod is 'GET' then this must be null
-		onprogress: undefined // set to callback you want called
+		onprogress: undefined, // set to callback you want called
+		onuploadprogress: undefined // set to callback you want called
 	};
 	Object.assign(aOptionsDefaults, aOptions);
 	aOptions = aOptionsDefaults;
@@ -1270,6 +1271,9 @@ function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052716 - added tim
 
 	if (aOptions.onprogress) {
 		request.addEventListener('progress', aOptions.onprogress, false);
+	}
+	if (aOptions.onuploadprogress) {
+		request.upload.addEventListener('progress', aOptions.onuploadprogress, false);
 	}
 	request.open(aOptions.method, aUrlOrFileUri, true); // 3rd arg is false for async
 

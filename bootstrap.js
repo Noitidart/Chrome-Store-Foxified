@@ -220,7 +220,7 @@ function dispatchInContent(aArg, aComm) {
 				i--;
 				console.error('browser in position', i, 'is dead! removed!');
 			} else {
-				console.error('ok sending to browser in position', i);
+				console.error('ok sending to browser in position', i, 'messageManager:', cbrowser.messageManager);
 				gFsComm.transcribeMessage(cbrowser.messageManager, 'callInContent', {
 					method: 'dispatchInContent',
 					arg: aArg,
