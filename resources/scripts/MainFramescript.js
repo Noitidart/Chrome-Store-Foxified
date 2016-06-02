@@ -252,7 +252,7 @@ var gCommScope = {
 
 		if (!gWinComm) {
 			console.warn('no currently connected window');
-			return 'no currently connected window';
+			return 'NO_WIN_COMM';
 		}
 		var cWinCommCb = undefined;
 		var rez = undefined;
@@ -343,7 +343,7 @@ function crossprocComm(aChannelId) {
 						).catch(genericCatch.bind(null, 'rez_bs_call', 0));
 					} else {
 						console.log('calling transcribeMessage for callbck with args:', payload.cbid, rez_bs_call);
-						this.transcribeMessage(messageManager, payload.cbid, rez_bs_call);
+						this.transcribeMessage(payload.cbid, rez_bs_call);
 					}
 				}
 			} else if (!payload.method && payload.cbid) {

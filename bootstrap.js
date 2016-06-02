@@ -146,10 +146,43 @@ function shutdown(aData, aReason) {
 function fetchCore() {
 	return core;
 }
-function callInWorker(aArg, aComm) {
+var mm_for_extid = {}; // key is extid, value is arr of weak refs to browser element for messageManager
+function callInWorker(aArg, aMessageManager, aBrowser, aComm) {
 	// called by framescript
 	var {method, arg, wait} = aArg;
 	// wait - bool - set to true if you want to wait for response from worker, and then return it to framescript
+
+	if (method == 'downloadCrx') {
+		var extid = arg;
+		var cmm = mm_for_extid[extid];
+		if (cmm) {
+			var cbrowser_found = false;
+			var l = cmm.length;
+			for (var i=0; i<l; i++) {
+				var cbrowser = undefined;
+				try {
+					cbrowser = cmm[i].get(); // null when its dead, or it may throw in some firefox versions
+				} catch(ignore) {}
+				if (!cbrowser) {
+					// its dead
+					cmm.splice(i, 1);
+					i--;
+					console.error('browser in position', i, 'is dead! removed!');
+				} else {
+					if (cbrowser == aBrowser) {
+						cbrowser_found = true;
+						break;
+					}
+				}
+			}
+		} else {
+			mm_for_extid[extid] = [];
+		}
+		if (!cbrowser_found) {
+			mm_for_extid[extid].push(Cu.getWeakReference(aBrowser));
+			console.log('ok pushed aBrowser');
+		}
+	}
 
 	var cWorkerCommCb = undefined;
 	var rez = undefined;
@@ -171,12 +204,39 @@ function callInWorker(aArg, aComm) {
 function beautifyManifest(aJsStr) {
 	return gBeautify.js(aJsStr);
 }
+function dispatchInContent(aArg, aComm) {
+	var extid = aArg.argarr[0];
+	var cmm = mm_for_extid[extid];
+	if (cmm) {
+		var l = cmm.length;
+		for (var i=0; i<l; i++) {
+			var cbrowser = undefined;
+			try {
+				cbrowser = cmm[i].get(); // null when its dead, or it may throw in some firefox versions
+			} catch(ignore) {}
+			if (!cbrowser) {
+				// its dead
+				cmm.splice(i, 1);
+				i--;
+				console.error('browser in position', i, 'is dead! removed!');
+			} else {
+				console.error('ok sending to browser in position', i);
+				gFsComm.transcribeMessage(cbrowser.messageManager, 'callInContent', {
+					method: 'dispatchInContent',
+					arg: aArg,
+					wait: false // i just want to know if return is `undefined` or `NO_WIN_COMM`
+				}, function(aArg, aComm) {
+					console.log('in callback of dispatchInContent in bootstrap, aArg:', aArg);
+				});
+			}
+		}
+	}
+}
 function callInAllContent(aArg, aComm) {
 	// called by worker
 	var {method, arg} = aArg;
 
 	// callback not allowed
-
 	Services.mm.broadcastAsyncMessage(core.addon.id, {
 		method: 'callInContent',
 		arg: {method, arg}
@@ -498,9 +558,13 @@ function crossprocComm(aChannelId) {
 	this.listener = {
 		receiveMessage: function(e) {
 			var messageManager = e.target.messageManager;
+			if (!messageManager) {
+				console.error('bootstrap crossprocComm - ignoring this received message as no messageManager for the one i am getting message from, e.target:', e.target, 'messageManager:', messageManager);
+				return;
+			}
 			var browser = e.target;
 			var payload = e.data;
-			console.log('bootstrap crossprocComm - incoming, payload:', payload); //, 'e:', e);
+			console.log('bootstrap crossprocComm - incoming, payload:', payload, 'messageManager:', messageManager, 'browser:', browser, 'e:', e);
 			// console.log('this in receiveMessage bootstrap:', this);
 
 			if (payload.method) {
@@ -516,7 +580,7 @@ function crossprocComm(aChannelId) {
 							genericReject.bind(null, 'rez_bs_call', 0)
 						).catch(genericCatch.bind(null, 'rez_bs_call', 0));
 					} else {
-						console.log('calling transcribeMessage for callbck with args:', payload.cbid, rez_bs_call);
+						console.log('bootstrap crossprocComm - calling transcribeMessage for callbck with args:', payload.cbid, rez_bs_call);
 						this.transcribeMessage(messageManager, payload.cbid, rez_bs_call);
 					}
 				}
@@ -525,7 +589,7 @@ function crossprocComm(aChannelId) {
 				this.callbackReceptacle[payload.cbid](payload.arg, messageManager, browser, this);
 				delete this.callbackReceptacle[payload.cbid];
 			} else {
-				throw new Error('invalid combination');
+				console.error('bootstrap crossprocComm - invalid combination - method:', payload.method, 'cbid:', payload.cbid, 'payload:', payload);
 			}
 		}.bind(this)
 	};
@@ -534,7 +598,7 @@ function crossprocComm(aChannelId) {
 		// console.log('bootstrap sending message to framescript', aMethod, aArg);
 		// aMethod is a string - the method to call in framescript
 		// aCallback is a function - optional - it will be triggered when aMethod is done calling
-
+		console.log('bootstrap crossprocComm - in transcribeMessage:', aMessageManager, aMethod, aArg, aCallback)
 		var cbid = null;
 		if (typeof(aMethod) == 'number') {
 			// this is a response to a callack waiting in framescript
@@ -548,6 +612,9 @@ function crossprocComm(aChannelId) {
 		}
 
 		// return;
+		if (!aMessageManager) {
+			console.error('bootstrap crossprocComm - how on earth, im in transcribeMessage but no aMessageManager? arguments:', aMessageManager, aMethod, aArg, aCallback);
+		}
 		aMessageManager.sendAsyncMessage(aChannelId, {
 			method: aMethod,
 			arg: aArg,

@@ -720,15 +720,22 @@ function signXpi(extid) {
 
 function updateStatus(extid, obj) {
 	// i shouldnt have to do method and arg objects, but i do here because .... // TODO: explain why
-	gBsComm.postMessage('callInAllContent', {
-		method: 'dispatchInContent',
-		arg: {
-			creator: 'updateStatus',
-			argarr: [
-				extid,
-				obj
-			]
-		}
+	// gBsComm.postMessage('callInAllContent', {
+	// 	method: 'dispatchInContent',
+	// 	arg: {
+	// 		creator: 'updateStatus',
+	// 		argarr: [
+	// 			extid,
+	// 			obj
+	// 		]
+	// 	}
+	// });
+	gBsComm.postMessage('dispatchInContent', {
+		creator: 'updateStatus',
+		argarr: [
+			extid,
+			obj
+		]
 	});
 }
 
