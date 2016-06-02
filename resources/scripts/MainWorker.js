@@ -593,9 +593,21 @@ function signXpi(extid) {
 		};
 
 		var request_status_cnt = 0;
+		const request_status_max = 10;
 		var requestReviewStatus = function() {
 			// sends xhr to check if review is complete
 			request_status_cnt++;
+
+			if (request_status_cnt > 1) {
+				updateStatus(extid, {
+					signing_xpi: formatStringFromName('signing_xpi_checking_review_reattempt', 'main', [request_status_cnt, request_status_max])
+				});
+			} else {
+				updateStatus(extid, {
+					signing_xpi: formatStringFromName('signing_xpi_checking_review_status_prelim', 'main')
+				});
+			}
+
 			console.error('doing requestReviewStatus, request_status_cnt:',request_status_cnt);
 			console.log('url:', AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/');
 			xhrAsync(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/', {
@@ -657,7 +669,7 @@ function signXpi(extid) {
 							} else {
 								// review is in process, check again after waiting
 								console.error('review is in process, check after waiting');
-								setTimeout(requestReviewStatus, 10000);
+								waitThenRequestReviewStatus();
 							}
 						} else {
 							// files are > 1 - how on earth?? // TODO: handle this with error to user
@@ -677,6 +689,24 @@ function signXpi(extid) {
 						deferredMain_signXpi.resolve(rezMain);
 					// }
 				}
+			}
+		};
+
+		var waited_for = 0; // for programtic use, devuser do not set this
+		const wait_for = 10; // sec
+		var waitThenRequestReviewStatus = function() {
+			if (waited_for === 0) {
+				waited_for = wait_for;
+			} else {
+				waited_for--;
+			}
+			if (waited_for === 0) {
+				requestReviewStatus();
+			} else {
+				updateStatus(extid, {
+					signing_xpi: formatStringFromName('signing_xpi_checking_review_wait', 'main', [waited_for, request_status_cnt, request_status_max])
+				});
+				setTimeout(waitThenRequestReviewStatus, 1000);
 			}
 		};
 
