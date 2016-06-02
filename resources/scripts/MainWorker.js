@@ -649,11 +649,27 @@ function signXpi(extid) {
 					// if (request.response.files) {
 						if (request.response.files.length === 1) {
 							// ok review complete and approved - download it
+							updateStatus(extid, {
+								signing_xpi: formatStringFromName('signined_xpi_downloading', 'main')
+							});
+
+							var onprogress = function(e) {
+								var percent;
+								if (e.lengthComputable) {
+									percent = Math.round((e.loaded / e.total) * 100);
+								}
+
+								updateStatus(extid, {
+									signing_xpi: formatStringFromName('signined_xpi_downloading_progress', 'main', [percent || '?', formatBytes(e.loaded, 1)])
+								});
+							};
+
 							xhrAsync(request.response.files[0].download_url, {
 								responseType: 'arraybuffer',
 								headers: {
 									Authorization: 'JWT ' + jwtSignOlympia(amo_user.key, amo_user.secret, getCorrectedSystemTime())
-								}
+								},
+								onprogress
 							}, callbackDownloadSigned);
 						} else if (request.response.files.length === 0) {
 							console.error('addon not yet signed, wait, then check again')
