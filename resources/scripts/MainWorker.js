@@ -851,41 +851,43 @@ function installAddon(aArg, aComm) {
 	var mainRez = {};
 
 	var install_path;
+	var copy_path;
 	if (temp) {
-		// make clone
 		install_path = OS.Path.join(core.addon.path.storage_installations, extid + '-' + Date.now() + '.xpi');
-		var path = OS.Path.join(core.addon.path.storage_unsigned, extid + '.xpi');
-
-
-		try {
-			OS.File.copy(path, install_path);
-		} catch(ex) {
-			if (ex.becauseNoSuchFile) {
-				try {
-					OS.File.makeDir(core.addon.path.storage_installations, {from:OS.Constants.Path.profileDir});
-					OS.File.copy(path, install_path);
-				} catch(ex) {
-					mainRez.reason = 'no_src_file';
-				}
-			} else {
-				mainRez.reason = 'filesystem';
-			}
-			mainRez.ok = false;
-			mainDeferred_installAddon.resolve(mainRez);
-		}
+		copy_path = OS.Path.join(core.addon.path.storage_unsigned, extid + '.xpi');
 	} else {
-		install_path = core.addon.path.storage_signed;
-		console.log('pre file uri install_path:', install_path);
-		// install_path = OS.Path.toFileURI(install_path);
-		// console.log('file uri of install_path:', install_path);
+		copy_path = OS.Path.join(core.addon.path.storage_signed, extid + '.xpi');
+		install_path = OS.Path.join(core.addon.path.storage_installations, extid + '-' + Date.now() + '.xpi');
+	}
+
+	// make clone
+	try {
+		OS.File.copy(copy_path, install_path);
+	} catch(ex) {
+		if (ex.becauseNoSuchFile) {
+			try {
+				OS.File.makeDir(core.addon.path.storage_installations, {from:OS.Constants.Path.profileDir});
+				OS.File.copy(path, install_path);
+			} catch(ex) {
+				mainRez.reason = 'no_src_file';
+			}
+		} else {
+			mainRez.reason = 'filesystem';
+		}
+		mainRez.ok = false;
+		mainDeferred_installAddon.resolve(mainRez);
 	}
 
 	if (!mainRez.reason) {
-		// meaning copy was succesful if temp was true
+		if (!temp) {
+			install_path = OS.Path.toFileURI(install_path);
+			console.log('file uri of install_path:', install_path);
+		}
+
 		var install_method = temp ? 'installAddonAsTemp' : 'installAddonAsNormal';
 		gBsComm.postMessage(install_method, {
 			partial_id: extid,
-			path: OS.Path.toFileURI(install_path)
+			path: install_path
 		}, undefined, function(aArg, aComm) {
 			mainDeferred_installAddon.resolve(aArg);
 		});

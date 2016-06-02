@@ -298,7 +298,8 @@ function signXpi(extid, install_normal) {
 	// install_normal is bool, set to true if you want it to go to install_normal after succesful signing_xpi
 
 	store.dispatch(updateStatus(extid, {
-		signing_xpi: true
+		signing_xpi: true,
+		asking_perm_or_temp: undefined
 	}));
 	gFsComm.postMessage('callInBootstrap', {
 		method: 'callInWorker',
