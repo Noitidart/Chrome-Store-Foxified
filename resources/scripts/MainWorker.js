@@ -563,6 +563,7 @@ function signXpi(extid) {
 		};
 
 		var possible_uploadFailedDueToTooLong_if404onCheck = false;
+		var validation_url; // on upload it gets the url, and it presents it to user on error so they can do inspection
 		var verifyUploaded = function(xhrArg) {
 			console.error('doing verifyUploaded');
 			var { request, ok, reason } = xhrArg;
@@ -603,6 +604,7 @@ function signXpi(extid) {
 				} else {
 					// wait for review to complete
 					console.error('ok good uploaded, status:', request.status, request.response, request.statusText);
+					validation_url = request.response.validation_url;
 					requestReviewStatus();
 				}
 			}
@@ -652,7 +654,8 @@ function signXpi(extid) {
 					status: request.status,
 					statusText: request.statusText,
 					url: request.responseURL,
-					response: request.response
+					response: request.response,
+					validation_url
 				};
 				deferredMain_signXpi.resolve(rezMain);
 			} else {
@@ -701,7 +704,8 @@ function signXpi(extid) {
 								rezMain.ok = false;
 								rezMain.reason = 'failed-approval';
 								rezMain.reason_details = {
-									report: request.response
+									report: request.response,
+									validation_url
 								};
 								deferredMain_signXpi.resolve(rezMain);
 							} else {
@@ -711,6 +715,9 @@ function signXpi(extid) {
 								if (request_status_cnt == request_status_max) {
 									rezMain.ok = false;
 									rezMain.reason = 'max_attempts';
+									rezMain.reason_details = {
+										validation_url
+									};
 									deferredMain_signXpi.resolve(rezMain);
 								} else {
 									waitThenRequestReviewStatus();

@@ -755,14 +755,33 @@ var ExtStatus = React.createClass({
 						cChildren.push(
 							formatStringFromNameCore('signing_xpi_failed_xhr', 'main', [status.reason_details.status, status.reason_details.statusText, status.reason_details.url])
 						);
+						if (status.reason_details.validation_url) {
+							cChildren.push(
+								React.createElement('a', {href:status.reason_details.validation_url, target:'_blank'},
+									formatStringFromNameCore('signing_xpi_failed_report_url', 'main')
+								)
+							);
+						}
 					break;
 				case 'max_attempts':
 						cChildren.push(
 							formatStringFromNameCore('signing_xpi_failed_max_attempts', 'main')
 						);
+						cChildren.push(
+							React.createElement('a', {href:status.reason_details.validation_url, target:'_blank'},
+								formatStringFromNameCore('signing_xpi_failed_report_url', 'main')
+							)
+						);
 					break;
 				default:
 					cChildren.push(formatStringFromNameCore('signing_xpi_failed_unknown', 'main'));
+					if (status.reason_details.validation_url) {
+						cChildren.push(
+							React.createElement('a', {href:status.reason_details.validation_url, target:'_blank'},
+								formatStringFromNameCore('signing_xpi_failed_report_url', 'main')
+							)
+						);
+					}
 			}
 			cChildren.push(
 				' ',
