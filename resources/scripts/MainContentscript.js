@@ -299,7 +299,8 @@ function signXpi(extid, install_normal) {
 
 	store.dispatch(updateStatus(extid, {
 		signing_xpi: true,
-		asking_perm_or_temp: undefined
+		asking_perm_or_temp: undefined,
+		signing_xpi_failed: undefined
 	}));
 	gFsComm.postMessage('callInBootstrap', {
 		method: 'callInWorker',
@@ -314,7 +315,8 @@ function signXpi(extid, install_normal) {
 		var { request, ok, reason } = aArg; // reason only available when ok==false
 		store.dispatch(updateStatus(extid, {
 			signing_xpi: undefined,
-			downloaded_signed: ok
+			downloaded_signed: ok,
+			signing_xpi_failed: ok ? undefined : reason
 		}));
 
 		if (ok && install_normal) {
@@ -557,7 +559,12 @@ var Modal = React.createClass({
 var ExtActions = React.createClass({
 	retry() {
 		// short for retryDownloadInstallFlow
-		downloadCrx(this.props.extid);
+		var { extid, status } = this.props;
+		if (status.downloading_crx_failed) {
+			downloadCrx(extid);
+		} else if (status.signing_xpi_failed) {
+			signXpi(extid);
+		}
 	},
 	saveCrx() {
 		this.save(2);
@@ -623,10 +630,9 @@ var ExtActions = React.createClass({
 		var cChildren = [];
 		if (status.downloaded_crx) {
 			cChildren.push( React.createElement('button', { onClick:this.saveCrx }, formatStringFromNameCore('crx_save', 'main')) );
-		} else {
-			if (!status.downloading_crx) {
-				cChildren.push( React.createElement('button', { onClick:this.retry }, formatStringFromNameCore('retry', 'main')) );
-			}
+		}
+		if (status.downloading_crx_failed || status.signing_xpi_failed) {
+			cChildren.push( React.createElement('button', { onClick:this.retry }, formatStringFromNameCore('retry', 'main')) );
 		}
 		if (status.converted_xpi) {
 			if (!status.unsigned_installing && !status.unsigned_installed) {
@@ -650,6 +656,17 @@ var ExtActions = React.createClass({
 	}
 });
 var ExtStatus = React.createClass({
+	retry(e) {
+		var { extid, status } = this.props;
+
+		e.preventDefault(); // so it doesnt changel locaiton to "#"
+
+		if (status.signing_xpi_failed) {
+			signXpi(extid);
+		} else if (status.downloading_crx_failed) {
+			downloadCrx(extid);
+		}
+	},
 	installTemp(e) {
 		var { extid } = this.props;
 
@@ -708,6 +725,27 @@ var ExtStatus = React.createClass({
 				)
 			);
 		}
+		if (status.signing_xpi_failed) {
+			switch (status.signing_xpi_failed) {
+				case 'no_login_amo':
+						cChildren.push(formatStringFromNameCore('signing_xpi_failed_no_login_amo', 'main'));
+						cChildren.push(
+							' ',
+							React.createElement('a', {href:'https://addons.mozilla.org/en-US/firefox/users/login?to=%2Fen-US%2Ffirefox%2F', target:'_blank'},
+								formatStringFromNameCore('signing_xpi_failed_no_login_amo_link', 'main')
+							)
+						);
+						cChildren.push(
+							' ',
+							React.createElement('a', {href:'#', onClick:this.retry},
+								formatStringFromNameCore('retry', 'main')
+							)
+						);
+					break;
+				default:
+					cChildren.push(formatStringFromNameCore('signing_xpi_failed_unknown', 'main'));
+			}
+		}
 		if (status.downloading_crx && !status.downloaded_crx) {
 			if (typeof(status.downloading_crx) == 'string') {
 				cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('downloading_crx_progress', 'main', [status.downloading_crx])) );
@@ -752,6 +790,12 @@ var ExtStatus = React.createClass({
 		}
 		if (status.downloading_crx_failed) {
 			cChildren.push( React.createElement('div', undefined, status.downloading_crx_failed) );
+			cChildren.push(
+				' ',
+				React.createElement('a', {href:'#', onClick:this.retry},
+					formatStringFromNameCore('retry', 'main')
+				)
+			);
 		}
 		cChildren.push(React.createElement('br'));
 
