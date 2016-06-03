@@ -55,6 +55,46 @@ var core = {
 
 var gFsComm;
 var gWkComm;
+var gTempAddon;
+
+var gInstallListener = {
+	onInstallEnded: function(aInstall, aAddon) {
+		var reasons = {
+			FIREFOX_VERSION_INCOMPAT: 'FIREFOX_VERSION_INCOMPAT',
+			DISABLED: 'DISABLED',
+			UNKNOWN: 'UNKNOWN',
+			SUCCESS: 'SUCCESS'
+		};
+		var reason;
+		if (aAddon.appDisabled) {
+			// addon will not work in this version of firefox
+			reason = reasons.FIREFOX_VERSION_INCOMPAT;
+		} else if (aAddon.userDisabled) {
+			// user previoulsy had addon installed and had it disabled when they uninstalled it.
+			// or they didnt uninstall it, and they just upgraded/downgraded/samegraded and it is disabled
+			reason = reasons.DISABLED;
+		// } else if (aAddon.pendingOperations != AddonManager.PENDING_NONE) {
+			// addon needs restart, this should never happen, webexts are restartless
+		} else if (aInstall.state != AddonManager.STATE_INSTALLED) {
+			// install failed for some reason i havent handled yet in the code - so it is "unknown reason"
+			reason = reasons.UNKNOWN;
+		} else {
+			// succesfully installed
+			reason = reasons.SUCCESS;
+		}
+		console.log('addon install ended', 'name:', aAddon.name, 'id:', aAddon.id, 'reason:', reason);
+	},
+	onInstallStarted: function(aInstall) {
+		console.log('addon install started', 'name:', aInstall.name, 'id:', aInstall.addon.id);
+	}
+};
+
+function initInstallListener() {
+	AddonManager.addInstallListener(gInstallListener);
+}
+function uninitInstallListener() {
+	AddonManager.removeInstallListener(gInstallListener);
+}
 
 function install() {}
 
@@ -121,6 +161,8 @@ function startup(aData, aReason) {
 
 			Services.mm.loadFrameScript(core.addon.path.scripts + 'MainFramescript.js?' + core.addon.cache_key, true);
 
+			// initInstallListener();
+
 		});
 
 		gWkComm.postMessage('dummyForInstantInstantiate');
@@ -134,6 +176,8 @@ function startup(aData, aReason) {
 function shutdown(aData, aReason) {
 
 	if (aReason == APP_SHUTDOWN) { return }
+
+	// uninitInstallListener();
 
 	Services.mm.removeDelayedFrameScript(core.addon.path.scripts + 'MainFramescript.js?' + core.addon.cache_key);
 
@@ -384,7 +428,8 @@ function installAddonAsTemp(aArg, aComm) {
 		var xpinsi = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsILocalFile);
 		xpinsi.initWithPath(path);
 		AddonManager.installTemporaryAddon(xpinsi).then(
-			function() {
+			function(aAddon) {
+				gTempAddon = aAddon;
 				mainDeferred_installAddonAsTemp.resolve({
 					ok: true
 				});

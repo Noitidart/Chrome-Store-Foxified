@@ -614,30 +614,24 @@ function signXpi(extid) {
 			// sends xhr to check if review is complete
 			request_status_cnt++;
 
-			if (request_status_cnt < request_status_max) {
-				if (request_status_cnt > 1) {
-					updateStatus(extid, {
-						signing_xpi: formatStringFromName('signing_xpi_checking_review_reattempt', 'main', [request_status_cnt, request_status_max])
-					});
-				} else {
-					updateStatus(extid, {
-						signing_xpi: formatStringFromName('signing_xpi_checking_review_status_prelim', 'main')
-					});
-				}
-
-				console.error('doing requestReviewStatus, request_status_cnt:',request_status_cnt);
-				console.log('url:', AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/');
-				xhrAsync(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/', {
-					responseType: 'json',
-					headers: {
-						Authorization: 'JWT ' + jwtSignOlympia(amo_user.key, amo_user.secret, getCorrectedSystemTime())
-					}
-				}, callbackReviewStatus);
+			if (request_status_cnt > 1) {
+				updateStatus(extid, {
+					signing_xpi: formatStringFromName('signing_xpi_checking_review_reattempt', 'main', [request_status_cnt, request_status_max])
+				});
 			} else {
-				rezMain.ok = false;
-				rezMain.reason = 'max_attempts';
-				deferredMain_signXpi.resolve(rezMain);
+				updateStatus(extid, {
+					signing_xpi: formatStringFromName('signing_xpi_checking_review_status_prelim', 'main')
+				});
 			}
+
+			console.error('doing requestReviewStatus, request_status_cnt:',request_status_cnt);
+			console.log('url:', AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/');
+			xhrAsync(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/', {
+				responseType: 'json',
+				headers: {
+					Authorization: 'JWT ' + jwtSignOlympia(amo_user.key, amo_user.secret, getCorrectedSystemTime())
+				}
+			}, callbackReviewStatus);
 		};
 
 		var callbackReviewStatus = function(xhrArg) {
@@ -713,7 +707,14 @@ function signXpi(extid) {
 							} else {
 								// review is in process, check again after waiting
 								console.error('review is in process, check after waiting');
-								waitThenRequestReviewStatus();
+
+								if (request_status_cnt == request_status_max) {
+									rezMain.ok = false;
+									rezMain.reason = 'max_attempts';
+									deferredMain_signXpi.resolve(rezMain);
+								} else {
+									waitThenRequestReviewStatus();
+								}
 							}
 						} else {
 							// files are > 1 - how on earth?? // TODO: handle this with error to user

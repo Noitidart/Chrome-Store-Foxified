@@ -614,9 +614,9 @@ var ExtActions = React.createClass({
 	},
 	sign: function() {
 		var { extid, status, dispatch } = this.props;
-		if (status.asking_perm_or_temp) {
-			dispatch( updateStatus(extid, { asking_perm_or_temp:undefined }) );
-		}
+		// if (status.asking_perm_or_temp) {
+		// 	dispatch( updateStatus(extid, { asking_perm_or_temp:undefined }) );
+		// }
 		signXpi(extid);
 	},
 	tempInstall: function() {
