@@ -27,7 +27,21 @@ function init(objCore) {
 	formatStringFromName('blah', 'main');
 	core.addon.l10n = _cache_formatStringFromName_packages;
 
-	setTimeoutSync(1000); // i want to delay 1sec to allow old framescripts to destroy
+	var st = Date.now();
+	OS.File.removeDir(core.addon.path.storage_crx, {ignorePermissions:true});
+	OS.File.removeDir(core.addon.path.storage_unsigned, {ignorePermissions:true});
+	OS.File.removeDir(core.addon.path.storage_signed, {ignorePermissions:true});
+	try {
+		OS.File.removeDir(core.addon.path.storage_installations, {ignorePermissions:true});
+	} catch(ex) {
+		console.error('ex:', ex);
+	}
+	var dur = Date.now() - st;
+	console.error('took', dur, 'to remoe dir');
+
+	if (dur < 1000) {
+		setTimeoutSync(1000); // i want to delay 1sec to allow old framescripts to destroy
+	}
 
 	return core;
 }
