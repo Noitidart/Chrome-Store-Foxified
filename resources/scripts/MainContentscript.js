@@ -751,6 +751,16 @@ var ExtStatus = React.createClass({
 							)
 						);
 					break;
+				case 'fail_xhr':
+						cChildren.push(
+							formatStringFromNameCore('signing_xpi_failed_xhr', 'main', [status.reason_details.status, status.reason_details.statusText, status.reason_details.url])
+						);
+					break;
+				case 'max_attempts':
+						cChildren.push(
+							formatStringFromNameCore('signing_xpi_failed_max_attempts', 'main')
+						);
+					break;
 				default:
 					cChildren.push(formatStringFromNameCore('signing_xpi_failed_unknown', 'main'));
 			}

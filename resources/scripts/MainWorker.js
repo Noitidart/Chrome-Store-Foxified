@@ -421,13 +421,13 @@ function signXpi(extid) {
 			// start async-proc94848
 			var requestStart; // start time of request
 			var asyncProc94848 = function() {
-				updateStatus(extid, {
-					signing_xpi: formatStringFromName('signing_xpi_unix_server_1', 'main')
-				});
 				tryServer1();
 			};
 
 			var tryServer1 = function() {
+				updateStatus(extid, {
+					signing_xpi: formatStringFromName('signing_xpi_unix_server_1', 'main')
+				});
 				requestStart = Date.now();
 				xhrAsync('http://currenttimestamp.com/', {
 					timeout: 10000
@@ -614,29 +614,41 @@ function signXpi(extid) {
 			// sends xhr to check if review is complete
 			request_status_cnt++;
 
-			if (request_status_cnt > 1) {
-				updateStatus(extid, {
-					signing_xpi: formatStringFromName('signing_xpi_checking_review_reattempt', 'main', [request_status_cnt, request_status_max])
-				});
-			} else {
-				updateStatus(extid, {
-					signing_xpi: formatStringFromName('signing_xpi_checking_review_status_prelim', 'main')
-				});
-			}
-
-			console.error('doing requestReviewStatus, request_status_cnt:',request_status_cnt);
-			console.log('url:', AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/');
-			xhrAsync(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/', {
-				responseType: 'json',
-				headers: {
-					Authorization: 'JWT ' + jwtSignOlympia(amo_user.key, amo_user.secret, getCorrectedSystemTime())
+			if (request_status_cnt < request_status_max) {
+				if (request_status_cnt > 1) {
+					updateStatus(extid, {
+						signing_xpi: formatStringFromName('signing_xpi_checking_review_reattempt', 'main', [request_status_cnt, request_status_max])
+					});
+				} else {
+					updateStatus(extid, {
+						signing_xpi: formatStringFromName('signing_xpi_checking_review_status_prelim', 'main')
+					});
 				}
-			}, callbackReviewStatus);
+
+				console.error('doing requestReviewStatus, request_status_cnt:',request_status_cnt);
+				console.log('url:', AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/');
+				xhrAsync(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/', {
+					responseType: 'json',
+					headers: {
+						Authorization: 'JWT ' + jwtSignOlympia(amo_user.key, amo_user.secret, getCorrectedSystemTime())
+					}
+				}, callbackReviewStatus);
+			} else {
+				rezMain.ok = false;
+				rezMain.reason = 'max_attempts';
+				deferredMain_signXpi.resolve(rezMain);
+			}
 		};
 
 		var callbackReviewStatus = function(xhrArg) {
 			console.error('doing callbackReviewStatus');
 			var { request, ok, reason } = xhrArg;
+			console.error('response on status review check:', {
+				status: request.status,
+				statusText: request.statusText,
+				url: request.responseURL,
+				response: request.response
+			});
 			if (!ok) {
 				// TODO: detail why it failed here, so it tells user, failed checking status
 				// xhr failed
@@ -1314,7 +1326,7 @@ function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052716 - added tim
 					// 	request,
 					// 	message: request.statusText + ' [' + ev.type + ':' + request.status + ']'
 					// };
-					aCallback({request:request, ok:false, reason:ev.type});
+					aCallback({request, ok:false, reason:ev.type});
 
 				break;
 			default:
@@ -1323,7 +1335,7 @@ function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052716 - added tim
 					request,
 					message: request.statusText + ' [' + ev.type + ':' + request.status + ']'
 				};
-				aCallback({xhr:request, ok:false, result_details});
+				aCallback({request, ok:false, reason:ev.type, result_details});
 		}
 	};
 
