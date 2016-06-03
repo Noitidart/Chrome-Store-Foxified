@@ -312,11 +312,12 @@ function signXpi(extid, install_normal) {
 		}
 	}, undefined, function(aArg, aComm) {
 		console.log('back in content after triggering downloadCrx, got back aArg:', aArg);
-		var { request, ok, reason } = aArg; // reason only available when ok==false
+		var { request, ok, reason, reason_details } = aArg; // reason only available when ok==false
 		store.dispatch(updateStatus(extid, {
 			signing_xpi: undefined,
 			downloaded_signed: ok,
-			signing_xpi_failed: ok ? undefined : reason
+			signing_xpi_failed: ok ? undefined : reason,
+			reason_details
 		}));
 
 		if (ok && install_normal) {
@@ -735,16 +736,19 @@ var ExtStatus = React.createClass({
 								formatStringFromNameCore('signing_xpi_failed_no_login_amo_link', 'main')
 							)
 						);
-						cChildren.push(
-							' ',
-							React.createElement('a', {href:'#', onClick:this.retry},
-								formatStringFromNameCore('retry', 'main')
-							)
-						);
+					break;
+				case 'missing_field':
+						cChildren.push(formatStringFromNameCore('singin_xpi_failed_missing_fields', 'main', [status.reason_details.fields.join(', ')]));
 					break;
 				default:
 					cChildren.push(formatStringFromNameCore('signing_xpi_failed_unknown', 'main'));
 			}
+			cChildren.push(
+				' ',
+				React.createElement('a', {href:'#', onClick:this.retry},
+					formatStringFromNameCore('retry', 'main')
+				)
+			);
 		}
 		if (status.downloading_crx && !status.downloaded_crx) {
 			if (typeof(status.downloading_crx) == 'string') {

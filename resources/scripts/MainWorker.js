@@ -339,6 +339,7 @@ function signXpi(extid) {
 						} else {
 							// keys are not there, need to generate
 							var fieldTokenHtml = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(html);
+							console.log('fieldTokenHtml:', fieldTokenHtml);
 							if (!fieldTokenHtml) {
 								rezMain.ok = false;
 								rezMain.reason = 'missing_field';
@@ -356,6 +357,7 @@ function signXpi(extid) {
 
 								xhrAsync(AMODOMAIN + '/en-US/developers/addon/api/key/', {
 									timeout: 10000,
+									method: 'POST',
 									data: jQLike.serialize({
 										csrfmiddlewaretoken: token,
 										action: 'generate'
