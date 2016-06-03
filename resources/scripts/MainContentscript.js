@@ -629,11 +629,11 @@ var ExtActions = React.createClass({
 		var { extid, status, dispatch } = this.props;
 
 		var cChildren = [];
-		if (status.downloaded_crx) {
-			cChildren.push( React.createElement('button', { onClick:this.saveCrx }, formatStringFromNameCore('crx_save', 'main')) );
-		}
 		if (status.downloading_crx_failed || status.signing_xpi_failed) {
 			cChildren.push( React.createElement('button', { onClick:this.retry }, formatStringFromNameCore('retry', 'main')) );
+		}
+		if (status.downloaded_crx) {
+			cChildren.push( React.createElement('button', { onClick:this.saveCrx }, formatStringFromNameCore('crx_save', 'main')) );
 		}
 		if (status.converted_xpi) {
 			if (!status.unsigned_installing && !status.unsigned_installed) {
@@ -740,6 +740,17 @@ var ExtStatus = React.createClass({
 				case 'missing_field':
 						cChildren.push(formatStringFromNameCore('singin_xpi_failed_missing_fields', 'main', [status.reason_details.fields.join(', ')]));
 					break;
+				case 'no_agree_amo':
+						cChildren.push(
+							formatStringFromNameCore('signing_failed_agreement', 'main')
+						);
+						cChildren.push(' ');
+						cChildren.push(
+							React.createElement('a', {href:'http://addons.mozilla.org/en-US/developers/addon/api/key/', target:'_blank'},
+								formatStringFromNameCore('signing_failed_agreement_link', 'main')
+							)
+						);
+					break;
 				default:
 					cChildren.push(formatStringFromNameCore('signing_xpi_failed_unknown', 'main'));
 			}
@@ -768,29 +779,6 @@ var ExtStatus = React.createClass({
 				signing_status = status.signing_xpi; // note: so signing_xpi can be a string
 			}
 			cChildren.push( React.createElement('div', undefined, signing_status) );
-		}
-		if (status.signing_failed) {
-			if (status.signing_failed == formatStringFromNameCore('signing_failed_agreement')) {
-				cChildren.push(
-					React.createElement('div', undefined,
-						formatStringFromNameCore('signing_failed_agreement', 'main'),
-						React.createElement('a', undefined,
-							formatStringFromNameCore('signing_failed_agreement_link', 'main')
-						)
-					)
-				);
-			} else if (status.signing_failed == formatStringFromNameCore('signing_failed_login')) {
-				cChildren.push(
-					React.createElement('div', undefined,
-						formatStringFromNameCore('signing_failed_login', 'main'),
-						React.createElement('a', undefined,
-							formatStringFromNameCore('signing_failed_login_link', 'main')
-						)
-					)
-				);
-			} else {
-				cChildren.push( React.createElement('div', undefined, formatStringFromNameCore('signing_failed_unknown', 'main')) );
-			}
 		}
 		if (status.downloading_crx_failed) {
 			cChildren.push( React.createElement('div', undefined, status.downloading_crx_failed) );
