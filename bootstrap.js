@@ -4,6 +4,7 @@ Cu.import('resource://gre/modules/Services.jsm');
 Cu.import('resource://gre/modules/AddonManager.jsm');
 Cu.import('resource://gre/modules/Downloads.jsm');
 Cu.import('resource://gre/modules/Task.jsm');
+Cu.import('resource://gre/modules/osfile.jsm');
 
 // start - beutify stuff
 var gBeautify = {};
@@ -100,10 +101,11 @@ function install() {}
 
 function uninstall(aData, aReason) {
 	if (aReason == ADDON_UNINSTALL) {
-		Cu.import('resource:///modules/SitePermissions.jsm');
-		var uri = Services.io.newURI('https://chrome.google.com/webstore/',null,null);
-		SitePermissions.remove(uri, 'install'); // restore default
-
+		if (OS.Constants.Sys.Name != 'Android') {
+			Cu.import('resource:///modules/SitePermissions.jsm');
+			var uri = Services.io.newURI('https://chrome.google.com/webstore/',null,null);
+			SitePermissions.remove(uri, 'install'); // restore default
+		}
 		// delete prefs
 		try {
 			Services.prefs.clearUserPref('extensions.chrome-store-foxified@jetpack.save');
@@ -120,9 +122,11 @@ function uninstall(aData, aReason) {
 function startup(aData, aReason) {
 
 	if (aReason == ADDON_INSTALL || aReason == ADDON_UPGRADE || aReason == ADDON_DOWNGRADE) {
-		Cu.import('resource:///modules/SitePermissions.jsm');
-		var uri = Services.io.newURI('https://chrome.google.com/webstore/',null,null);
-		SitePermissions.set(uri, 'install', 1); // allow installing addons without warning
+		if (OS.Constants.Sys.Name != 'Android') {
+			Cu.import('resource:///modules/SitePermissions.jsm');
+			var uri = Services.io.newURI('https://chrome.google.com/webstore/',null,null);
+			SitePermissions.set(uri, 'install', 1); // allow installing addons without warning
+		}
 	}
 	// // set preferences defaults
 	// try {
@@ -465,8 +469,8 @@ function installAddonAsNormal(aArg, aComm) {
 	var install = function() {
 		AddonManager.getInstallForURL(path, function(aInstall) {
 			var tab;
-			if (core.os.mname == 'android') {
-				tab = Services.wm.getMostRecentWindow('navigator:browser').BrowserApp.selectedTab.linkedBrowser;
+			if (OS.Constants.Sys.Name == 'Android') {
+				tab = Services.wm.getMostRecentWindow('navigator:browser').BrowserApp.selectedBrowser;
 			} else {
 				tab = Services.wm.getMostRecentWindow('navigator:browser').gBrowser.selectedBrowser;
 			}
