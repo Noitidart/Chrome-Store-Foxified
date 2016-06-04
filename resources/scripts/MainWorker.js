@@ -953,21 +953,29 @@ function installAddon(aArg, aComm) {
 	try {
 		OS.File.copy(copy_path, install_path);
 	} catch(ex) {
+		console.error('ex when copying 1 - ', ex);
 		if (ex.becauseNoSuchFile) {
 			try {
 				OS.File.makeDir(core.addon.path.storage_installations, {from:OS.Constants.Path.profileDir});
-				OS.File.copy(path, install_path);
+			} catch (ex) {
+				mainRez.reason = 'filesystem_dir';
+				console.error('ex when make dir - ', ex);
+			}
+			try {
+				OS.File.copy(copy_path, install_path);
 			} catch(ex) {
+				console.error('ex when copying 2 - ', ex);
 				mainRez.reason = 'no_src_file';
 			}
 		} else {
 			mainRez.reason = 'filesystem';
 		}
-		mainRez.ok = false;
-		mainDeferred_installAddon.resolve(mainRez);
 	}
 
-	if (!mainRez.reason) {
+	if (mainRez.reason) {
+		mainRez.ok = false;
+		mainDeferred_installAddon.resolve(mainRez);
+	} else {
 		if (!temp) {
 			install_path = OS.Path.toFileURI(install_path);
 			console.log('file uri of install_path:', install_path);
