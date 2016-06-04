@@ -101,11 +101,10 @@ function install() {}
 
 function uninstall(aData, aReason) {
 	if (aReason == ADDON_UNINSTALL) {
-		if (OS.Constants.Sys.Name != 'Android') {
-			Cu.import('resource:///modules/SitePermissions.jsm');
-			var uri = Services.io.newURI('https://chrome.google.com/webstore/',null,null);
-			SitePermissions.remove(uri, 'install'); // restore default
-		}
+		// restore default site permission
+		var uri = Services.io.newURI('https://chrome.google.com/webstore/',null,null);
+		Services.perms.remove(uri, 'install');
+
 		// delete prefs
 		try {
 			Services.prefs.clearUserPref('extensions.chrome-store-foxified@jetpack.save');
@@ -121,13 +120,6 @@ function uninstall(aData, aReason) {
 
 function startup(aData, aReason) {
 
-	if (aReason == ADDON_INSTALL || aReason == ADDON_UPGRADE || aReason == ADDON_DOWNGRADE) {
-		if (OS.Constants.Sys.Name != 'Android') {
-			Cu.import('resource:///modules/SitePermissions.jsm');
-			var uri = Services.io.newURI('https://chrome.google.com/webstore/',null,null);
-			SitePermissions.set(uri, 'install', 1); // allow installing addons without warning
-		}
-	}
 	// // set preferences defaults
 	// try {
 	// 	Services.prefs.getBoolPref('extensions.chrome-store-foxified@jetpack.save');
@@ -174,6 +166,12 @@ function startup(aData, aReason) {
 
 	getDownloadsDirPath();
 	// end async-proc21
+
+	// allow installing addons without warning
+	if (aReason == ADDON_INSTALL || aReason == ADDON_UPGRADE || aReason == ADDON_DOWNGRADE) {
+			var uri = Services.io.newURI('https://chrome.google.com/webstore/',null,null);
+			Services.perms.add(uri, 'install', Services.perms.ALLOW_ACTION);
+	}
 
 }
 
