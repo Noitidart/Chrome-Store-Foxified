@@ -13,7 +13,7 @@
 		<em:targetApplication>
 			<Description>
 				<em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
-				<em:minVersion>42.0</em:minVersion> <!-- due to options page -->
+				<em:minVersion>44.0</em:minVersion> <!-- due to min webext version support -->
 				<em:maxVersion>49.0</em:maxVersion> <!-- the latest version i tested it in -->
 			</Description>
 		</em:targetApplication>
@@ -22,8 +22,8 @@
 		<em:targetApplication>
 		  <Description>
 			<em:id>{aa3c5121-dab2-40e2-81ca-7ea25febc110}</em:id>
-			<em:minVersion>44.0</em:minVersion> <!-- guess based on firefox testing -->
-			<em:maxVersion>44.0</em:maxVersion> <!-- guess based on firefox testing -->
+			<em:minVersion>48.0</em:minVersion> <!-- per bugzilla 1185785 - min webext support -->
+			<em:maxVersion>49.0</em:maxVersion> <!-- latest firefox for android version i tested in -->
 		  </Description>
 		</em:targetApplication>
 
