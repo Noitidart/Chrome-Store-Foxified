@@ -837,6 +837,15 @@ var ExtStatus = React.createClass({
 				formatStringFromNameCore('all_done', 'main')
 			);
 		}
+
+		if (cChildren.length == 3) { // means no message is shown
+			if (status.unsigned_installed) {
+				cChildren.push(
+					formatStringFromNameCore('unsigned_installed_warn', 'main')
+				);
+			}
+		}
+
 		cChildren.push(React.createElement('br'));
 
 		return React.createElement('div', { className:'foxified-ext-status' },
