@@ -8,7 +8,7 @@ const AMODOMAIN = 'https://addons.mozilla.org';
 
 function dummyForInstantInstantiate() {}
 function init(objCore) {
-
+	//console.log('in worker init');
 
 	core = objCore;
 
@@ -34,10 +34,10 @@ function init(objCore) {
 	try {
 		OS.File.removeDir(core.addon.path.storage_installations, {ignorePermissions:true});
 	} catch(ex) {
-
+		console.error('ex:', ex);
 	}
 	var dur = Date.now() - st;
-
+	console.error('took', dur, 'to remoe dir');
 
 	if (dur < 1000) {
 		setTimeoutSync(1000); // i want to delay 1sec to allow old framescripts to destroy
@@ -101,7 +101,7 @@ function downloadCrx(extid, aComm) {
 		// 	percent = Math.round((e.loaded / e.total) * 100);
 		// }
 
-
+		// console.log('percent:', percent, 'loaded:', e.loaded, 'total:', e.total);
 		// if (percent !== 100) {
 			updateStatus(extid, {
 				downloading_crx: formatBytes(e.loaded, 1)
@@ -109,18 +109,18 @@ function downloadCrx(extid, aComm) {
 		// }
 	};
 
-
+	console.log('get_crx_url(extid):', get_crx_url(extid));
 	xhrAsync(get_crx_url(extid), {
 		responseType: 'arraybuffer',
 		timeout: 300000, // 5 minutes
 		onprogress
 	}, function(xhrArg) {
 		var { request, ok, reason } = xhrArg; // reason is undefined if ok==true
-
+		console.log('xhrArg:', xhrArg);
 		try {
-
+			console.log('request.responseText:', request.responseText);
 		} catch(ex) {
-
+			console.error('failed to read responseText, ex:', ex);
 		}
 
 		if (ok && request.status != 200) {
@@ -140,7 +140,7 @@ function downloadCrx(extid, aComm) {
 			try {
 				writeThenDir(OS.Path.join(core.addon.path.storage_crx, extid + '.crx'), new Uint8Array(request.response), OS.Constants.Path.profileDir);
 			} catch(ex) {
-
+				console.error('ex:', ex, uneval(ex), ex.toString());
 				throw ex;
 			}
 		}
@@ -176,14 +176,14 @@ function convertXpi(extid) {
 
 	if (crx_uint8) {
 		var locOfPk = new Uint8Array(crx_uint8.buffer.slice(0, 1000));
-
+		// console.log('locOfPk:', locOfPk);
 		for (var i=0; i<locOfPk.length; i++) {
 			if (locOfPk[i] == 80 && locOfPk[i+1] == 75 && locOfPk[i+2] == 3 && locOfPk[i+3] == 4) {
 				locOfPk = null;
 				break;
 			}
 		}
-
+		console.log('pk found at:', i);
 
 		// TODO: possible error point here, if pk not found
 
@@ -213,7 +213,7 @@ function convertXpi(extid) {
 			try {
 				writeThenDir(OS.Path.join(core.addon.path.storage_unsigned, extid + '.xpi'), zip_uint8, OS.Constants.Path.profileDir);
 			} catch(ex) {
-
+				console.error('ex:', ex, uneval(ex), ex.toString());
 				throw ex;
 			}
 
@@ -324,8 +324,8 @@ function signXpi(extid) {
 					var fieldKeyHtml = /input[^<]+jwtkey[^>]+/i.exec(html);
 					var fieldSecretHtml = /input[^<]+jwtsecret[^>]+/i.exec(html);
 
-
-
+					console.log('fieldKeyHtml:', fieldKeyHtml);
+					console.log('fieldSecretHtml:', fieldSecretHtml);
 
 					if (!fieldKeyHtml || !fieldSecretHtml) {
 						if (didGenerate) {
@@ -339,7 +339,7 @@ function signXpi(extid) {
 						} else {
 							// keys are not there, need to generate
 							var fieldTokenHtml = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(html);
-
+							console.log('fieldTokenHtml:', fieldTokenHtml);
 							if (!fieldTokenHtml) {
 								rezMain.ok = false;
 								rezMain.reason = 'missing_field';
@@ -401,9 +401,9 @@ function signXpi(extid) {
 			xpiversion = manifest_json.version;
 
 			xpiid = extid + '@chrome-store-foxified-' + HashString(amo_user.key);
-
+			console.log('index of unsigned id:', manifest_txt.indexOf(extid + '@chrome-store-foxified-unsigned'));
 			manifest_txt = manifest_txt.replace(extid + '@chrome-store-foxified-unsigned', xpiid);
-
+			console.log('index of unsigned id afte replace:', manifest_txt.indexOf(extid + '@chrome-store-foxified-unsigned'));
 			// TODO: error points here? JSZip failing? maybe think about it, if there are then handle it
 
 			unsigned_jszip.file('manifest.json', manifest_txt);
@@ -453,15 +453,15 @@ function signXpi(extid) {
 					if (!nowDateServerMatch) {
 						onFail();
 					}
-
+					console.log('nowDateServerMatch:', nowDateServerMatch);
 
 					var nowDateServerUncompensated = parseInt(nowDateServerMatch[1]) * 1000;
-
+					console.log('nowDateServerUncompensated:', nowDateServerUncompensated);
 
 					var nowDateServer = nowDateServerUncompensated - requestDuration;
+					console.log('nowDateServer:', nowDateServer);
 
-
-
+					console.log('systemNow:', (new Date(requestStart)).toLocaleString(), 'serverNow:', (new Date(nowDateServer)).toLocaleString(), 'requestDuration seconds:', (requestDuration / 1000))
 					systemTimeOffset = requestStart - nowDateServer;
 					gLastSystemTimeOffset = systemTimeOffset;
 					// end - calc sys offset
@@ -501,15 +501,15 @@ function signXpi(extid) {
 					if (!nowDateServerMatch) {
 						onFail();
 					}
-
+					console.log('nowDateServerMatch:', nowDateServerMatch);
 
 					var nowDateServerUncompensated = parseInt(nowDateServerMatch[1]) * 1000;
-
+					console.log('nowDateServerUncompensated:', nowDateServerUncompensated);
 
 					var nowDateServer = nowDateServerUncompensated - requestDuration;
+					console.log('nowDateServer:', nowDateServer);
 
-
-
+					console.log('systemNow:', (new Date(requestStart)).toLocaleString(), 'serverNow:', (new Date(nowDateServer)).toLocaleString(), 'requestDuration seconds:', (requestDuration / 1000))
 					systemTimeOffset = requestStart - nowDateServer;
 					gLastSystemTimeOffset = systemTimeOffset;
 					// end - calc sys offset
@@ -526,7 +526,7 @@ function signXpi(extid) {
 		var afterSystemTimeOffsetGot = function() {
 			// go through signing on amo - its errors including especially time not in sync
 
-
+			console.log('systemTimeOffset:', systemTimeOffset);
 			updateStatus(extid, {
 				signing_xpi: formatStringFromName('signing_xpi_uploading', 'main')
 			});
@@ -547,7 +547,7 @@ function signXpi(extid) {
 			data.append('Content-Type', 'multipart/form-data');
 			data.append('upload', presigned_zip_file); // http://stackoverflow.com/a/24746459/1828637
 
-
+			console.error('doing submit');
 
 			xhrAsync(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/', { // only on first time upload, the aAddonVersionInXpi can be anything
 				method: 'PUT',
@@ -565,7 +565,7 @@ function signXpi(extid) {
 		var possible_uploadFailedDueToTooLong_if404onCheck = false;
 		var validation_url; // on upload it gets the url, and it presents it to user on error so they can do inspection
 		var verifyUploaded = function(xhrArg) {
-
+			console.error('doing verifyUploaded');
 			var { request, ok, reason } = xhrArg;
 			if (!ok && (request.status != 409)) { // link3922222
 				// TODO: detail why it failed here, so it tells user, it would failed to upload, maybe bad status token etc
@@ -603,7 +603,7 @@ function signXpi(extid) {
 					// requestReviewStatus();
 				} else {
 					// wait for review to complete
-
+					console.error('ok good uploaded, status:', request.status, request.response, request.statusText);
 					validation_url = request.response.validation_url;
 					requestReviewStatus();
 				}
@@ -626,8 +626,8 @@ function signXpi(extid) {
 				});
 			}
 
-
-
+			console.error('doing requestReviewStatus, request_status_cnt:',request_status_cnt);
+			console.log('url:', AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/');
 			xhrAsync(AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/', {
 				responseType: 'json',
 				headers: {
@@ -637,8 +637,9 @@ function signXpi(extid) {
 		};
 
 		var callbackReviewStatus = function(xhrArg) {
-
+			console.error('doing callbackReviewStatus');
 			var { request, ok, reason } = xhrArg;
+			console.error('response on status review check:', { status: request.status, statusText: request.statusText, url: request.responseURL, response: request.response });
 			if (!ok) {
 				// TODO: detail why it failed here, so it tells user, failed checking status
 				// xhr failed
@@ -663,7 +664,7 @@ function signXpi(extid) {
 				// TODO: state changes of reponse.jon for eventual rejected
 				// TODO: state changes of reponse.jon for eventual other non-approved (like error)
 
-
+				console.error('review status check, xhr details:', request.status, request.response, request.statusText);
 				if (request.status == 200) {
 					// if (request.response.files) {
 						if (request.response.files.length === 1) {
@@ -691,7 +692,7 @@ function signXpi(extid) {
 								onprogress
 							}, callbackDownloadSigned);
 						} else if (request.response.files.length === 0) {
-
+							console.error('addon not yet signed, wait, then check again')
 
 							if (request.response.reviewed && !request.response.passed_review) { // i was using .response.processed however it was not right, as it gets processed before reviewed. so updated to .response.reviewed. as with fullscreenshot thing i got that warning for binary - https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl
 								// throw new Error('failed validation of the signing process');
@@ -704,7 +705,7 @@ function signXpi(extid) {
 								deferredMain_signXpi.resolve(rezMain);
 							} else {
 								// review is in process, check again after waiting
-
+								console.error('review is in process, check after waiting');
 
 								if (request_status_cnt == request_status_max) {
 									rezMain.ok = false;
@@ -773,11 +774,11 @@ function signXpi(extid) {
 			} else {
 
 				// save to disk
-
+				console.error('ok downloaded data, saving to disk');
 				try {
 					writeThenDir(OS.Path.join(core.addon.path.storage_signed, extid + '.xpi'), new Uint8Array(request.response), OS.Constants.Path.profileDir);
 				} catch(ex) {
-
+					console.error('ex:', ex, uneval(ex), ex.toString());
 					throw ex;
 				}
 
@@ -947,18 +948,18 @@ function installAddon(aArg, aComm) {
 	try {
 		OS.File.copy(copy_path, install_path);
 	} catch(ex) {
-
+		console.error('ex when copying 1 - ', ex);
 		if (ex.becauseNoSuchFile) {
 			try {
 				OS.File.makeDir(core.addon.path.storage_installations, {from:OS.Constants.Path.profileDir});
 			} catch (ex) {
 				mainRez.reason = 'filesystem_dir';
-
+				console.error('ex when make dir - ', ex);
 			}
 			try {
 				OS.File.copy(copy_path, install_path);
 			} catch(ex) {
-
+				console.error('ex when copying 2 - ', ex);
 				mainRez.reason = 'no_src_file';
 			}
 		} else {
@@ -972,7 +973,7 @@ function installAddon(aArg, aComm) {
 	} else {
 		if (!temp) {
 			install_path = OS.Path.toFileURI(install_path);
-
+			console.log('file uri of install_path:', install_path);
 		}
 
 		var install_method = temp ? 'installAddonAsTemp' : 'installAddonAsNormal';
@@ -988,7 +989,7 @@ function installAddon(aArg, aComm) {
 }
 
 self.onclose = function() {
-
+	console.log('ok ready to terminate');
 }
 
 // End - Addon Functionality
@@ -1177,7 +1178,7 @@ function validateOptionsObj(aOptions, aOptionsDefaults) {
 	// ensures no invalid keys are found in aOptions, any key found in aOptions not having a key in aOptionsDefaults causes throw new Error as invalid option
 	for (var aOptKey in aOptions) {
 		if (!(aOptKey in aOptionsDefaults)) {
-
+			console.error('aOptKey of ' + aOptKey + ' is an invalid key, as it has no default value, aOptionsDefaults:', aOptionsDefaults, 'aOptions:', aOptions);
 			throw new Error('aOptKey of ' + aOptKey + ' is an invalid key, as it has no default value');
 		}
 	}
@@ -1192,7 +1193,7 @@ function validateOptionsObj(aOptions, aOptionsDefaults) {
 
 // rev1 - https://gist.github.com/Noitidart/ec1e6b9a593ec7e3efed
 function xhr(aUrlOrFileUri, aOptions={}) {
-
+	// console.error('in xhr!!! aUrlOrFileUri:', aUrlOrFileUri);
 
 	// all requests are sync - as this is in a worker
 	var aOptionsDefaults = {
@@ -1217,9 +1218,9 @@ function xhr(aUrlOrFileUri, aOptions={}) {
 	cRequest.responseType = aOptions.responseType;
 	cRequest.send(aOptions.data);
 
+	// console.log('response:', cRequest.response);
 
-
-
+	// console.error('done xhr!!!');
 	return cRequest;
 }
 
@@ -1256,7 +1257,7 @@ function formatStringFromName(aKey, aLocalizedPackageName, aReplacements) {
 
 		_cache_formatStringFromName_packages[packageName] = packageJson;
 
-
+		console.log('packageJson:', packageJson);
 	}
 
 	var cLocalizedStr = _cache_formatStringFromName_packages[packageName][aKey];
@@ -1273,7 +1274,7 @@ function formatStringFromName(aKey, aLocalizedPackageName, aReplacements) {
 }
 
 function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052716 - added timeout support
-
+	// console.error('in xhr!!! aUrlOrFileUri:', aUrlOrFileUri);
 
 	// all requests are sync - as this is in a worker
 	var aOptionsDefaults = {
@@ -1370,9 +1371,9 @@ function xhrAsync(aUrlOrFileUri, aOptions={}, aCallback) { // 052716 - added tim
 	request.responseType = aOptions.responseType;
 	request.send(aOptions.data);
 
+	// console.log('response:', request.response);
 
-
-
+	// console.error('done xhr!!!');
 
 }
 
@@ -1390,7 +1391,7 @@ function genericReject(aPromiseName, aPromiseToReject, aReason) {
 		name: aPromiseName,
 		aReason: aReason
 	};
-
+	console.error('Rejected - ' + aPromiseName + ' - ', rejObj);
 	if (aPromiseToReject) {
 		aPromiseToReject.reject(rejObj);
 	}
@@ -1400,7 +1401,7 @@ function genericCatch(aPromiseName, aPromiseToReject, aCaught) {
 		name: aPromiseName,
 		aCaught: aCaught
 	};
-
+	console.error('Caught - ' + aPromiseName + ' - ', rejObj);
 	if (aPromiseToReject) {
 		aPromiseToReject.reject(rejObj);
 	}
@@ -1450,7 +1451,7 @@ function workerComm() {
 	};
 	this.listener = function(e) {
 		var payload = e.data;
-
+		console.log('worker workerComm - incoming, payload:', payload); //, 'e:', e);
 
 		if (payload.method) {
 			if (!firstMethodCalled) {
@@ -1459,21 +1460,21 @@ function workerComm() {
 					this.postMessage('triggerOnAfterInit', scope.init(undefined, this));
 				}
 			}
-
-
+			console.log('scope:', scope);
+			if (!(payload.method in scope)) { console.error('method of "' + payload.method + '" not in scope'); throw new Error('method of "' + payload.method + '" not in scope') } // dev line remove on prod
 			var rez_worker_call_for_bs = scope[payload.method](payload.arg, this);
-
+			console.log('rez_worker_call_for_bs:', rez_worker_call_for_bs);
 			if (payload.cbid) {
 				if (rez_worker_call_for_bs && rez_worker_call_for_bs.constructor.name == 'Promise') {
 					rez_worker_call_for_bs.then(
 						function(aVal) {
-
+							console.log('Fullfilled - rez_worker_call_for_bs - ', aVal);
 							this.postMessage(payload.cbid, aVal);
 						}.bind(this),
 						genericReject.bind(null, 'rez_worker_call_for_bs', 0)
 					).catch(genericCatch.bind(null, 'rez_worker_call_for_bs', 0));
 				} else {
-
+					console.log('calling postMessage for callback with rez_worker_call_for_bs:', rez_worker_call_for_bs, 'this:', this);
 					this.postMessage(payload.cbid, rez_worker_call_for_bs);
 				}
 			}
@@ -1486,7 +1487,7 @@ function workerComm() {
 			this.callbackReceptacle[payload.cbid](payload.arg, this);
 			delete this.callbackReceptacle[payload.cbid];
 		} else {
-
+			console.error('worker workerComm - invalid combination');
 			throw new Error('worker workerComm - invalid combination');
 		}
 	}.bind(this);
