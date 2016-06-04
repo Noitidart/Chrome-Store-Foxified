@@ -105,14 +105,6 @@ function init() {
 			rootEl
 		);
 
-		setTimeout(function() {
-			store.dispatch(toggleDisplay(true));
-		}, 2000);
-
-		setTimeout(function() {
-			store.dispatch(toggleDisplay(false));
-		}, 4000);
-
 	});
 }
 // div[aria-label="Available on Chrome"] .webstore-test-button-label::before
@@ -347,8 +339,15 @@ function installXpi(extid, temp) {
 		var { request, ok, reason } = aArg; // reason only available when ok==false
 		store.dispatch(updateStatus(extid, {
 			[temp ? 'unsigned_installing' : 'signed_installing']: undefined,
-			[temp ? 'unsigned_installed' : 'signed_installed']: ok
+			[temp ? 'unsigned_installed' : 'signed_installed']: ok,
+			install_warn: true
 		}));
+
+		setTimeout(function() {
+			store.dispatch(updateStatus(extid, {
+				install_warn: undefined
+			}));
+		}, 5000);
 	});
 }
 
@@ -557,6 +556,7 @@ var Modal = React.createClass({
 	}
 });
 
+var lastWasJustSign_or_SignAndInstall = false; // false for just sign, true for sign and install
 var ExtActions = React.createClass({
 	retry() {
 		// short for retryDownloadInstallFlow
@@ -564,7 +564,7 @@ var ExtActions = React.createClass({
 		if (status.downloading_crx_failed) {
 			downloadCrx(extid);
 		} else if (status.signing_xpi_failed) {
-			signXpi(extid);
+			signXpi(extid, lastWasJustSign_or_SignAndInstall);
 		}
 	},
 	saveCrx() {
@@ -617,7 +617,8 @@ var ExtActions = React.createClass({
 		// if (status.asking_perm_or_temp) {
 		// 	dispatch( updateStatus(extid, { asking_perm_or_temp:undefined }) );
 		// }
-		signXpi(extid);
+		lastWasJustSign_or_SignAndInstall = false;
+		signXpi(extid, false);
 	},
 	tempInstall: function() {
 		installXpi(this.props.extid, true);
@@ -680,7 +681,15 @@ var ExtStatus = React.createClass({
 
 		e.preventDefault(); // so it doesnt changel locaiton to "#"
 
+		lastWasJustSign_or_SignAndInstall = true;
 		signXpi(this.props.extid, true);
+	},
+	justSign(e) {
+		var { extid } = this.props;
+
+		e.preventDefault(); // so it doesnt changel locaiton to "#"
+
+		signXpi(this.props.extid, false);
 	},
 	close(e) {
 		var { dispatch } = this.props;
@@ -709,6 +718,10 @@ var ExtStatus = React.createClass({
 					React.createElement('div', {style:{textAlign:'center'}},
 						React.createElement('a', { href:'#', onClick:this.installPerm },
 							formatStringFromNameCore('perm_install', 'main')
+						),
+						React.createElement('br'),
+						React.createElement('a', { href:'#', onClick:this.justSign },
+							formatStringFromNameCore('just_sign', 'main')
 						),
 						React.createElement('br'),
 						React.createElement('a', { href:'#', onClick:this.installTemp },
@@ -816,6 +829,12 @@ var ExtStatus = React.createClass({
 				React.createElement('a', {href:'#', onClick:this.retry},
 					formatStringFromNameCore('retry', 'main')
 				)
+			);
+		}
+
+		if (status.downloaded_crx && status.converted_xpi && status.downloaded_signed) {
+			cChildren.push(
+				formatStringFromNameCore('all_done', 'main')
 			);
 		}
 		cChildren.push(React.createElement('br'));
