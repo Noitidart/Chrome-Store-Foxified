@@ -70,7 +70,8 @@ function init() {
 				background-image: linear-gradient(to bottom, rgb(124, 191, 54), rgb(101, 173, 40)) !important; border-color:rgb(78, 155, 25) !important;
 			}
 
-			${gAriaLabels.map(arrEl=>{return 'div[aria-label="' + arrEl + '"] .webstore-test-button-label'}).join(',')}
+			div[role=button][aria-label*="CHROME"] .webstore-test-button-label,
+			div[role=button][aria-label*="Chrome"] .webstore-test-button-label
 			{
 				/* this is needed, because on search results page, the parent of this is set to display flex, so it centers things vertically, showing my "add to firefox" line and the one i pushed "available on chrome"*/
 				align-self: start;
@@ -78,10 +79,12 @@ function init() {
 				height: 100%;
 			}
 
-			${gAriaLabels.map(arrEl=>{return 'div[aria-label="' + arrEl + '"] .webstore-test-button-label::before'}).join(',')}
+			div[role=button][aria-label*="CHROME"] .webstore-test-button-label::before,
+			div[role=button][aria-label*="Chrome"] .webstore-test-button-label::before
 			{
 				display: block;
 				content: "${formatStringFromNameCore('install_button_label', 'main')}";
+				z-index: 2;
 			}
 
 			body > div:last-of-type > div:nth-of-type(2),	/* targeting download div */
@@ -147,7 +150,7 @@ function genericClick(e) {
 			}
 
 			console.log('ariaLabel:', ariaLabel, 'btnText:', btnText);
-			if (gAriaLabels.indexOf(ariaLabel) > -1 || gAriaLabels.indexOf(btnText) > -1) {
+			if (/(?:CHROM|Chrom)/.test(ariaLabel) || /(?:CHROM|Chrom)/.test(btnText)) {
 				// alert('ok trigger');
 				installClick(e);
 				e.stopPropagation();
