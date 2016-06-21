@@ -25,11 +25,11 @@ var pageLoader = {
 		// to test if frame do `if (aContentWindow.frameElement)`
 
 		var contentWindow = aContentWindow;
-
+		console.log('ready enter');
 
 		if (gSandbox) { Cu.nukeSandbox(gSandbox); gSandbox=null; }
 		var principal = contentWindow.location.origin; // docShell.chromeEventHandler.contentPrincipal;
-
+		console.error('principal:', principal);
 		gSandbox = Cu.Sandbox(principal, {
 			sandboxPrototype: contentWindow,
 			wantXrays: true, // only set this to false if you need direct access to the page's javascript. true provides a safer, isolated context.
@@ -50,12 +50,12 @@ var pageLoader = {
 
 		gWinComm = new contentComm(contentWindow); // cross-file-link884757009
 
-
+		console.log('ready done');
 	},
 	load: function(aContentWindow) {}, // triggered on page load if IGNORE_LOAD is false
 	error: function(aContentWindow, aDocURI) {
 		// triggered when page fails to load due to error
-
+		console.warn('hostname page ready, but an error page loaded, so like offline or something, aHref:', aContentWindow.location.href, 'aDocURI:', aDocURI);
 	},
 	readyNonmatch: function(aContentWindow) {
 		gWinComm = null;
@@ -89,7 +89,7 @@ var pageLoader = {
 		// frames are skipped if IGNORE_FRAMES is true
 
 		var contentWindow = e.target.defaultView;
-
+		console.log('page ready, contentWindow.location.href:', contentWindow.location.href);
 
 		// i can skip frames, as DOMContentLoaded is triggered on frames too
 		if (pageLoader.IGNORE_FRAMES && contentWindow.frameElement) { return }
@@ -99,7 +99,7 @@ var pageLoader = {
 			// ok its our intended, lets make sure its not an error page
 			var webNav = contentWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebNavigation);
 			var docURI = webNav.document.documentURI;
-
+			// console.info('docURI:', docURI);
 
 			if (docURI.indexOf('about:neterror') === 0) {
 				pageLoader.error(contentWindow, docURI);
@@ -115,10 +115,10 @@ var pageLoader = {
 			}
 		} else {
 			if (!this.IGNORE_NONMATCH) {
-
+				console.log('page ready, but its not match:', uneval(contentWindow.location));
 				var webNav = contentWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebNavigation);
 				var docURI = webNav.document.documentURI;
-
+				// console.info('docURI:', docURI);
 
 				if (docURI.indexOf('about:neterror') === 0) {
 					pageLoader.errorNonmatch(contentWindow, docURI);
@@ -158,7 +158,7 @@ function init() {
 
 	gBsComm.transcribeMessage('fetchCore', null, function(aCore, aComm) {
 		core = aCore;
-
+		console.log('ok updated core to:', core);
 
 		addEventListener('unload', uninit, false);
 
@@ -218,7 +218,7 @@ function genericReject(aPromiseName, aPromiseToReject, aReason) {
 		name: aPromiseName,
 		aReason: aReason
 	};
-
+	console.error('Rejected - ' + aPromiseName + ' - ', rejObj);
 	if (aPromiseToReject) {
 		aPromiseToReject.reject(rejObj);
 	}
@@ -228,7 +228,7 @@ function genericCatch(aPromiseName, aPromiseToReject, aCaught) {
 		name: aPromiseName,
 		aCaught: aCaught
 	};
-
+	console.error('Caught - ' + aPromiseName + ' - ', rejObj);
 	if (aPromiseToReject) {
 		aPromiseToReject.reject(rejObj);
 	}
@@ -242,7 +242,7 @@ var gCFMM = this;
 var gCommScope = {
 	UNINIT_FRAMESCRIPT: function() { // link4757484773732
 		// called by bootstrap - but i guess content can call it too, but i dont see it ever wanting to
-
+		console.error('doing UNINIT_FRAMESCRIPT');
 		uninit();
 	},
 	callInContent: function(aArg) {
@@ -251,7 +251,7 @@ var gCommScope = {
 		// wait - bool - set to true if you want to wait for response from content, and then return it to bootstrap
 
 		if (!gWinComm) {
-
+			console.warn('no currently connected window');
 			return 'NO_WIN_COMM';
 		}
 		var cWinCommCb = undefined;
@@ -279,7 +279,7 @@ var gCommScope = {
 		if (wait) {
 			var deferred_callInBootstrap = new Deferred();
 			cbResolver = function(aArg, aComm) {
-
+				console.log('callInBootstrap transcribe complete, aArg:', aArg);
 				deferred_callInBootstrap.resolve(aArg);
 			}
 			rez = deferred_callInBootstrap.promise;
@@ -326,23 +326,23 @@ function crossprocComm(aChannelId) {
 			var messageManager = e.target.messageManager;
 			var browser = e.target;
 			var payload = e.data;
-
-
+			console.log('framescript crossprocComm - incoming, payload:', payload); //, 'e:', e);
+			// console.log('this in receiveMessage bootstrap:', this);
 
 			if (payload.method) {
-
+				if (!(payload.method in scope)) { console.error('method of "' + payload.method + '" not in scope'); throw new Error('method of "' + payload.method + '" not in scope') }  // dev line remove on prod
 				var rez_bs_call = scope[payload.method](payload.arg, messageManager, browser, this); // only on bootstrap side, they get extra 2 args
 				if (payload.cbid) {
 					if (rez_bs_call && rez_bs_call.constructor.name == 'Promise') {
 						rez_bs_call.then(
 							function(aVal) {
-
+								console.log('Fullfilled - rez_bs_call - ', aVal);
 								this.transcribeMessage(messageManager, payload.cbid, aVal);
 							}.bind(this),
 							genericReject.bind(null, 'rez_bs_call', 0)
 						).catch(genericCatch.bind(null, 'rez_bs_call', 0));
 					} else {
-
+						console.log('calling transcribeMessage for callbck with args:', payload.cbid, rez_bs_call);
 						this.transcribeMessage(payload.cbid, rez_bs_call);
 					}
 				}
@@ -351,14 +351,14 @@ function crossprocComm(aChannelId) {
 				this.callbackReceptacle[payload.cbid](payload.arg, messageManager, browser, this);
 				delete this.callbackReceptacle[payload.cbid];
 			} else {
-
+				console.error('framesript - crossprocComm - invalid combination, payload:', payload);
 				throw new Error('framesript - crossprocComm - invalid combination');
 			}
 		}.bind(this)
 	};
 
 	this.transcribeMessage = function(aMethod, aArg, aCallback) { // framescript version doesnt have messageManager arg
-
+		// console.log('bootstrap sending message to framescript', aMethod, aArg);
 		// aMethod is a string - the method to call in framescript
 		// aCallback is a function - optional - it will be triggered when aMethod is done calling
 
@@ -409,7 +409,7 @@ function contentComm(aContentWindow, onHandshakeComplete) { // framescript versi
 
 	this.listener = function(e) {
 		var payload = e.data;
-
+		console.log('framescript contentComm - incoming, payload:', uneval(payload)); //, 'e:', e);
 
 		if (payload.method) {
 			if (payload.method == 'contentComm_handshake_finalized') {
@@ -419,20 +419,20 @@ function contentComm(aContentWindow, onHandshakeComplete) { // framescript versi
 				}
 				return;
 			}
-
+			if (!(payload.method in scope)) { console.error('method of "' + payload.method + '" not in scope'); throw new Error('method of "' + payload.method + '" not in scope') } // dev line remove on prod
 			var rez_fs_call_for_win = scope[payload.method](payload.arg, this);
-
+			console.log('rez_fs_call_for_win:', rez_fs_call_for_win);
 			if (payload.cbid) {
 				if (rez_fs_call_for_win && rez_fs_call_for_win.constructor.name == 'Promise') {
 					rez_fs_call_for_win.then(
 						function(aVal) {
-
+							console.log('Fullfilled - rez_fs_call_for_win - ', aVal);
 							this.postMessage(payload.cbid, aVal);
 						}.bind(this),
 						genericReject.bind(null, 'rez_fs_call_for_win', 0)
 					).catch(genericCatch.bind(null, 'rez_fs_call_for_win', 0));
 				} else {
-
+					console.log('calling postMessage for callback with rez_fs_call_for_win:', rez_fs_call_for_win, 'this:', this);
 					this.postMessage(payload.cbid, rez_fs_call_for_win);
 				}
 			}
