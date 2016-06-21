@@ -5,9 +5,10 @@
 	<RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:em="http://www.mozilla.org/2004/em-rdf#">
 	  <Description about="urn:mozilla:install-manifest">
 		<em:id>Chrome-Store-Foxified@jetpack</em:id>
-		<em:version>2.1b</em:version>
+		<em:version>2.1</em:version>
 		<em:type>2</em:type>
 		<em:bootstrap>true</em:bootstrap>
+		<em:multiprocessCompatible>true</em:multiprocessCompatible>
 
 		<!-- Firefox -->
 		<em:targetApplication>
