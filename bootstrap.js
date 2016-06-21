@@ -115,6 +115,10 @@ function uninstall(aData, aReason) {
 		try {
 			Services.prefs.clearUserPref('extensions.chrome-store-foxified@jetpack.donotsign');
 		} catch(ignore) {}
+
+		Cu.import('resource://gre/modules/osfile.jsm');
+		console.log('removing dir');
+		OS.File.removeDir(OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id), {ignorePermissions:true, ignoreAbsent:true});
 	}
 }
 

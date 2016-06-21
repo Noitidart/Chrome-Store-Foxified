@@ -26,15 +26,17 @@ function init(objCore) {
 	// load all localization pacakages
 	formatStringFromName('blah', 'main');
 	core.addon.l10n = _cache_formatStringFromName_packages;
+	console.log('will now remove dir 2');
 
 	var st = Date.now();
-	OS.File.removeDir(core.addon.path.storage_crx, {ignorePermissions:true});
-	OS.File.removeDir(core.addon.path.storage_unsigned, {ignorePermissions:true});
-	OS.File.removeDir(core.addon.path.storage_signed, {ignorePermissions:true});
 	try {
-		OS.File.removeDir(core.addon.path.storage_installations, {ignorePermissions:true});
-	} catch(ex) {
-		console.error('ex:', ex);
+		OS.File.removeDir(core.addon.path.storage, {ignorePermissions:true, ignoreAbsent:true});
+		console.log('ok removed');
+	} catch(OSFileError) {
+		if (!OSFileError.becauseNoSuchFile) {
+			console.error('OSFileError on remove:', OSFileError);
+		}
+		else { console.error('just no such file') }
 	}
 	var dur = Date.now() - st;
 	console.error('took', dur, 'to remoe dir');

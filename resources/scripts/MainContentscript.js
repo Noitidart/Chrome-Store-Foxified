@@ -3,57 +3,6 @@
 var core;
 var gFsComm;
 
-var gAriaLabels = [
-	'‏متوفر في Chrome',
-	'Налице за Chrome',
-	'Chrome এ উপলব্ধ',
-	'Disponible a Chrome',
-	'K dispozici v Chromu',
-	'Tilgængelig til Chrome',
-	'Für Chrome verfügbar',
-	'Available on Chrome',
-	'Disponible en Chrome',
-	'Saadaval Chrome\'ile',
-	'ΔΙΑΘΕΣΙΜΟ ΣΤΟ CHROME',
-	'‏در Chrome موجود است',
-	'Available sa Chrome',
-	'Saatavilla Chromelle',
-	'Disponible sur Chrome',
-	'Chrome પર ઉપલ્બ્ધ છે',
-	'‏זמין ב-Chrome',
-	'Chrome पर उपलब्ध है',
-	'Dostupno na Chromeu',
-	'Elérhető Chrome-hoz',
-	'Tersedia di Chrome',
-	'Disponibile su Chrome',
-	'Chrome に追加',
-	'Chrome에서 사용 가능',
-	'Galima „Chrome“',
-	'Pieejama Chrome',
-	'Tersedia di Chrome',
-	'Chrome-ൽ ലഭ്യം',
-	'Chrome वर उपलब्ध',
-	'Beschikbaar voor Chrome',
-	'Tilgjengelig for Chrome',
-	'Dostępna dla Chrome',
-	'Disponível no Google Chrome',
-	'Disponível no Chrome',
-	'Disponibilă pe Chrome',
-	'Доступно в Chrome',
-	'K dispozícii v prehliadači Chrome',
-	'Na voljo za Chrome',
-	'Доступно у Chrome-у',
-	'Lägg till i Chrome',
-	'Chrome இல் உள்ளது',
-	'Chromeలో అందుబాటులో ఉంది',
-	'พร้อมใช้งานบน Chrome',
-	'Chrome için mevcut',
-	'Доступно для Chrome',
-	'Khả dụng trên Chrome',
-	'适用于 Chrome 浏览器',
-	'加到 Chrome'
-];
-
 function init() {
 	gFsComm.postMessage('callInBootstrap', {method:'fetchCore',wait:true}, null, function(aCore) {
 		console.log('core:', aCore);
