@@ -569,6 +569,7 @@ function signXpi(extid) {
 		var verifyUploaded = function(xhrArg) {
 			console.error('doing verifyUploaded');
 			var { request, ok, reason } = xhrArg;
+			console.log('request:', request, 'ok:', ok, 'reason:', reason);
 			if (!ok && (request.status != 409)) { // link3922222
 				// TODO: detail why it failed here, so it tells user, it would failed to upload, maybe bad status token etc
 				// xhr failed
@@ -603,11 +604,21 @@ function signXpi(extid) {
 
 					// possible_uploadFailedDueToTooLong_if404onCheck = true;
 					// requestReviewStatus();
-				} else {
+				} else if ([409, 201, 202].includes(request.status)) {
 					// wait for review to complete
 					console.error('ok good uploaded, status:', request.status, request.response, request.statusText);
 					validation_url = request.response.validation_url;
 					requestReviewStatus();
+				} else {
+					rezMain.ok = false;
+					rezMain.reason = 'fail_xhr';
+					rezMain.reason_details = {
+						status: request.status,
+						statusText: request.statusText,
+						url: request.responseURL,
+						response: request.response
+					};
+					deferredMain_signXpi.resolve(rezMain);
 				}
 			}
 		};
@@ -737,6 +748,16 @@ function signXpi(extid) {
 						rezMain.reason = 'fail_upload_unknown';
 						deferredMain_signXpi.resolve(rezMain);
 					// }
+				} else {
+					rezMain.ok = false;
+					rezMain.reason = 'fail_xhr';
+					rezMain.reason_details = {
+						status: request.status,
+						statusText: request.statusText,
+						url: request.responseURL,
+						response: request.response
+					};
+					deferredMain_signXpi.resolve(rezMain);
 				}
 			}
 		};
