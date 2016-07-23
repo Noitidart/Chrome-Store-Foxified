@@ -39,7 +39,7 @@ var core = {
 			// storage: OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id, 'simple-storage')
 		},
 		pref_branch: 'extensions.Chrome-Store-Foxified@jetpack.',
-		cache_key: Math.random() // set to version on release
+		cache_key: 'v2.2' // set to version on release
 	},
 	os: {
 		// // name: added by worker
@@ -83,10 +83,10 @@ var gInstallListener = {
 			// succesfully installed
 			reason = reasons.SUCCESS;
 		}
-		console.log('addon install ended', 'name:', aAddon.name, 'id:', aAddon.id, 'reason:', reason);
+
 	},
 	onInstallStarted: function(aInstall) {
-		console.log('addon install started', 'name:', aInstall.name, 'id:', aInstall.addon.id);
+
 	}
 };
 
@@ -117,7 +117,7 @@ function uninstall(aData, aReason) {
 		} catch(ignore) {}
 
 		Cu.import('resource://gre/modules/osfile.jsm');
-		console.log('removing dir');
+
 		OS.File.removeDir(OS.Path.join(OS.Constants.Path.profileDir, 'jetpack', core.addon.id), {ignorePermissions:true, ignoreAbsent:true});
 	}
 }
@@ -146,7 +146,7 @@ function startup(aData, aReason) {
 		getDownloadsDir().then(
 			function(os_path_downloads) {
 				core.addon.path.downloads = os_path_downloads;
-				console.log('core.addon.path.downloads:', core.addon.path.downloads);
+
 				startWorker();
 			}
 		);
@@ -217,7 +217,7 @@ function callInWorker(aArg, aMessageManager, aBrowser, aComm) {
 					// its dead
 					cmm.splice(i, 1);
 					i--;
-					console.error('browser in position', i, 'is dead! removed!');
+
 				} else {
 					if (cbrowser == aBrowser) {
 						cbrowser_found = true;
@@ -230,7 +230,7 @@ function callInWorker(aArg, aMessageManager, aBrowser, aComm) {
 		}
 		if (!cbrowser_found) {
 			mm_for_extid[extid].push(Cu.getWeakReference(aBrowser));
-			console.log('ok pushed aBrowser');
+
 		}
 	}
 
@@ -268,15 +268,15 @@ function dispatchInContent(aArg, aComm) {
 				// its dead
 				cmm.splice(i, 1);
 				i--;
-				console.error('browser in position', i, 'is dead! removed!');
+
 			} else {
-				console.error('ok sending to browser in position', i, 'messageManager:', cbrowser.messageManager);
+
 				gFsComm.transcribeMessage(cbrowser.messageManager, 'callInContent', {
 					method: 'dispatchInContent',
 					arg: aArg,
 					wait: false // i just want to know if return is `undefined` or `NO_WIN_COMM`
 				}, function(aArg, aComm) {
-					console.log('in callback of dispatchInContent in bootstrap, aArg:', aArg);
+
 				});
 			}
 		}
@@ -364,7 +364,7 @@ function browseFile(aArg, aComm) {
 
 		}// else { // cancelled	}
 		if (aOptions.async) {
-			console.error('async resolving');
+
 			mainDeferred_browseFile.resolve(retFP);
 		} else {
 			return retFP;
@@ -410,7 +410,7 @@ function downloadFile(aArg, aComm) {
 	    }
 
 	})
-	.then(null, console.error);
+
 }
 
 function installAddonAsTemp(aArg, aComm) {
@@ -425,7 +425,7 @@ function installAddonAsTemp(aArg, aComm) {
 	var promise_uninstall = uninstallAddonsByPartial(partial_id);
 	promise_uninstall.then(
 		function(aVal) {
-			console.log('Fullfilled - promise_uninstall - ', aVal);
+
 			install();
 		},
 		genericReject.bind(null, 'promise_uninstall', mainDeferred_installAddonAsTemp)
@@ -463,7 +463,7 @@ function installAddonAsNormal(aArg, aComm) {
 	var promise_uninstall = uninstallAddonsByPartial(partial_id);
 	promise_uninstall.then(
 		function(aVal) {
-			console.log('Fullfilled - promise_uninstall - ', aVal);
+
 			install();
 		},
 		genericReject.bind(null, 'promise_uninstall', mainDeferred_installAddonAsNormal)
@@ -525,7 +525,7 @@ function validateOptionsObj(aOptions, aOptionsDefaults) {
 	// ensures no invalid keys are found in aOptions, any key found in aOptions not having a key in aOptionsDefaults causes throw new Error as invalid option
 	for (var aOptKey in aOptions) {
 		if (!(aOptKey in aOptionsDefaults)) {
-			console.error('aOptKey of ' + aOptKey + ' is an invalid key, as it has no default value, aOptionsDefaults:', aOptionsDefaults, 'aOptions:', aOptions);
+
 			throw new Error('aOptKey of ' + aOptKey + ' is an invalid key, as it has no default value');
 		}
 	}
@@ -552,7 +552,7 @@ function genericReject(aPromiseName, aPromiseToReject, aReason) {
 		name: aPromiseName,
 		aReason: aReason
 	};
-	console.error('Rejected - ' + aPromiseName + ' - ', rejObj);
+
 	if (aPromiseToReject) {
 		aPromiseToReject.reject(rejObj);
 	}
@@ -562,7 +562,7 @@ function genericCatch(aPromiseName, aPromiseToReject, aCaught) {
 		name: aPromiseName,
 		aCaught: aCaught
 	};
-	console.error('Caught - ' + aPromiseName + ' - ', rejObj);
+
 	if (aPromiseToReject) {
 		aPromiseToReject.reject(rejObj);
 	}
@@ -611,28 +611,28 @@ function crossprocComm(aChannelId) {
 		receiveMessage: function(e) {
 			var messageManager = e.target.messageManager;
 			if (!messageManager) {
-				console.error('bootstrap crossprocComm - ignoring this received message as no messageManager for the one i am getting message from, e.target:', e.target, 'messageManager:', messageManager);
+
 				return;
 			}
 			var browser = e.target;
 			var payload = e.data;
-			console.log('bootstrap crossprocComm - incoming, payload:', payload, 'messageManager:', messageManager, 'browser:', browser, 'e:', e);
-			// console.log('this in receiveMessage bootstrap:', this);
+
+
 
 			if (payload.method) {
-				if (!(payload.method in scope)) { console.error('method of "' + payload.method + '" not in scope'); throw new Error('method of "' + payload.method + '" not in scope') }  // dev line remove on prod
+
 				var rez_bs_call = scope[payload.method](payload.arg, messageManager, browser, this); // only on bootstrap side, they get extra 2 args
 				if (payload.cbid) {
 					if (rez_bs_call && rez_bs_call.constructor.name == 'Promise') {
 						rez_bs_call.then(
 							function(aVal) {
-								console.log('Fullfilled - rez_bs_call - ', aVal);
+
 								this.transcribeMessage(messageManager, payload.cbid, aVal);
 							}.bind(this),
 							genericReject.bind(null, 'rez_bs_call', 0)
 						).catch(genericCatch.bind(null, 'rez_bs_call', 0));
 					} else {
-						console.log('bootstrap crossprocComm - calling transcribeMessage for callbck with args:', payload.cbid, rez_bs_call);
+
 						this.transcribeMessage(messageManager, payload.cbid, rez_bs_call);
 					}
 				}
@@ -641,16 +641,16 @@ function crossprocComm(aChannelId) {
 				this.callbackReceptacle[payload.cbid](payload.arg, messageManager, browser, this);
 				delete this.callbackReceptacle[payload.cbid];
 			} else {
-				console.error('bootstrap crossprocComm - invalid combination - method:', payload.method, 'cbid:', payload.cbid, 'payload:', payload);
+
 			}
 		}.bind(this)
 	};
 	this.nextcbid = 1; //next callback id
 	this.transcribeMessage = function(aMessageManager, aMethod, aArg, aCallback) {
-		// console.log('bootstrap sending message to framescript', aMethod, aArg);
+
 		// aMethod is a string - the method to call in framescript
 		// aCallback is a function - optional - it will be triggered when aMethod is done calling
-		console.log('bootstrap crossprocComm - in transcribeMessage:', aMessageManager, aMethod, aArg, aCallback)
+
 		var cbid = null;
 		if (typeof(aMethod) == 'number') {
 			// this is a response to a callack waiting in framescript
@@ -665,7 +665,7 @@ function crossprocComm(aChannelId) {
 
 		// return;
 		if (!aMessageManager) {
-			console.error('bootstrap crossprocComm - how on earth, im in transcribeMessage but no aMessageManager? arguments:', aMessageManager, aMethod, aArg, aCallback);
+
 		}
 		aMessageManager.sendAsyncMessage(aChannelId, {
 			method: aMethod,
@@ -697,7 +697,7 @@ function contentComm(aContentWindow, aPort1, aPort2, onHandshakeComplete) {
 
 	this.listener = function(e) {
 		var payload = e.data;
-		console.log('bootstrap contentComm - incoming, payload:', payload); //, 'e:', e);
+
 
 		if (payload.method) {
 			if (payload.method == 'contentComm_handshake_finalized') {
@@ -707,20 +707,20 @@ function contentComm(aContentWindow, aPort1, aPort2, onHandshakeComplete) {
 				}
 				return;
 			}
-			if (!(payload.method in scope)) { console.error('method of "' + payload.method + '" not in scope'); throw new Error('method of "' + payload.method + '" not in scope') } // dev line remove on prod
+
 			var rez_bs_call_for_win = scope[payload.method](payload.arg, this);
-			console.log('rez_bs_call_for_win:', rez_bs_call_for_win);
+
 			if (payload.cbid) {
 				if (rez_bs_call_for_win && rez_bs_call_for_win.constructor.name == 'Promise') {
 					rez_bs_call_for_win.then(
 						function(aVal) {
-							console.log('Fullfilled - rez_bs_call_for_win - ', aVal);
+
 							this.postMessage(payload.cbid, aVal);
 						}.bind(this),
 						genericReject.bind(null, 'rez_bs_call_for_win', 0)
 					).catch(genericCatch.bind(null, 'rez_bs_call_for_win', 0));
 				} else {
-					console.log('calling postMessage for callback with rez_bs_call_for_win:', rez_bs_call_for_win, 'this:', this);
+
 					this.postMessage(payload.cbid, rez_bs_call_for_win);
 				}
 			}
@@ -892,7 +892,7 @@ function workerComm(aWorkerPath, onBeforeInit, onAfterInit, aWebWorker) {
 	};
 	this.listener = function(e) {
 		var payload = e.data;
-		console.log('bootstrap workerComm - incoming, payload:', payload); //, 'e:', e);
+
 
 		if (payload.method) {
 			if (payload.method == 'triggerOnAfterInit') {
@@ -901,20 +901,20 @@ function workerComm(aWorkerPath, onBeforeInit, onAfterInit, aWebWorker) {
 				}
 				return;
 			}
-			if (!(payload.method in scope)) { console.error('method of "' + payload.method + '" not in scope'); throw new Error('method of "' + payload.method + '" not in scope') } // dev line remove on prod
+
 			var rez_bs_call_for_worker = scope[payload.method](payload.arg, this);
-			console.log('rez_bs_call_for_worker:', rez_bs_call_for_worker);
+
 			if (payload.cbid) {
 				if (rez_bs_call_for_worker && rez_bs_call_for_worker.constructor.name == 'Promise') {
 					rez_bs_call_for_worker.then(
 						function(aVal) {
-							console.log('Fullfilled - rez_bs_call_for_worker - ', aVal);
+
 							this.postMessage(payload.cbid, aVal);
 						}.bind(this),
 						genericReject.bind(null, 'rez_bs_call_for_worker', 0)
 					).catch(genericCatch.bind(null, 'rez_bs_call_for_worker', 0));
 				} else {
-					console.log('calling postMessage for callback with rez_bs_call_for_worker:', rez_bs_call_for_worker, 'this:', this);
+
 					this.postMessage(payload.cbid, rez_bs_call_for_worker);
 				}
 			}
@@ -923,7 +923,7 @@ function workerComm(aWorkerPath, onBeforeInit, onAfterInit, aWebWorker) {
 			this.callbackReceptacle[payload.cbid](payload.arg, this);
 			delete this.callbackReceptacle[payload.cbid];
 		} else {
-			console.error('bootstrap workerComm - invalid combination');
+
 			throw new Error('bootstrap workerComm - invalid combination');
 		}
 	}.bind(this);
