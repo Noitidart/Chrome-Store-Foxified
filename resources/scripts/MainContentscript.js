@@ -5,7 +5,7 @@ var gFsComm;
 
 function init() {
 	gFsComm.postMessage('callInBootstrap', {method:'fetchCore',wait:true}, null, function(aCore) {
-
+		console.log('core:', aCore);
 		core = aCore;
 
 		window.addEventListener('click', genericClick, true);
@@ -76,7 +76,7 @@ function uninit() {
 
 function genericClick(e) {
 	var targetEl = e.target;
-
+	// console.log('clicked, targetEl:', targetEl.innerHTML);
 	if (targetEl) {
 
 		var isTestBtn = targetEl.classList.contains('webstore-test-button-label');
@@ -85,7 +85,7 @@ function genericClick(e) {
 		try {
 			containsTestBtn = targetEl.querySelector('.webstore-test-button-label');
 		} catch(ignore) {}
-
+		// console.log('isTestBtn:', isTestBtn, 'isRoleBtn:', isRoleBtn, 'containsTestBtn:', containsTestBtn);
 
 		if (isTestBtn || (isRoleBtn && containsTestBtn)) {
 			var ariaLabel;
@@ -98,7 +98,7 @@ function genericClick(e) {
 				btnText = targetEl.textContent.trim();
 			}
 
-
+			console.log('ariaLabel:', ariaLabel, 'btnText:', btnText);
 			if (/(?:CHROM|Chrom)/.test(ariaLabel) || /(?:CHROM|Chrom)/.test(btnText)) {
 				// alert('ok trigger');
 				installClick(e);
@@ -199,7 +199,7 @@ function downloadCrx(extid) {
 			arg: extid
 		}
 	}, undefined, function(aArg, aComm) {
-
+		console.log('back in content after triggering downloadCrx, got back aArg:', aArg);
 		var { request, ok, reason } = aArg; // reason only available when ok==false
 		store.dispatch(updateStatus(extid, {
 			downloading_crx: false,
@@ -226,7 +226,7 @@ function convertXpi(extid) {
 			arg: extid
 		}
 	}, undefined, function(aArg, aComm) {
-
+		console.log('back in content after triggering downloadCrx, got back aArg:', aArg);
 		var { request, ok, reason, version } = aArg; // reason only available when ok==false
 		store.dispatch(updateStatus(extid, {
 			converting_xpi: false,
@@ -255,7 +255,7 @@ function signXpi(extid, install_normal) {
 			arg: extid
 		}
 	}, undefined, function(aArg, aComm) {
-
+		console.log('back in content after triggering downloadCrx, got back aArg:', aArg);
 		var { request, ok, reason, reason_details } = aArg; // reason only available when ok==false
 		store.dispatch(updateStatus(extid, {
 			signing_xpi: undefined,
@@ -287,7 +287,7 @@ function installXpi(extid, temp) {
 			arg: { extid, temp }
 		}
 	}, undefined, function(aArg, aComm) {
-
+		console.log('back in content after installing, aArg:', aArg);
 		var { request, ok, reason } = aArg; // reason only available when ok==false
 		store.dispatch(updateStatus(extid, {
 			[temp ? 'unsigned_installing' : 'signed_installing']: undefined,
@@ -467,7 +467,7 @@ const foxifiedApp = Redux.combineReducers({
 // STORE
 var store = Redux.createStore(foxifiedApp);
 
-
+var unsubscribe = store.subscribe(() => console.log(store.getState()) );
 
 // REACT COMPONENTS - PRESENTATIONAL
 var App = React.createClass({
@@ -542,7 +542,7 @@ var ExtActions = React.createClass({
 				}
 			}
 		}, undefined, function(aArg, aComm) {
-
+			console.log('back in content after triggering saveToFile, got back aArg:', aArg);
 			var { ok, reason } = aArg; // reason only available when ok==false
 			if (!ok) {
 				switch (reason) {
@@ -595,7 +595,7 @@ var ExtActions = React.createClass({
 				cChildren.push( React.createElement('button', { onClick:this.sign }, formatStringFromNameCore('sign_unsigned_addon', 'main')) );
 			}
 		}
-
+		console.error('status status status:', status);
 		if (status.downloaded_signed) {
 			// if (!status.signed_installing && !status.signed_installed) {
 			if (!status.signed_installing) {
@@ -817,7 +817,7 @@ var Page = React.createClass({
 		// status is only available if pageid is extid
 
 		var cChildren = [];
-
+		console.error('pageid:', pageid);
 		switch (pageid) {
 			case 'PAGE_PREFS':
 
@@ -907,10 +907,10 @@ function formatStringFromNameCore(aLocalizableStr, aLoalizedKeyInCoreAddonL10n, 
 	// try {
 	// 	var cLocalizedStr = core.addon.l10n[aLoalizedKeyInCoreAddonL10n];
 	// } catch (ex) {
-
+	// 	console.error('formatStringFromNameCore error:', ex, 'args:', aLocalizableStr, aLoalizedKeyInCoreAddonL10n, aReplacements);
 	// }
 	var cLocalizedStr = core.addon.l10n[aLoalizedKeyInCoreAddonL10n][aLocalizableStr];
-
+	// console.log('cLocalizedStr:', cLocalizedStr, 'args:', aLocalizableStr, aLoalizedKeyInCoreAddonL10n, aReplacements);
     if (aReplacements) {
         for (var i=0; i<aReplacements.length; i++) {
             cLocalizedStr = cLocalizedStr.replace('%S', aReplacements[i]);
@@ -938,17 +938,17 @@ function contentComm(onHandshakeComplete) {
 	};
 	this.listener = function(e) {
 		var payload = e.data;
-
+		console.log('content contentComm - incoming, payload:', payload); // , 'e:', e, 'this:', this);
 
 		if (payload.method) {
-
+			if (!(payload.method in scope)) { console.error('method of "' + payload.method + '" not in WINDOW'); throw new Error('method of "' + payload.method + '" not in WINDOW') } // dev line remove on prod
 			var rez_win_call = scope[payload.method](payload.arg, this);
-
+			console.log('content contentComm - rez_win_call:', rez_win_call);
 			if (payload.cbid) {
 				if (rez_win_call && rez_win_call.constructor.name == 'Promise') {
 					rez_win_call.then(
 						function(aVal) {
-
+							console.log('Fullfilled - rez_win_call - ', aVal);
 							this.postMessage(payload.cbid, aVal);
 						}.bind(this),
 						genericReject.bind(null, 'rez_win_call', 0)
@@ -962,7 +962,7 @@ function contentComm(onHandshakeComplete) {
 			this.callbackReceptacle[payload.cbid](payload.arg, this);
 			delete this.callbackReceptacle[payload.cbid];
 		} else {
-
+			console.error('contentComm - invalid combination');
 			throw new Error('contentComm - invalid combination');
 		}
 	}.bind(this);
@@ -998,7 +998,7 @@ function contentComm(onHandshakeComplete) {
 
 	var winMsgListener = function(e) {
 		var data = e.data;
-
+		console.log('content contentComm - incoming window message, data:', uneval(data)); //, 'source:', e.source, 'ports:', e.ports);
 		switch (data.topic) {
 			case 'contentComm_handshake':
 
@@ -1013,7 +1013,7 @@ function contentComm(onHandshakeComplete) {
 
 				break;
 			default:
-
+				console.error('content contentComm - unknown topic, data:', data);
 		}
 	}.bind(this);
 	window.addEventListener('message', winMsgListener, false);
