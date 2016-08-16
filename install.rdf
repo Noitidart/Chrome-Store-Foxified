@@ -48,12 +48,12 @@
 		</em:localized>
 		<em:localized>
 			<Description>
-				<em:locale>fr</em:locale>
+				<em:locale>es-ES</em:locale>
 				<em:name>Chrome Store Foxified</em:name>
-				<em:description>Active le Google Chrome Store pour Firefox. Permet de cliquer pour installer les extensions de Chrome directement dans Firefox.</em:description>
+				<em:description>Habilita la Google Chrome Store en Firefox. Instala extensiones de Chrome directamente en Firefox con un click.</em:description>
+				<em:translator>AlePerez92</em:translator>
 				<em:creator>Juest</em:creator>
 				<em:creator>Noitidart</em:creator>
-				<em:translator>goofy-bz</em:translator>
 			</Description>
 		</em:localized>
 		<em:localized>
