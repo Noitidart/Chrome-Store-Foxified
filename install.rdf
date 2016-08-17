@@ -58,6 +58,16 @@
 		</em:localized>
 		<em:localized>
 			<Description>
+				<em:locale>nl</em:locale>
+				<em:name>Chrome Store Foxified</em:name>
+				<em:description>Biedt toegang tot de Google Chrome Store voor Firefox. Wijs aan en klik om Chrome-extensies rechtstreeks in Firefox te installeren.</em:description>
+				<em:translator>Tonnes</em:translator>
+				<em:creator>Juest</em:creator>
+				<em:creator>Noitidart</em:creator>
+			</Description>
+		</em:localized>
+		<em:localized>
+			<Description>
 				<em:locale>ru</em:locale>
 				<em:name>Chrome Store Foxified</em:name>
 				<em:description>Enables the Google Chrome Store for Firefox. Point and click to install Chrome extensions straight into Firefox.</em:description>
@@ -72,16 +82,6 @@
 				<em:name>Chrome Store Foxified</em:name>
 				<em:description>使 Google Chrome 商店适用于 Firefox。访问并单击即可直接安装 Chrome 扩展到 Firefox。</em:description>
 				<em:translator>yfdyh000</em:translator>
-				<em:creator>Juest</em:creator>
-				<em:creator>Noitidart</em:creator>
-			</Description>
-		</em:localized>
-		<em:localized>
-			<Description>
-				<em:locale>nl</em:locale>
-				<em:name>Chrome Store Foxified</em:name>
-				<em:description>Biedt toegang tot de Google Chrome Store voor Firefox. Wijs aan en klik om Chrome-extensies rechtstreeks in Firefox te installeren.</em:description>
-				<em:translator>9Tonnes</em:translator>
 				<em:creator>Juest</em:creator>
 				<em:creator>Noitidart</em:creator>
 			</Description>
