@@ -31,9 +31,9 @@
 		<!-- Front End MetaData -->
 		<!-- must provide default non-localized because It's used as a default on AMO. It's used as a default by the add-on manager, with the possibility of other locales overriding it. Failure to provide a non-localized name will lead to failed upload on AMO. -->
 		<em:name>Chrome Store Foxified</em:name>
+		<em:description>Enables the Google Chrome Store for Firefox. Point and click to install Chrome extensions straight into Firefox.</em:description>
 		<em:creator>Juest</em:creator>
 		<em:creator>Noitidart</em:creator>
-		<em:translator>goofy-bz</em:translator>
 
 		<!-- start localizing - For each entry in default data MUST have equivalent in each localized block -->
 		<em:localized>
@@ -43,7 +43,6 @@
 				<em:description>Enables the Google Chrome Store for Firefox. Point and click to install Chrome extensions straight into Firefox.</em:description>
 				<em:creator>Juest</em:creator>
 				<em:creator>Noitidart</em:creator>
-				<em:translator>goofy-bz</em:translator>
 			</Description>
 		</em:localized>
 		<em:localized>
@@ -51,9 +50,9 @@
 				<em:locale>es-ES</em:locale>
 				<em:name>Chrome Store Foxified</em:name>
 				<em:description>Habilita la Google Chrome Store en Firefox. Instala extensiones de Chrome directamente en Firefox con un click.</em:description>
-				<em:translator>AlePerez92</em:translator>
 				<em:creator>Juest</em:creator>
 				<em:creator>Noitidart</em:creator>
+				<em:translator>AlePerez92</em:translator>
 			</Description>
 		</em:localized>
 		<em:localized>
@@ -61,9 +60,9 @@
 				<em:locale>nl</em:locale>
 				<em:name>Chrome Store Foxified</em:name>
 				<em:description>Biedt toegang tot de Google Chrome Store voor Firefox. Wijs aan en klik om Chrome-extensies rechtstreeks in Firefox te installeren.</em:description>
-				<em:translator>Tonnes</em:translator>
 				<em:creator>Juest</em:creator>
 				<em:creator>Noitidart</em:creator>
+				<em:translator>Tonnes</em:translator>
 			</Description>
 		</em:localized>
 		<em:localized>
@@ -71,9 +70,9 @@
 				<em:locale>ru</em:locale>
 				<em:name>Chrome Store Foxified</em:name>
 				<em:description>Предоставляет доступ браузеру к Интернет-магазину Chrome. Установка расширений Chrome непосредственно в Firefox одним щелчком.</em:description>
-				<em:translator>veadarkin</em:translator>
 				<em:creator>Juest</em:creator>
 				<em:creator>Noitidart</em:creator>
+				<em:translator>veadarkin</em:translator>
 			</Description>
 		</em:localized>
 		<em:localized>
@@ -81,9 +80,9 @@
 				<em:locale>zh-CN</em:locale>
 				<em:name>Chrome Store Foxified</em:name>
 				<em:description>使 Google Chrome 商店适用于 Firefox。访问并单击即可直接安装 Chrome 扩展到 Firefox。</em:description>
-				<em:translator>yfdyh000</em:translator>
 				<em:creator>Juest</em:creator>
 				<em:creator>Noitidart</em:creator>
+				<em:translator>yfdyh000</em:translator>
 			</Description>
 		</em:localized>
 	  </Description>

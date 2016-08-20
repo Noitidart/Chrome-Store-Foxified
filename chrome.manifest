@@ -1,3 +1,7 @@
 content chrome-store-foxified ./
 content chrome-store-foxified-accessible ./resources/ contentaccessible=true
 locale chrome-store-foxified en-US locale/en-US/
+locale chrome-store-foxified es-ES locale/es-ES/
+locale chrome-store-foxified nl locale/nl/
+locale chrome-store-foxified ru locale/ru/
+locale chrome-store-foxified zh-CN locale/zh-CN/

@@ -115,7 +115,7 @@ var pageLoader = {
 			}
 		} else {
 			if (!this.IGNORE_NONMATCH) {
-				console.log('page ready, but its not match:', uneval(contentWindow.location));
+				// console.log('page ready, but its not match:', uneval(contentWindow.location));
 				var webNav = contentWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebNavigation);
 				var docURI = webNav.document.documentURI;
 				// console.info('docURI:', docURI);
