@@ -57,6 +57,16 @@
 		</em:localized>
 		<em:localized>
 			<Description>
+				<em:locale>et</em:locale>
+				<em:name>Chrome Store Foxified</em:name>
+				<em:description>Võimaldab Google Chrome'i veebipoe kasutamise Firefoxis. Chrome'i laienduste otse Firefoxi installimiseks osuta ja klõpsa.</em:description>
+				<em:creator>Juest</em:creator>
+				<em:creator>Noitidart</em:creator>
+				<em:translator>Maidur</em:translator>
+			</Description>
+		</em:localized>
+		<em:localized>
+			<Description>
 				<em:locale>nl</em:locale>
 				<em:name>Chrome Store Foxified</em:name>
 				<em:description>Biedt toegang tot de Google Chrome Store voor Firefox. Wijs aan en klik om Chrome-extensies rechtstreeks in Firefox te installeren.</em:description>
