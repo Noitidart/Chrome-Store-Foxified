@@ -86,7 +86,7 @@ function jwtSignOlympia(aKey, aSecret, aDateMs) {
 		iss: aKey,
 		jti: Math.random().toString(),
 		iat,
-		exp: iat + 60
+		exp: iat + (60 * 5)
 	}));
 
 	var part3 = CryptoJS.HmacSHA256(part1 + '.' + part2, aSecret).toString(CryptoJS.enc.Base64).replace(/\=+$/m, '');
