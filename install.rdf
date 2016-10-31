@@ -168,6 +168,16 @@
 		</em:localized>
 		<em:localized>
 			<Description>
+				<em:locale>pl</em:locale>
+				<em:name>Chrome Store Foxified</em:name>
+				<em:description>Umożliwia instalowanie dodatków dla Google Chrome w Firefoksie. Wskaż i kliknij dodatek, aby zainstalować go w Firefoksie.</em:description>
+				<em:creator>Noitidart</em:creator>
+				<em:contributor>Alexandre Moore for Snowish Iconset</em:contributor>
+				<em:translator>Teo</em:translator>
+			</Description>
+		</em:localized>
+		<em:localized>
+			<Description>
 				<em:locale>ru</em:locale>
 				<em:name>Chrome Store Foxified</em:name>
 				<em:description>Предоставляет доступ браузеру к Интернет-магазину Chrome. Установка расширений Chrome непосредственно в Firefox одним щелчком.</em:description>
