@@ -117,6 +117,17 @@
 		</em:localized>
 		<em:localized>
 			<Description>
+				<em:locale>fr</em:locale>
+				<em:name>Chrome Store Foxified</em:name>
+				<em:description>Permet l'installation des extensions du Google Chrome Store dans Firefox. Cliquez pour installer les extension de Chrome directement dans Firefox.</em:description>
+				<em:creator>Noitidart</em:creator>
+				<em:contributor>Alexandre Moore for Snowish Iconset</em:contributor>
+				<em:translator>Facy5</em:translator>
+				<em:translator>Goofy</em:translator>
+			</Description>
+		</em:localized>
+		<em:localized>
+			<Description>
 				<em:locale>nl</em:locale>
 				<em:name>Chrome Store Foxified</em:name>
 				<em:description>Biedt toegang tot de Google Chrome Store voor Firefox. Wijs aan en klik om Chrome-extensies rechtstreeks in Firefox te installeren.</em:description>
