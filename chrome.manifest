@@ -5,8 +5,9 @@ locale chrome-store foxified ca locale/ca/
 locale chrome-store foxified de locale/de/
 locale chrome-store foxified el locale/el/
 locale chrome-store-foxified en-US locale/en-US/
-locale chrome-store-foxified es-ES locale/es-ES/
+locale chrome-store foxified es-ES locale/es-ES/
 locale chrome-store-foxified et locale/et/
+locale chrome-store foxified fi locale/fi/
 locale chrome-store-foxified nl locale/nl/
 locale chrome-store-foxified ru locale/ru/
 locale chrome-store-foxified zh-CN locale/zh-CN/
