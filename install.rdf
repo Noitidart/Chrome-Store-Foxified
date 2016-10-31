@@ -198,12 +198,32 @@
 		</em:localized>
 		<em:localized>
 			<Description>
+				<em:locale>tr</em:locale>
+				<em:name>Chrome Store Foxified</em:name>
+				<em:description>Firefox için Google Chrome Mağazasını etkinleştirir. Chrome uzantılarını doğrudan Firefox'a kurmak için işaretle ve tıkla.</em:description>
+				<em:creator>Noitidart</em:creator>
+				<em:contributor>Alexandre Moore for Snowish Iconset</em:contributor>
+				<em:translator>alfapegasi</em:translator>
+			</Description>
+		</em:localized>
+		<em:localized>
+			<Description>
 				<em:locale>zh-CN</em:locale>
 				<em:name>Chrome Store Foxified</em:name>
 				<em:description>使 Google Chrome 商店适用于 Firefox。访问并单击即可直接安装 Chrome 扩展到 Firefox。</em:description>
 				<em:creator>Juest</em:creator>
 				<em:creator>Noitidart</em:creator>
 				<em:translator>yfdyh000</em:translator>
+			</Description>
+		</em:localized>
+		<em:localized>
+			<Description>
+				<em:locale>zh-TW</em:locale>
+				<em:name>Chrome Store Foxified</em:name>
+				<em:description>讓 Chrome 線上應用程式商店可以使用於 Firefox 上。只要滑滑鼠並點擊就能直接安裝 Chrome 擴充套件到 Firefox。</em:description>
+				<em:creator>Noitidart</em:creator>
+				<em:contributor>Alexandre Moore for Snowish Iconset</em:contributor>
+				<em:translator>Goldie</em:translator>
 			</Description>
 		</em:localized>
 	  </Description>
