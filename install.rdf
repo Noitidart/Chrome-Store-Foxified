@@ -58,6 +58,16 @@
 		</em:localized>
 		<em:localized>
 			<Description>
+				<em:locale>da</em:locale>
+				<em:name>Chrome Store Foxified</em:name>
+				<em:description>Muliggør Google Chrome Store i Firefox. Vælg Chrome udvidelser, for at installere dem i Firefox.</em:description>
+				<em:creator>Noitidart</em:creator>
+				<em:contributor>Alexandre Moore for Snowish Iconset</em:contributor>
+				<em:translator>frederiksen</em:translator>
+			</Description>
+		</em:localized>
+		<em:localized>
+			<Description>
 				<em:locale>de</em:locale>
 				<em:name>Chrome Store Foxified</em:name>
 				<em:description>Ermöglicht  Google Chrome Store im Firefox. Klicken Sie auf die Chrome Erweiterungen, um die in Firefox zu installieren.</em:description>
