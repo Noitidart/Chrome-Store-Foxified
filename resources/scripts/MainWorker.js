@@ -199,6 +199,15 @@ function convertXpi(extid) {
 		rezMain.version = version;
 		// TODO: possible error point, if the JSON.parse fails
 
+		// transform "options_page" to "options_ui", due to https://bugzilla.mozilla.org/show_bug.cgi?id=1212684 to WONTFIX.
+		// see https://developer.chrome.com/extensions/options and https://developer.chrome.com/extensions/optionsV2.
+		if (manifest.options_page) {
+			manifest.options_ui = {
+				page: manifest.options_page
+			};
+			delete manifest.options_page;
+		}
+
 		manifest.applications = {
 			gecko: {
 				id: extid + '@chrome-store-foxified-unsigned'
