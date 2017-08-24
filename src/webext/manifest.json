@@ -1,0 +1,55 @@
+{
+    "manifest_version": 2,
+    "applications": { "gecko": { "id":"~ADDON_ID~", "strict_min_version":"52.0" } },
+    "name": "__MSG_addon_name__",
+    "description": "__MSG_addon_desc__",
+    "author": "Noitidart",
+    "version": "~ADDON_VERSION~",
+    "default_locale": "en_US",
+    "homepage_url": "https://github.com/Noitidart/~ADDON_NAME_HYPH~/",
+    "icons": {
+        "24": "icon32.png",
+        "32": "icon32.png",
+
+        "16": "icon32.png",
+        "48": "icon32.png",
+        "64": "icon32.png",
+        "96": "icon32.png",
+        "128": "icon32.png",
+
+        "20": "icon32.png",
+        "25": "icon32.png",
+        "30": "icon32.png",
+        "40": "icon32.png",
+
+        "19": "icon32.png",
+        "35": "icon32.png",
+        "38": "icon32.png"
+    },
+    "incognito": "spanning",
+    "background": { "scripts":["background.bundle.js"], "persistent":true },
+    "browser_action": {
+        "default_icon": {
+            "24": "icon32.png",
+            "32": "icon32.png",
+
+            "16": "icon32.png",
+            "48": "icon32.png",
+            "64": "icon32.png",
+            "96": "icon32.png",
+            "128": "icon32.png",
+
+            "20": "icon32.png",
+            "25": "icon32.png",
+            "30": "icon32.png",
+            "40": "icon32.png",
+
+            "19": "icon32.png",
+            "35": "icon32.png",
+            "38": "icon32.png"
+        },
+        "default_title": "__MSG_browseraction_title__"
+    },
+
+    "permissions": ["storage", "webNavigation", "webRequest", "webRequestBlocking", "<all_urls>", "tabs", "notifications"]
+}

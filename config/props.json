@@ -1,0 +1,16 @@
+{
+    "webext": {
+        "replace": {
+            "~ADDON_NAME~": "Chrome Store Foxified",
+            "~ADDON_NAME_HYPH~": "Chrome-Store-Foxified",
+            "~ADDON_VERSION~": "3.0",
+            "~ADDON_ID~": "@chrome-store-foxified",
+            "~ADDON_DESC~": "Point and click to install extensions into your browser from the AMO, Chrome Web Store, Microsoft Store, or Opera Addons websites."
+        }
+    },
+    "electron": {
+        "replace": {
+            "~ADDON_NAME~": "Chrome Store Foxified"
+        }
+    }
+}
