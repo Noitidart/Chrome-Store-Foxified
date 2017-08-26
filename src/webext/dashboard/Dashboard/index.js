@@ -12,7 +12,6 @@ import './index.css'
 
 class Dashboard extends PureComponent<void, void, void> {
     render() {
-        const arr = [<span>1</span>, <span>2</span>, <span>3</span>];
         return (
             <Provider store={store}>
                 <HashRouter>

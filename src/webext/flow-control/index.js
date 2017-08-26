@@ -5,6 +5,8 @@ import { persistStore, autoRehydrate } from 'redux-persist'
 import createSagaMiddleware from 'redux-saga'
 import { fork, all } from 'redux-saga/effects'
 
+import AsyncBrowserExtensionStorage from './storage'
+
 import browserAction from './browser-action'
 import core from './core'
 import counter, { sagas as counterSagas } from './counter'
@@ -38,7 +40,8 @@ sagaMiddleware.run(rootSaga);
 
 export const persistor = persistStore(store, {
     // blacklist: ['elements', 'rehydrated'],
-    whitelist: ['counter']
+    whitelist: ['counter'],
+    storage: new AsyncBrowserExtensionStorage()
 });
 
 // store.subscribe(function() {

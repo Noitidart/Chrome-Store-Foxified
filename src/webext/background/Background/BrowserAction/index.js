@@ -3,8 +3,6 @@
 import { PureComponent } from 'react'
 import { connect } from 'react-redux'
 
-import { toTitleCase } from 'cmn/lib/all'
-
 import DASHBOARD_PAGE from '../../../dashboard/index.html'
 
 import type { Shape as BrowserActionShape } from '../../../flow-control/browser-action'
