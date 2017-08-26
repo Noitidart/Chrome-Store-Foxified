@@ -11,7 +11,7 @@ class CounterPage extends PureComponent<void, void> {
         return (
             <div>
                 <p className="Page--intro">
-                    Let's count... 1.. 2.. 3..
+                    Let&apos;s count... 1.. 2.. 3..
                 </p>
                 <Counter />
             </div>

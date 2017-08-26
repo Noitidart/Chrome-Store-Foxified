@@ -10,7 +10,7 @@ import type { Shape as AppShape } from '../../../flow-control'
 
 type Props = {
     // redux
-    // ...BrowserActionShape
+    ...BrowserActionShape
 }
 
 const TRAITS = {
