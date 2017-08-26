@@ -4,7 +4,7 @@ export type Shape = {
     badgeColor?: string,
     badgeText?: string,
     title?: string
-};
+}
 
 const INITIAL = {
     title: extension.i18n.getMessage('browseraction_title'),
