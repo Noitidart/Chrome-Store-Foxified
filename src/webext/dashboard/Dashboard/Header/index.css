@@ -13,11 +13,11 @@
 }
 
 .Header--logo {
-    animation: Header--logo-scale infinite 3s linear;
+    animation: anim-zoom-in-out infinite 3s linear;
     height: 80px;
 }
 
-@keyframes Header--logo-scale {
+@keyframes anim-zoom-in-out {
     0%     { transform: scale(1.0) }
     25%    { transform: scale(1.1) }
     50%    { transform: scale(1.0) }
