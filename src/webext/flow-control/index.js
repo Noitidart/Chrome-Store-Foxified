@@ -11,13 +11,11 @@ import browserAction from './browser-action'
 import core from './core'
 import counter, { sagas as counterSagas } from './counter'
 import elements from 'cmn/lib/comm/redux/elements'
-// import rehydrated from './rehydrated'
 
 import type { Shape as CoreShape } from './core'
 import type { Shape as CounterShape } from './counter'
 import type { Shape as BrowserActionShape } from './browser-action'
 import type { Shape as ElementsShape } from 'cmn/src/comm/redux/elements'
-// import type { Shape as RehydratedShape } from './rehydrated'
 
 export type Shape = {
     _persist: { version:number, rehydrated:boolean },
@@ -25,7 +23,6 @@ export type Shape = {
     core: CoreShape,
     counter: CounterShape,
     elements: ElementsShape
-    // rehydrated: RehydratedShape
 }
 
 console.log('process.env.NODE_ENV:', process.env.NODE_ENV, process.env.NODE_ENV !== 'production');
@@ -37,7 +34,7 @@ const persistConfig = {
 }
 
 const sagaMiddleware = createSagaMiddleware();
-const reducers = persistReducer(persistConfig, combineReducers({ browserAction, core, counter, elements/* , rehydrated */ }));
+const reducers = persistReducer(persistConfig, combineReducers({ browserAction, core, counter, elements }));
 const sagas = [ ...counterSagas ];
 
 const store = createStore(reducers, applyMiddleware(sagaMiddleware));
