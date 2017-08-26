@@ -1,7 +1,7 @@
 // @flow
 
-import { createStore, combineReducers, applyMiddleware, compose } from 'redux'
-import { persistStore, autoRehydrate } from 'redux-persist'
+import { createStore, combineReducers, applyMiddleware } from 'redux'
+import { persistStore, persistReducer } from 'redux-persist'
 import createSagaMiddleware from 'redux-saga'
 import { fork, all } from 'redux-saga/effects'
 
@@ -20,29 +20,35 @@ import type { Shape as ElementsShape } from 'cmn/src/comm/redux/elements'
 // import type { Shape as RehydratedShape } from './rehydrated'
 
 export type Shape = {
+    _persist: { version:number, rehydrated:boolean },
     browserAction: BrowserActionShape,
-    counter: CounterShape,
     core: CoreShape,
-    elements: ElementsShape,
+    counter: CounterShape,
+    elements: ElementsShape
     // rehydrated: RehydratedShape
 }
 
+console.log('process.env.NODE_ENV:', process.env.NODE_ENV, process.env.NODE_ENV !== 'production');
+const persistConfig = {
+    key: 'primary',
+    debug: process.env.NODE_ENV !== 'production',
+    whitelist: ['counter'],
+    storage:new AsyncBrowserExtensionStorage()
+}
+
 const sagaMiddleware = createSagaMiddleware();
-const reducers = combineReducers({ browserAction, core, counter, elements/* , rehydrated */ });
+const reducers = persistReducer(persistConfig, combineReducers({ browserAction, core, counter, elements/* , rehydrated */ }));
 const sagas = [ ...counterSagas ];
 
-const store = createStore(reducers, compose(applyMiddleware(sagaMiddleware), autoRehydrate()));
+const store = createStore(reducers, applyMiddleware(sagaMiddleware));
 
+export const persistor = persistStore(store, undefined, (...args) => {
+    console.log('rehydrated!!!, args:', ...args);
+});
 function* rootSaga() {
     yield all(sagas.map(saga => fork(saga)));
 }
 sagaMiddleware.run(rootSaga);
-
-export const persistor = persistStore(store, {
-    // blacklist: ['elements', 'rehydrated'],
-    whitelist: ['counter'],
-    storage: new AsyncBrowserExtensionStorage()
-});
 
 // store.subscribe(function() {
 //     console.log('store updated:', store.getState());
