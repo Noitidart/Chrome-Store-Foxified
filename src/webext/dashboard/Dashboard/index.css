@@ -1,7 +1,6 @@
-@import url('./fonts/RobotoSlab/index.css');
-
 body {
     /* font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; */
     font-family: var(--main-font-family);
     background: var(--main-bg-color);
+    margin: 0;
 }

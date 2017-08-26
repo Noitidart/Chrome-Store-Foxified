@@ -1,0 +1,63 @@
+/* latin */
+@font-face {
+  font-family: 'Zilla Slab';
+  font-style: normal;
+  font-weight: 300;
+  src: local('Zilla Slab Light'), local('ZillaSlab-Light'), url('ZillaSlab-Light.ttf') format('truetype');
+}
+/* latin */
+@font-face {
+  font-family: 'Zilla Slab';
+  font-style: normal;
+  font-weight: 500;
+  src: local('Zilla Slab Medium'), local('ZillaSlab-Medium'), url('ZillaSlab-Medium.ttf') format('truetype');
+}
+/* latin */
+@font-face {
+  font-family: 'Zilla Slab';
+  font-style: normal;
+  font-weight: 600;
+  src: local('Zilla Slab SemiBold'), local('ZillaSlab-SemiBold'), url('ZillaSlab-SemiBold.ttf') format('truetype');
+}
+/* latin */
+@font-face {
+  font-family: 'Zilla Slab';
+  font-style: normal;
+  font-weight: 700;
+  src: local('Zilla Slab Bold'), local('ZillaSlab-Bold'), url('ZillaSlab-Bold.ttf') format('truetype');
+}
+/* latin */
+@font-face {
+  font-family: 'Zilla Slab';
+  font-style: italic;
+  font-weight: 300;
+  src: local('Zilla Slab Light Italic'), local('ZillaSlab-LightItalic'), url('ZillaSlab-LightItalic.ttf') format('truetype');
+}
+/* latin */
+@font-face {
+  font-family: 'Zilla Slab';
+  font-style: italic;
+  font-weight: 400;
+  src: local('Zilla Slab Italic'), local('ZillaSlab-Italic'), url('ZillaSlab-Italic.ttf') format('truetype');
+}
+/* latin */
+@font-face {
+  font-family: 'Zilla Slab';
+  font-style: italic;
+  font-weight: 500;
+  src: local('Zilla Slab Medium Italic'), local('ZillaSlab-MediumItalic'), url('ZillaSlab-MediumItalic.ttf') format('truetype');
+}
+/* latin */
+@font-face {
+  font-family: 'Zilla Slab';
+  font-style: italic;
+  font-weight: 600;
+  src: local('Zilla Slab SemiBold Italic'), local('ZillaSlab-SemiBoldItalic'), url('ZillaSlab-SemiBoldItalic.ttf') format('truetype');
+}
+/* latin */
+@font-face {
+  font-family: 'Zilla Slab';
+  font-style: italic;
+  font-weight: 700;
+  src: local('Zilla Slab Bold Italic'), local('ZillaSlab-BoldItalic'), url('ZillaSlab-BoldItalic.ttf') format('truetype');
+}

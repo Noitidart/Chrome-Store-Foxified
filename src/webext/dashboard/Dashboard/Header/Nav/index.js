@@ -15,14 +15,14 @@ type Props = {
     // history: *
 }
 
-class Nav extends PureComponent<void, Props, void> {
+class Nav extends PureComponent<Props, void> {
     render() {
         const { location } = this.props;
         console.log('nav props:', this.props);
         return (
-            <div className="nav">
+            <div className="Nav">
                 { PAGES.map( ({path, label}) =>
-                    <NavLink className="topnav-link" activeClassName="topnav-link-selected" key={path} to={path} location={location} exact>
+                    <NavLink className="Nav--link" activeClassName="Nav--link-selected" key={path} to={path} location={location} exact>
                         {label}
                     </NavLink>
                 ) }

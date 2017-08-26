@@ -11,9 +11,9 @@ import './index.css'
 class Header extends PureComponent<void, void> {
     render() {
         return (
-            <div className="App-header">
-                <img src={LOGO} className="App-logo" alt="logo" />
-                <h2>NativeShot</h2>
+            <div className="Header">
+                <img src={LOGO} className="Header--logo" alt="logo" />
+                <h1 className="Header--title">Chrome Store Foxified</h1>
                 <Nav />
             </div>
         )

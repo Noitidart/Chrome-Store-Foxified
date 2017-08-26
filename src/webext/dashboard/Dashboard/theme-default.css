@@ -1,4 +1,8 @@
+@import url('./fonts/ZillaSlab/index.css');
+@import url('./fonts/Montserrat/index.css');
+@import url('./fonts/RobotoSlab/index.css');
+
 :root {
   --main-bg-color: #FFFFFF;
-  --main-font-family: 'Roboto Slab';
+  --main-font-family: 'Montserrat';
 }

@@ -2,21 +2,19 @@
 
 import React, { PureComponent } from 'react'
 
-import Counter from './Counter'
-
 import './index.css'
 
-class CounterPage extends PureComponent<void, void> {
+class DashboardPage extends PureComponent<void, void> {
     render() {
         return (
             <div>
                 <p className="Page--intro">
-                    Let's count... 1.. 2.. 3..
+                    A panel to all your extension downloads
                 </p>
-                <Counter />
+                DashboardPage
             </div>
         )
     }
 }
 
-export default CounterPage
+export default DashboardPage

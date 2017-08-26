@@ -1,9 +1,10 @@
-.topnav-link-selected {
+.Nav--link-selected {
     font-weight: bold;
 }
 
-.topnav-link {
+.Nav--link {
     margin: 0 10px 0 10px;
-    color: #FFFFFF;
+    color: inherit;
     text-decoration: none;
+    font-size: 1.3em;
 }

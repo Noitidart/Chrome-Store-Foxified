@@ -1,0 +1,8 @@
+.Page {
+    padding: 0 20px;
+}
+
+.Page--intro {
+    font-size: large;
+    text-align: center;
+}

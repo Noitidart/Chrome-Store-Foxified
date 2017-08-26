@@ -1,18 +1,16 @@
 import React, { PureComponent } from 'react'
 import { Route, Switch, withRouter } from 'react-router-dom'
 
-import { ENDPOINTS } from '../../connect'
-
 import CounterPage from './CounterPage'
-import GalleryPage from './GalleryPage'
+import DashboardPage from './DashboardPage'
 import SettingsPage from './SettingsPage'
-import ServicesPage from './ServicesPage'
+
+import './index.css'
 
 const PAGES = [
-    { path:'/',         label:'Gallery',  Body:GalleryPage  },
-    { path:'/counter',  label:'Counter',  Body:CounterPage  },
-    { path:'/services', label:'Services', Body:ServicesPage },
-    { path:'/settings', label:'Settings', Body:SettingsPage }
+    { path:'/',         label:'Dashboard', Body:DashboardPage  },
+    { path:'/counter',  label:'Counter',   Body:CounterPage  },
+    { path:'/settings', label:'Settings',  Body:SettingsPage }
 ]
 
 type Props = {
@@ -20,13 +18,9 @@ type Props = {
 }
 
 class PagesDumb extends PureComponent<Props, void> {
-    componentDidMount() {
-        console.log('Pages mounted, this.props:', this.props);
-        ENDPOINTS.loadSettings = () =>this.props.history.push('settings');
-    }
     render() {
         return (
-            <div>
+            <div className="Page">
                 <Switch>
                     { PAGES.map( ({ Body, path }) => <Route path={path} key={path} exact component={Body} /> ) }
                 </Switch>

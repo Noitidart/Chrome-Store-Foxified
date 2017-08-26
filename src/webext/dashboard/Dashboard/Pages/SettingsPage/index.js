@@ -10,7 +10,7 @@ class SettingsPage extends PureComponent<void, void> {
     render() {
         return (
             <div>
-                <p className="App-intro">
+                <p className="Page--intro">
                     Customize your experience ^_^
                 </p>
                 <b>Memory</b> <button onClick={this.purgeStore}>Clear Memory</button>
