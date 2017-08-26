@@ -1,23 +1,29 @@
+// @flow
+
 import 'cmn/lib/extension-polyfill'
-console.log('hi');
 
-(async function() {
-    extension.notifications.create({ type:'basic', title:'hi', message:'there' });
+import React from 'react'
+import { render } from 'react-dom'
+import { Server as PortsServer } from 'cmn/lib/comm/webext-ports'
+import { callInTemplate } from 'cmn/lib/comm/comm'
+import ReduxServer from 'cmn/lib/comm/redux'
 
-    try {
-        const windows = await extensiona('windows.getAll');
-        console.log('windows:', windows);
-    } catch(ex) {
-        console.error('ex:', ex);
-    }
-})()
-// import { Server as PortsServer } from '../common/comm/webext-ports'
-// import { callInTemplate } from '../common/comm/comm'
-// import renderProxiedElement, { Server as ReduxServer } from '../common/comm/redux'
+import store from '../flow-control'
+import Background from './Background'
 
-// import * as reducers from '../flows'
+// gPortsComm is needed because gReduxServer gets incoming through this. Meaning "things like ./app use callInBackground to connect to redux server"
+const gPortsComm = new PortsServer(exports);
+export const callInPort = callInTemplate.bind(null, gPortsComm, null);
+export let gReduxServer;
 
-// import BackgroundElement from './BackgroundElement'
+document.addEventListener('DOMContentLoaded', () => {
+    gReduxServer = new ReduxServer(store, ()=>null)
+    render(<Background />, document.body);
+}, { once:true });
+
+export function logIt(what) {
+    console.log('logIt :: what:', what);
+}
 
 // const gPortsComm = new PortsServer(exports ); // eslint-disable-line no-unused-vars
 // export const callInPort = callInTemplate.bind(null, gPortsComm, null);
@@ -32,6 +38,3 @@ console.log('hi');
 // ]);
 // // ]).then(id => ELEMENT_ID = id);
 
-// export function logIt(what) {
-//     console.log('what:', what);
-// }

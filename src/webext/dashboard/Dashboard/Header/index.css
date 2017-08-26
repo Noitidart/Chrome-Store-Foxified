@@ -1,0 +1,18 @@
+.App-header {
+    background-color: #222;
+    padding: 20px;
+    color: white;
+}
+
+.App-logo {
+    animation: App-logo-scale infinite 3s linear;
+    height: 80px;
+}
+
+@keyframes App-logo-scale {
+    0%     { transform: scale(1.0) }
+    25%    { transform: scale(1.1) }
+    50%    { transform: scale(1.0) }
+    75%    { transform: scale(0.9) }
+    100%   { transform: scale(1.0) }
+}

@@ -1,0 +1,9 @@
+.topnav-link-selected {
+    font-weight: bold;
+}
+
+.topnav-link {
+    margin: 0 10px 0 10px;
+    color: #FFFFFF;
+    text-decoration: none;
+}

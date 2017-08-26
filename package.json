@@ -28,20 +28,18 @@
     "babel-preset-react": "^6.23.0",
     "copy-webpack-plugin": "^4.0.1",
     "css-loader": "^0.28.0",
-    "electron": "^1.6.11",
     "eslint": "^3.19.0",
     "eslint-loader": "^1.6.3",
     "eslint-plugin-react": "^6.10.0",
     "file-loader": "^0.11.2",
     "string-replace-loader": "^1.0.5",
     "style-loader": "^0.16.1",
-    "webpack": "^2.2.1",
-    "webpack-target-electron-renderer": "^0.4.0"
+    "webpack": "^2.2.1"
   },
   "dependencies": {
     "babel-runtime": "^6.23.0",
     "bootstrap": "^3.3.7",
-    "cmn": "git+https://github.com/Noitidart/cmn.git",
+    "cmn": "^1.0.13",
     "flow-bin": "^0.53.1",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
