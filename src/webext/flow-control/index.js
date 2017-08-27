@@ -1,47 +1,51 @@
 // @flow
 
 import { createStore, combineReducers, applyMiddleware } from 'redux'
-import { persistStore, persistReducer } from 'redux-persist'
+import { persistStore, persistReducer } from './redux-persist'
 import createSagaMiddleware from 'redux-saga'
 import { fork, all } from 'redux-saga/effects'
 
 import AsyncBrowserExtensionStorage from './storage'
+import filesTransform from './filesTransform.js'
 
 import browserAction from './browser-action'
 import core from './core'
 import counter, { sagas as counterSagas } from './counter'
 import elements from 'cmn/lib/comm/redux/elements'
+import files from './files'
 
 import type { Shape as CoreShape } from './core'
 import type { Shape as CounterShape } from './counter'
 import type { Shape as BrowserActionShape } from './browser-action'
 import type { Shape as ElementsShape } from 'cmn/src/comm/redux/elements'
+import type { Shape as FilesShape } from './files'
 
 export type Shape = {
     _persist: { version:number, rehydrated:boolean },
     browserAction: BrowserActionShape,
     core: CoreShape,
     counter: CounterShape,
-    elements: ElementsShape
+    elements: ElementsShape,
+    files: FilesShape
 }
 
 console.log('process.env.NODE_ENV:', process.env.NODE_ENV, process.env.NODE_ENV !== 'production');
+export const storage = new AsyncBrowserExtensionStorage();
 const persistConfig = {
     key: 'primary',
     debug: process.env.NODE_ENV !== 'production',
-    whitelist: ['counter'],
-    storage:new AsyncBrowserExtensionStorage()
+    whitelist: ['counter', 'files'],
+    storage,
+    transforms: [ filesTransform ]
 }
 
 const sagaMiddleware = createSagaMiddleware();
-const reducers = persistReducer(persistConfig, combineReducers({ browserAction, core, counter, elements }));
+const reducers = persistReducer(persistConfig, combineReducers({ browserAction, core, counter, elements, files }));
 const sagas = [ ...counterSagas ];
 
 const store = createStore(reducers, applyMiddleware(sagaMiddleware));
 
-export const persistor = persistStore(store, undefined, (...args) => {
-    console.log('rehydrated!!!, args:', ...args);
-});
+export const persistor = persistStore(store);
 function* rootSaga() {
     yield all(sagas.map(saga => fork(saga)));
 }
