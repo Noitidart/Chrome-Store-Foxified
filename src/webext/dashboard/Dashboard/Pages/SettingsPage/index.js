@@ -2,7 +2,7 @@
 
 import React, { PureComponent } from 'react'
 
-import { persistor } from '../../../../flow-control'
+import { callInBackground } from '../../../connect'
 
 import './index.css'
 
@@ -19,7 +19,7 @@ class SettingsPage extends PureComponent<void, void> {
     }
 
     purgeStore() {
-        persistor.purge();
+        callInBackground('purgeStore');
         alert('Memory was cleared! On the next load of extension (browser restart, or extension disable then re-enable), none of the current state will be restored. Unless you do more actions right now, that cause the state to be saved again.')
     }
 }

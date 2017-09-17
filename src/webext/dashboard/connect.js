@@ -9,7 +9,7 @@ type Endpoints = {
 const ENDPOINTS:Endpoints = {};
 
 const gBgComm = new PortsClient(exports, 'app');
-const callInBackground = callInTemplate.bind(null, gBgComm, null, null);
+export const callInBackground = callInTemplate.bind(null, gBgComm, null, null);
 
 const proxy = proxyFactory.bind(null, callInBackground, 'gReduxServer');
 
