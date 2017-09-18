@@ -6,14 +6,17 @@
     display: flex;
     font-weight: 500;
     color: #C33D3D;
-    font-size: 0.9em;
+    font-size: 0.85em;
 }
-.Field--label-error {
+.Field--label--error {
     color: #C33D3D;
 }
 
 .Field--input-text {
     flex: 1;
+}
+.Field--input-text--error {
+    border: 1px solid #E7B2B2;
 }
 
 .Field--desc {

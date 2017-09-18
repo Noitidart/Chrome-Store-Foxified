@@ -23,10 +23,10 @@ class FieldText extends PureComponent<Props, void> {
         return (
             <div className="Field">
                 <div className="Field--row">
-                    <label className={classnames('Field--label', error && 'Field--label-error')}>
+                    <label className={classnames('Field--label', error && 'Field--label--error')}>
                         {label}
                     </label>
-                    <input {...input} type="text" className="Field--input-text" />
+                    <input {...input} type="text" className={classnames('Field--input-text', error && 'Field--input-text--error')} />
                 </div>
                 { error &&
                     <div className="Field--row">

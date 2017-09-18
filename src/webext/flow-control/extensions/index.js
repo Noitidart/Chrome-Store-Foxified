@@ -5,7 +5,7 @@ import { delay } from 'redux-saga'
 
 import { get_webstore_url, get_crx_url } from '../../cws_pattern'
 import { omit } from 'cmn/lib/all'
-import { injectStatusPromise } from  './utils'
+import { injectStatusPromise } from './utils'
 
 import type { StatusInjection } from './utils'
 
@@ -17,6 +17,8 @@ type Id = string;
 type Kind = 'chrome' | 'edge' | 'firefox' | 'opera';
 type Entry = {
     kind: Kind,
+    version: string,
+    date: number, // download date
     size: number,
     isDownloading: boolean,
     progress: number, // percent 0-100
