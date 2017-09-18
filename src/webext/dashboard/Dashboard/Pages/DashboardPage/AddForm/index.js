@@ -1,8 +1,8 @@
 import React, { PureComponent } from 'react'
 import { SubmissionError, Field, reduxForm } from 'redux-form'
 
-import proxy from '../../../../connect'
 import { requestAdd } from '../../../../../flow-control/extensions'
+import { callInBackground } from '../../../../connect'
 
 import ErrorBox from './ErrorBox'
 import FieldText from './Fields/FieldText'
@@ -48,10 +48,7 @@ class AddFormDumb extends PureComponent<Props, void> {
         console.log('values:', values);
         const { dispatchProxied } = this.props;
 
-        console.log('dispatchProxied:', dispatchProxied);
-        const res = dispatchProxied(requestAdd(values.storeUrl));
-        console.log('res:', res);
-        const errors = await res.promise;
+        const errors = await new Promise( resolve => callInBackground('handleSubmitAddForm', values, resolve) );
         if (errors) throw new SubmissionError(errors);
         else this.props.reset();
     }
@@ -59,8 +56,6 @@ class AddFormDumb extends PureComponent<Props, void> {
 
 const AddFormControlled = reduxForm({ form:'add-ext' })
 
-const AddFormProxied = proxy()
-
-const AddForm = AddFormProxied(AddFormControlled(AddFormDumb))
+const AddForm = AddFormControlled(AddFormDumb)
 
 export default AddForm

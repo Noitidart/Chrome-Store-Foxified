@@ -4,10 +4,11 @@
 }
 .Field--error {
     display: flex;
-    font-weight: bold;
+    font-weight: 500;
     color: #C33D3D;
+    font-size: 0.9em;
 }
-Field--label--error {
+.Field--label-error {
     color: #C33D3D;
 }
 
@@ -16,7 +17,6 @@ Field--label--error {
 }
 
 .Field--desc {
-    margin: 3px 0;
     font-size: 0.7em;
 }
 
@@ -27,4 +27,5 @@ Field--label--error {
 
 .Field--row {
     display: flex;
+    margin: 3px 0;
 }

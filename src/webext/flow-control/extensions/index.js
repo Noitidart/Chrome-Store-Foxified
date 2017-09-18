@@ -49,30 +49,30 @@ const update = (id, data): UpdateAction => ({ type:UPDATE, id, data });
 //
 // storeUrl is webstore url - one that matches return of cws_pattern.js :: get_webstore_url
 const REQUEST_ADD = A`REQUEST_ADD`;
-type RequestAddAction = { type:typeof REQUEST_ADD, storeUrl:string };
-const requestAdd = (storeUrl): RequestAddAction => ({ type:REQUEST_ADD, storeUrl });
+type RequestAddAction = { type:typeof REQUEST_ADD, storeUrl:string, ...StatusInjection };
+const requestAdd = (storeUrl): RequestAddAction => injectStatusPromise({ type:REQUEST_ADD, storeUrl });
 
 function* requestAddWorker(action: RequestAddAction) {
     console.log('here');
-    const { storeUrl, reject, resolve } = action;
+    const { storeUrl, resolve } = action;
 
     console.log('in requestAddWorker');
 
     const validatedStoreUrl = get_webstore_url(storeUrl);
-    if (!validatedStoreUrl) return console.error({ storeUrl:'Not a valid store URL.' });
+    if (!validatedStoreUrl) return resolve({ storeUrl:'Not a valid store URL.' });
     console.log('validatedStoreUrl:', validatedStoreUrl);
 
     {
         let res, timeout;
         try { ({ res, timeout } = yield race({ res:call(fetch, storeUrl), timeout:call(delay, 10000) })) }
-        catch(ex) { return console.error({ _error:'Unhandled error while validating URL: ' + ex.message }) }
-        if (timeout) return console.error({ _error:'Connection timed out, please try again later.' });
-        if (res.status !== 200) return console.error({ storeUrl:`Invalid status of "${res.status}" at URL.` });
+        catch(ex) { return resolve({ _error:'Unhandled error while validating URL: ' + ex.message }) }
+        if (timeout) return resolve({ _error:'Connection timed out, please try again later.' });
+        if (res.status !== 200) return resolve({ storeUrl:`Invalid status of "${res.status}" at URL.` });
 
         console.log('res.text:', yield call([res, res.text]));
     }
 
-    // resolve();
+    resolve();
 }
 function* requestAddWatcher() {
     yield takeEvery(REQUEST_ADD, requestAddWorker);

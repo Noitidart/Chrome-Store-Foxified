@@ -11,7 +11,6 @@ type Props = {
     desc: string | Element,
     ...FieldProps, // below are the FieldProps i actually touch
     meta: {
-        touched: boolean,
         error?: string
     },
     input: {},
@@ -19,17 +18,17 @@ type Props = {
 
 class FieldText extends PureComponent<Props, void> {
     render() {
-        const {meta:{ touched, error }, input, label } = this.props;
+        const {meta:{ error }, input, label } = this.props;
 
         return (
             <div className="Field">
                 <div className="Field--row">
-                    <label className={classnames('Field--label', error && 'Field--label--error')}>
+                    <label className={classnames('Field--label', error && 'Field--label-error')}>
                         {label}
                     </label>
                     <input {...input} type="text" className="Field--input-text" />
                 </div>
-                { touched && error &&
+                { error &&
                     <div className="Field--row">
                         <div className="Field--label" />
                         <div className="Field--error">{error}</div>
