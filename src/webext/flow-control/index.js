@@ -12,6 +12,7 @@ import browserAction from './browser-action'
 import core from './core'
 import counter, { sagas as counterSagas } from './counter'
 import elements from 'cmn/lib/comm/redux/elements'
+import extensions, { sagas as extensionsSagas } from './extensions'
 import files from './files'
 
 import type { Shape as CoreShape } from './core'
@@ -19,6 +20,7 @@ import type { Shape as CounterShape } from './counter'
 import type { Shape as BrowserActionShape } from './browser-action'
 import type { Shape as ElementsShape } from 'cmn/src/comm/redux/elements'
 import type { Shape as FilesShape } from './files'
+import type { Shape as ExtensionsShape } from './extensions'
 
 export type Shape = {
     _persist: { version:number, rehydrated:boolean },
@@ -26,6 +28,7 @@ export type Shape = {
     core: CoreShape,
     counter: CounterShape,
     elements: ElementsShape,
+    extensions: ExtensionsShape,
     files: FilesShape
 }
 
@@ -34,14 +37,14 @@ export const storage = new AsyncBrowserExtensionStorage();
 const persistConfig = {
     key: 'primary',
     debug: process.env.NODE_ENV !== 'production',
-    whitelist: ['counter', 'files'],
+    whitelist: ['counter', 'files', 'extensions'],
     storage,
     transforms: [ filesTransform ]
 }
 
 const sagaMiddleware = createSagaMiddleware();
-const reducers = persistReducer(persistConfig, combineReducers({ browserAction, core, counter, elements, files }));
-const sagas = [ ...counterSagas ];
+const reducers = persistReducer(persistConfig, combineReducers({ browserAction, core, counter, elements, extensions, files }));
+const sagas = [ ...counterSagas, ...extensionsSagas ];
 
 const store = createStore(reducers, applyMiddleware(sagaMiddleware));
 

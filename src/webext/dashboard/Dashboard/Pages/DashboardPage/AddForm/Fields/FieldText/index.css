@@ -1,0 +1,30 @@
+.Field {
+    display: flex;
+    flex-direction: column;
+}
+.Field--error {
+    display: flex;
+    font-weight: bold;
+    color: #C33D3D;
+}
+Field--label--error {
+    color: #C33D3D;
+}
+
+.Field--input-text {
+    flex: 1;
+}
+
+.Field--desc {
+    margin: 3px 0;
+    font-size: 0.7em;
+}
+
+.Field--label {
+    font-weight: 500;
+    width: 10em;
+}
+
+.Field--row {
+    display: flex;
+}

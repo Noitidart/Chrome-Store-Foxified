@@ -13,7 +13,7 @@ const A = ([actionType]: string[]) => 'COUNTER_' + actionType; // Action type pr
 //
 const UP = A`UP`;
 type UpAction = { type:typeof UP };
-export function up(): UpAction {
+function up(): UpAction {
     return {
         type: UP
     }
@@ -22,12 +22,8 @@ export function up(): UpAction {
 //
 const UP_ASYNC = A`UP_ASYNC`;
 type UpAsyncAction = { type:typeof UP_ASYNC, times:number };
-export function upAsync(times: number = 1): UpAsyncAction {
-    return {
-        type: UP_ASYNC,
-        times
-    }
-}
+const upAsync = (times=1): UpAsyncAction => ({ type:UP_ASYNC, times });
+
 const upAsyncWorker = function* upAsyncWorker(action: UpAsyncAction) {
     for (let i=0; i<action.times; i++) {
         yield call(wait, 1000);
@@ -42,7 +38,7 @@ sagas.push(upAsyncWatcher);
 //
 const DN = A`DN`;
 type DownAction = { type:typeof DN };
-export function dn(): DownAction {
+function dn(): DownAction {
     return {
         type: DN
     }
@@ -51,13 +47,14 @@ export function dn(): DownAction {
 //
 type Action =
   | UpAction
-  | UpAsyncAction
   | DownAction;
 
-export default function reducer(state: Shape = INITIAL, action:Action) {
+export default function reducer(state: Shape = INITIAL, action:Action): Shape {
     switch(action.type) {
         case UP: return state + 1;
         case DN: return state - 1;
         default: return state;
     }
 }
+
+export { upAsync, up, dn }

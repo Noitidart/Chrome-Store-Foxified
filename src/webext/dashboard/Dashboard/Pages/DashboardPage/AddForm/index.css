@@ -1,0 +1,10 @@
+.AddForm--pre-inline {
+    display: inline-block;
+    background-color: #FBFBFB;
+    border: 1px solid #EEEEEE;
+    border-radius: 2px;
+    padding: 3px 2px;
+    vertical-align: middle;
+    font-size: 1.2em;
+    margin: 0; /* firefox has a default margin on pre */
+}

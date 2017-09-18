@@ -1,0 +1,17 @@
+.ErrorBox {
+    padding: 10px;
+    border: 1px solid #E7B2B2;
+    background-color: #F3D9D9;
+    border-radius: 1px;
+    margin-bottom: 10px;
+}
+
+.ErrorBox--title {
+    font-size: 1.1em;
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.ErrorBox--body {
+    font-size: 0.9em;
+}

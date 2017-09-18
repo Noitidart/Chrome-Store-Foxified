@@ -2,6 +2,8 @@
 
 import React, { PureComponent } from 'react'
 
+import AddForm from './AddForm'
+
 import './index.css'
 
 class DashboardPage extends PureComponent<void, void> {
@@ -11,7 +13,7 @@ class DashboardPage extends PureComponent<void, void> {
                 <p className="Page--intro">
                     A panel to all your extension downloads
                 </p>
-                DashboardPage
+                <AddForm />
             </div>
         )
     }
