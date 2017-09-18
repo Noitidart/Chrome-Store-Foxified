@@ -44,7 +44,7 @@ function get_extensionID(url) {
     return match && match[1];
 }
 
-export function get_xpi_url(addonSlug) {
+function get_xpi_url(addonSlug) {
     // "https://addons.mozilla.org/firefox/downloads/latest/<slug>/" is suggested by TheOne:
     // https://discourse.mozilla-community.org/t/is-there-a-direct-download-link-for-the-latest-addon-version-on-amo/4788
     // This did not always work. I figured that some packages are platform-specific, so they need

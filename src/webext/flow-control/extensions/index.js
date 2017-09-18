@@ -3,7 +3,7 @@
 import { takeEvery, call, put, race } from 'redux-saga/effects'
 import { delay } from 'redux-saga'
 
-import { get_webstore_url } from '../../cws_pattern'
+import { get_webstore_url, get_crx_url } from '../../cws_pattern'
 import { omit } from 'cmn/lib/all'
 import { injectStatusPromise } from  './utils'
 
@@ -19,7 +19,8 @@ type Entry = {
     kind: Kind,
     size: number,
     isDownloading: boolean,
-    progress: number // percent 0-100
+    progress: number, // percent 0-100
+    storeUrl: string
 }
 
 export type Shape = {
@@ -58,19 +59,19 @@ function* requestAddWorker(action: RequestAddAction) {
 
     console.log('in requestAddWorker');
 
-    const validatedStoreUrl = get_webstore_url(storeUrl);
-    if (!validatedStoreUrl) return resolve({ storeUrl:'Not a valid store URL.' });
-    console.log('validatedStoreUrl:', validatedStoreUrl);
+    const storeUrlFixed = get_webstore_url(storeUrl);
+    if (!storeUrlFixed) return resolve({ storeUrl:'Not a valid store URL.' });
+    console.log('storeUrlValid:', storeUrlFixed);
 
     {
         let res, timeout;
-        try { ({ res, timeout } = yield race({ res:call(fetch, storeUrl), timeout:call(delay, 10000) })) }
+        try { ({ res, timeout } = yield race({ res:call(fetch, storeUrlFixed), timeout:call(delay, 10000) })) }
         catch(ex) { return resolve({ _error:'Unhandled error while validating URL: ' + ex.message }) }
         if (timeout) return resolve({ _error:'Connection timed out, please try again later.' });
         if (res.status !== 200) return resolve({ storeUrl:`Invalid status of "${res.status}" at URL.` });
-
-        console.log('res.text:', yield call([res, res.text]));
     }
+
+    // yield put(add({ kind:'chrome', storeUrl:storeUrlFixed }));
 
     resolve();
 }

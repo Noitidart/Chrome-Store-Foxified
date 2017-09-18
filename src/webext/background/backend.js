@@ -11,6 +11,6 @@ export function purgeStore() {
     persistor.purge();
 }
 
-export async function handleSubmitAddForm(values) {
-    return await store.dispatch(requestAdd(values)).promise;
+export async function handleSubmitAddForm(storeUrl) {
+    return await store.dispatch(requestAdd(storeUrl)).promise;
 }

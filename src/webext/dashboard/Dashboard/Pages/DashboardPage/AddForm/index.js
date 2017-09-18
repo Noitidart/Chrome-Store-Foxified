@@ -48,7 +48,7 @@ class AddFormDumb extends PureComponent<Props, void> {
         console.log('values:', values);
         const { dispatchProxied } = this.props;
 
-        const errors = await new Promise( resolve => callInBackground('handleSubmitAddForm', values, resolve) );
+        const errors = await new Promise( resolve => callInBackground('handleSubmitAddForm', values.storeUrl, resolve) );
         if (errors) throw new SubmissionError(errors);
         else this.props.reset();
     }
