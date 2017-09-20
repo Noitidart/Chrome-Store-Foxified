@@ -56,19 +56,18 @@ type RequestAddAction = { type:typeof REQUEST_ADD, storeUrl:string, ...StatusInj
 const requestAdd = (storeUrl): RequestAddAction => injectStatusPromise({ type:REQUEST_ADD, storeUrl });
 
 function* requestAddWorker(action: RequestAddAction) {
-    console.log('here');
     const { storeUrl, resolve } = action;
 
-    console.log('in requestAddWorker');
 
     const storeUrlFixed = get_webstore_url(storeUrl);
     if (!storeUrlFixed) return resolve({ storeUrl:'Not a valid store URL.' });
-    console.log('storeUrlValid:', storeUrlFixed);
+    console.log('storeUrlFixed:', storeUrlFixed);
 
     {
         let res, timeout;
-        try { ({ res, timeout } = yield race({ res:call(fetch, storeUrlFixed), timeout:call(delay, 10000) })) }
+        try { ({ res, timeout } = yield race({ timeout:call(delay, 10), res:call(fetch, storeUrlFixed) })) }
         catch(ex) { return resolve({ _error:'Unhandled error while validating URL: ' + ex.message }) }
+        console.log('here, res:', res, 'timeout:', timeout);
         if (timeout) return resolve({ _error:'Connection timed out, please try again later.' });
         if (res.status !== 200) return resolve({ storeUrl:`Invalid status of "${res.status}" at URL.` });
     }

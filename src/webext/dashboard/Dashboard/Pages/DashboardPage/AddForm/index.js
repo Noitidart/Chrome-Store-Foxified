@@ -9,12 +9,17 @@ import FieldText from './Fields/FieldText'
 
 import './index.css'
 
+import type { FormProps } from 'redux-form'
+
 type Props = {
     // redux-form
+    ...FormProps,
     submitting: boolean,
     // comm-redux
     dispatchProxied: () => void
 }
+
+const FORM_NAME = 'add-ext';
 
 class AddFormDumb extends PureComponent<Props, void> {
     constructor(props) {
@@ -23,12 +28,13 @@ class AddFormDumb extends PureComponent<Props, void> {
     }
 
     render() {
-        const { submitting } = this.props;
+        const { submitting, form, error } = this.props;
         const { handleSubmit } = this;
 
+        console.log('this.props:', this.props);
         return (
             <form onSubmit={handleSubmit} className="AddForm">
-                <ErrorBox {...this.props} />
+                <ErrorBox form={form} error={error} />
                 <Field type="text" component={FieldText} name="storeUrl" disabled={submitting} label="Extension URL" />
                 <div className="Field--row">
                     <div className="Field--label" />
@@ -48,13 +54,14 @@ class AddFormDumb extends PureComponent<Props, void> {
         console.log('values:', values);
         const { dispatchProxied } = this.props;
 
-        const errors = await new Promise( resolve => callInBackground('handleSubmitAddForm', values.storeUrl, resolve) );
+        const errors = await new Promise( resolve => callInBackground('dispatchSubmitAddForm', values.storeUrl, resolve) );
+        console.log('errors:', errors);
         if (errors) throw new SubmissionError(errors);
         else this.props.reset();
     }
 }
 
-const AddFormControlled = reduxForm({ form:'add-ext' })
+const AddFormControlled = reduxForm({ form:FORM_NAME })
 
 const AddForm = AddFormControlled(AddFormDumb)
 
