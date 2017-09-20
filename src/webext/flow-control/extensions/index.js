@@ -13,19 +13,34 @@ const A = ([actionType]: string[]) => 'EXTENSIONS_' + actionType; // Action type
 
 export const sagas = [];
 
+const STATUS = {
+    DOWNLOADING: 0,
+    DOWNLOADED: 1,
+    PARSING: 2, // get meta info - unzipping
+    CONVERTING: 3,
+    CONVERTED: 4,
+    SIGNING: 5,
+    SIGNED: 6
+}
+
 type Id = string;
 type Kind = 'cws' | 'amo' | 'ows';
+type Status = string; // $Keys<typeof STATUS>;
 type Entry = {
     kind: Kind,
     date: number, // listing check date - udated when donwnload is started
     storeUrl: string,
     listingTitle: string, // title of the listing on the store
-    // present only after download
+    status: Status,
+    hasInstalled?: true, // once installed, no need to keep it highlighted.
+    //
+    // status === DOWNLOADING
+    progress?: number, // percent 0-100
+    // status >= DOWNLOADING
+    size?: number,
+    // status > PARSING
     name?: string,
     version?: string,
-    size?: number,
-    isDownloading?: boolean,
-    progress?: number // percent 0-100
 }
 
 export type Shape = {

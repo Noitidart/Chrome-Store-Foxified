@@ -1,6 +1,7 @@
 // @flow
 
 import React, { PureComponent } from 'react'
+import moment from 'moment'
 
 import CWS_LOGO from './images/chrome-web-store-logo-2012-2015.svg'
 import EXT_LOGO_GENERIC from './images/extension-generic-flat-black.svg'
@@ -15,7 +16,7 @@ type Props = {
 
 class Card extends PureComponent<Props, void> {
     render() {
-        const { name, storeUrl, listingTitle } = this.props;
+        const { name, date, storeUrl, listingTitle } = this.props;
         return (
             <div className="Card">
                 <div className="Card--background" />
@@ -41,7 +42,7 @@ class Card extends PureComponent<Props, void> {
                     </a>
                 </div>
                 <div className="Card--footer">
-                    2 days ago
+                    { moment(date).fromNow() }
                 </div>
             </div>
         )
