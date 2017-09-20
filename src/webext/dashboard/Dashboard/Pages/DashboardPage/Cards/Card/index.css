@@ -1,11 +1,60 @@
+:root {
+    --card-border-width: 1px;
+    --card-background-default: #FFFFFF;
+    --card-background-danger: rgba(255, 0, 0, 0.05);
+    --card-background-info: rgba(0, 0, 255, 0.03);
+    --card-background-warn: rgba(255, 255, 0, 0.05);
+}
+
 .Card {
     display: flex;
     flex-direction: column;
+    border: var(--card-border-width) solid var(--border-color);
+    border-radius: 1px;
+    margin: 5px;
+    width: 30rem;
+    position: relative; /* to contain the .Card--background */
+}
+
+.Card--background {
+    outline: var(--card-border-width) solid var(--card-background-default); /* so color gets behind borders as well */
+    background-color: var(--card-background-default);
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    transition: background-color 500ms, outline-color 500ms;
+}
+.Card--background--danger {
+    outline-color: var(--card-background-danger);
+    background-color: var(--card-background-danger);
+}
+.Card--background--info {
+    outline-color: var(--card-background-info);
+    background-color: var(--card-background-info);
+}
+.Card--background--warn {
+    outline-color: var(--card-background-warn);
+    background-color: var(--card-background-warn);
 }
 
 .Card--row {
     display: flex;
-    margin: 0 5px;
+    padding: 10px 15px;
+}
+
+.Card--row--title { /* always used in conunction with .Card--row so it is className="Card--row Card--row--title" */
+    align-items: center;
+    padding-left: 10px; /* reduce horizontal padding from .Card--row */
+    padding-right: 10px;
+}
+
+.Card--divider-title {
+    background-color: var(--border-color);
+    height: 1px;
+    border: 0;
+    margin: 5px 14px; /* .Card--row is horizontally padded at 15px and .Card--row--title is horizontally padded at 10px, I wanted something in between so went with 14px */
+    align-self: stretch; /* width 100% */
 }
 
 .Card--label {
@@ -32,17 +81,31 @@
     margin: 0 7px; /* for spacing from logo */
 }
 
-.Card--header {
-    display: flex;
-    align-items: center;
-}
-
-.Card--header-title {
+.Card--title {
     font-weight: 500;
-    margin: 15px;
+    margin: 0 15px;
 }
 
-.Card--header-logo {
+.Card--logo {
     width: 40px;
     height: 40px;
 }
+
+.Card--header {
+    background-color: var(--faded-bg-color);
+    font-weight: 300;
+    font-size: 0.9em;
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.Card--footer {
+    background-color: var(--faded-bg-color);
+    font-weight: 300;
+    font-size: 0.9em;
+    padding: 10px;
+    border-top: 1px solid var(--border-color);
+    color: #777777;
+    text-align: center;
+}
+

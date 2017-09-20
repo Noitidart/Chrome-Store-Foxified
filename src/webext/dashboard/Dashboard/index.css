@@ -9,3 +9,7 @@ body {
     display: flex;
     flex-direction: column;
 }
+
+a, a:visited {
+    color: #0366D6; /* crossfile-link271771 */
+}

@@ -18,12 +18,17 @@ class Card extends PureComponent<Props, void> {
         const { name, storeUrl, listingTitle } = this.props;
         return (
             <div className="Card">
+                <div className="Card--background" />
                 <div className="Card--header">
-                    <img className="Card--header-logo" src={EXT_LOGO_GENERIC} alt="" />
-                    <h3 className="Card--header-title">
+                    Downloading
+                </div>
+                <div className="Card--row Card--row--title">
+                    <img className="Card--logo" src={EXT_LOGO_GENERIC} alt="" />
+                    <h3 className="Card--title">
                         { name || listingTitle.substr(0, listingTitle.lastIndexOf(' - ')) }
                     </h3>
                 </div>
+                <hr className="Card--divider-title" />
                 <div className="Card--row">
                     <div className="Card--label">
                         Source
@@ -34,6 +39,9 @@ class Card extends PureComponent<Props, void> {
                             {listingTitle}
                         </span>
                     </a>
+                </div>
+                <div className="Card--footer">
+                    2 days ago
                 </div>
             </div>
         )

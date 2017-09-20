@@ -5,4 +5,7 @@
 :root {
   --main-bg-color: #FFFFFF;
   --main-font-family: 'Montserrat';
+
+  --faded-bg-color: rgba(0,0,0,.01); /*#FCFCFC goal was #fbfbfb*/;
+  --border-color: rgba(0,0,0,.07); /* #EDEDED foal was #eeeeee */
 }

@@ -28,7 +28,26 @@ module.exports = function (env) {
                 { test:/\.js$/, exclude:/node_modules/, loader:'eslint-loader', enforce:'pre' },
                 { test:/\.css$/, exclude:/node_modules/, use:['style-loader', 'css-loader'] },
                 { test:/\.js$/, exclude:/node_modules/, loader:'babel-loader' },
-                { test:/\.(png|jpg|svg|ttf|html)$/, loader:'file-loader' }
+                { test:/\.(png|jpg|svg|ttf|html)$/, loader:'file-loader' },
+                {
+                    test: /\.(scss)$/,
+                    use: [
+                        { loader:'style-loader' }, // inject CSS to page
+                        { loader:'css-loader' }, // translates CSS into CommonJS modules
+                        {
+                            loader: 'postcss-loader', // Run post css actions
+                            options: {
+                                plugins: function() { // post css plugins, can be exported to postcss.config.js
+                                    return [
+                                        require('precss'),
+                                        require('autoprefixer')
+                                    ];
+                                }
+                            }
+                        },
+                        { loader:'sass-loader' } // compiles SASS to CSS
+                    ]
+                }
             ]
         },
         plugins: [
