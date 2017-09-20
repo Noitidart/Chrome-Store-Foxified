@@ -1,9 +1,9 @@
 // @flow
 
-import { takeEvery, call, put, race } from 'redux-saga/effects'
+import { select, takeEvery, call, put, race } from 'redux-saga/effects'
 import { delay } from 'redux-saga'
 
-import { get_webstore_url, get_crx_url } from '../../cws_pattern'
+import { get_webstore_url, get_crx_url, get_webstore_name } from '../../cws_pattern'
 import { omit } from 'cmn/lib/all'
 import { injectStatusPromise } from './utils'
 
@@ -14,15 +14,18 @@ const A = ([actionType]: string[]) => 'EXTENSIONS_' + actionType; // Action type
 export const sagas = [];
 
 type Id = string;
-type Kind = 'chrome' | 'edge' | 'firefox' | 'opera';
+type Kind = 'cws' | 'amo' | 'ows';
 type Entry = {
     kind: Kind,
-    version: string,
-    date: number, // download date
-    size: number,
-    isDownloading: boolean,
-    progress: number, // percent 0-100
-    storeUrl: string
+    date: number, // listing check date - udated when donwnload is started
+    storeUrl: string,
+    listingTitle: string, // title of the listing on the store
+    // present only after download
+    name?: string,
+    version?: string,
+    size?: number,
+    isDownloading?: boolean,
+    progress?: number // percent 0-100
 }
 
 export type Shape = {
@@ -30,8 +33,6 @@ export type Shape = {
 }
 
 const INITIAL = {};
-
-let NEXT_ID = -1;
 
 //
 const ADD = A`ADD`;
@@ -63,16 +64,32 @@ function* requestAddWorker(action: RequestAddAction) {
     if (!storeUrlFixed) return resolve({ storeUrl:'Not a valid store URL.' });
     console.log('storeUrlFixed:', storeUrlFixed);
 
+    const storeName = get_webstore_name(storeUrl);
+    if (!['cws'].includes(storeName)) return resolve({ storeUrl:`Extensions from ${storeName.toUpperCase()} are not supported.` });
+
+    // check for duplicates
+    const { extensions } = yield select();
+    const exists = !!Object.values(extensions).find( ({ storeUrl:aStoreUrl }) => aStoreUrl === storeUrlFixed );
+    if (exists) return resolve({ storeUrl:'You have previously already downloaded this extension' });
+
+    let listingTitle;
     {
         let res, timeout;
-        try { ({ res, timeout } = yield race({ timeout:call(delay, 10), res:call(fetch, storeUrlFixed) })) }
+        try { ({ res, timeout } = yield race({ timeout:call(delay, 10000), res:call(fetch, storeUrlFixed) })) }
         catch(ex) { return resolve({ _error:'Unhandled error while validating URL: ' + ex.message }) }
-        console.log('here, res:', res, 'timeout:', timeout);
         if (timeout) return resolve({ _error:'Connection timed out, please try again later.' });
         if (res.status !== 200) return resolve({ storeUrl:`Invalid status of "${res.status}" at URL.` });
+        const html = yield call([res, res.text]);
+        listingTitle = html.match(/<title>(.+?)<\/title>/)[1];
     }
 
-    // yield put(add({ kind:'chrome', storeUrl:storeUrlFixed }));
+    yield put(add({
+        id: yield call(getId),
+        kind: storeName,
+        storeUrl: storeUrlFixed,
+        listingTitle,
+        date: Date.now()
+    }));
 
     resolve();
 }
@@ -80,6 +97,16 @@ function* requestAddWatcher() {
     yield takeEvery(REQUEST_ADD, requestAddWorker);
 }
 sagas.push(requestAddWatcher);
+
+let NEXT_ID = -1;
+function* getId() {
+    if (NEXT_ID === -1) {
+        const { extensions } = yield select();
+        const ids = Object.keys(extensions);
+        if (ids.length) NEXT_ID = Math.max(...ids);
+    }
+    return ++NEXT_ID;
+}
 
 //
 type Action =
@@ -108,4 +135,5 @@ export default function reducer(state: Shape = INITIAL, action:Action): Shape {
     }
 }
 
+export type { Entry }
 export { requestAdd }

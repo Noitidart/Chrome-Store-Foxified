@@ -12,7 +12,7 @@ class Header extends PureComponent<void, void> {
     render() {
         return (
             <div className="Header">
-                <img src={LOGO} className="Header--logo" alt="logo" />
+                <img src={LOGO} className="Header--logo" />
                 <h1 className="Header--title">Chrome Store Foxified</h1>
                 <Nav />
             </div>

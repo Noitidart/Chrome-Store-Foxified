@@ -1,7 +1,6 @@
 import React, { PureComponent } from 'react'
 import { SubmissionError, Field, reduxForm } from 'redux-form'
 
-import { requestAdd } from '../../../../../flow-control/extensions'
 import { callInBackground } from '../../../../connect'
 
 import ErrorBox from './ErrorBox'
@@ -51,11 +50,7 @@ class AddFormDumb extends PureComponent<Props, void> {
     }
 
     handleSubmit = async values => {
-        console.log('values:', values);
-        const { dispatchProxied } = this.props;
-
         const errors = await new Promise( resolve => callInBackground('dispatchSubmitAddForm', values.storeUrl, resolve) );
-        console.log('errors:', errors);
         if (errors) throw new SubmissionError(errors);
         else this.props.reset();
     }

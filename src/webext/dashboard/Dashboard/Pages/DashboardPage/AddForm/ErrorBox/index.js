@@ -2,13 +2,11 @@
 
 import React, { PureComponent } from 'react'
 import { connect } from 'react-redux'
-import { getFormSyncErrors, getFormAsyncErrors, getFormSubmitErrors, getFormSyncWarnings, isSubmitting } from 'redux-form'
+import { getFormSyncErrors, getFormAsyncErrors, getFormSubmitErrors, isSubmitting } from 'redux-form'
 
 import { isObjectEmpty } from 'cmn/lib/all'
 
 import './index.css'
-
-import type { FormProps } from 'redux-form'
 
 type OwnProps = {
     // form: $PropertyType<FormProps, 'form'>

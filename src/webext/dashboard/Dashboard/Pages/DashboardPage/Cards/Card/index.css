@@ -1,0 +1,48 @@
+.Card {
+    display: flex;
+    flex-direction: column;
+}
+
+.Card--row {
+    display: flex;
+    margin: 0 5px;
+}
+
+.Card--label {
+    font-weight: 500;
+    width: 10em;
+}
+
+.Card--link {
+    display: flex;
+    font-size: 0.9em;
+    text-decoration: none;
+}
+
+.Card--link:hover {
+    text-decoration: underline;
+}
+
+.Card--link-image {
+    width: 16px;
+    height: 16px;
+}
+
+.Card--link-label {
+    margin: 0 7px; /* for spacing from logo */
+}
+
+.Card--header {
+    display: flex;
+    align-items: center;
+}
+
+.Card--header-title {
+    font-weight: 500;
+    margin: 15px;
+}
+
+.Card--header-logo {
+    width: 40px;
+    height: 40px;
+}
