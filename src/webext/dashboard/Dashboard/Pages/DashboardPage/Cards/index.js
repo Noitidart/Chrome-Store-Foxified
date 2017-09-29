@@ -11,17 +11,18 @@ import './index.css'
 import type { Entry as Extension } from '../../../../../flow-control/extensions'
 
 type Props = {
+    dispatchProxied: *,
     extensions: Extension[]
 }
 
 class CardsDumb extends PureComponent<Props, void> {
     render() {
-        const { extensions } = this.props;
+        const { extensions, dispatchProxied } = this.props;
         console.log('Cards extensions:', extensions);
 
         return (
             <div className="Cards">
-                { Object.values(extensions).map( extension => <Card key={extension.id} {...extension} /> )}
+                { Object.values(extensions).map( extension => <Card key={extension.id} {...extension} dispatchProxied={dispatchProxied} /> )}
             </div>
         )
     }

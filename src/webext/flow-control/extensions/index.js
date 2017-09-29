@@ -78,7 +78,6 @@ const requestAdd = (storeUrl): RequestAddAction => injectStatusPromise({ type:RE
 function* requestAddWorker(action: RequestAddAction) {
     const { storeUrl, resolve } = action;
 
-
     const storeUrlFixed = get_webstore_url(storeUrl);
     if (!storeUrlFixed) return resolve({ storeUrl:'Not a valid store URL.' });
     console.log('storeUrlFixed:', storeUrlFixed);
@@ -130,17 +129,15 @@ function* requestDownloadWorker(action: RequestDownloadAction) {
     const { id } = action;
 
     if (id in downloading) return; // already downloading
+    downloading[id] = true;
 
     const {extensions:{ [id]:extension }} = yield select();
+    if (!extension) return delete downloading[id]; // not a valid extension id
+    const { storeUrl } = extension;
 
-    if (!extension) return; // not a valid extension id
-
-    downloading[id] = true;
     yield put(update(id, { status:STATUS.DOWNLOADING, progress:0 }));
 
-    const { storeUrl } = extension;
     const url = yield call(get_crx_url, storeUrl);
-    console.log('url:', url)
 
     let fileBlob;
     {
@@ -175,21 +172,18 @@ function* requestParseWorker(action: RequestParseAction) {
     const { id } = action;
 
     if (id in parseing) return; // already parseing
+    parseing[id] = true;
 
     const state = yield select();
+
     const {extensions:{ [id]:extension }} = state;
-
-    if (!extension) return; // not a valid extension id
-
-    parseing[id] = true;
-    yield put(update(id, { status:STATUS.PARSEING }));
-
+    if (!extension) return delete parseing[id]; // not a valid extension id
     const { fileId } = extension;
 
-    const {files:{ [fileId]:{ data:dataurl } }} = state;
+    const {files:{ [fileId]:{ data:dataurl }={} }} = state;
+    if (!dataurl) return delete parseing[id]; // no file for such a extension id
 
-    if (!dataurl) return; // no file for such a extension id
-    console.log('dataurl:', dataurl);
+    yield put(update(id, { status:STATUS.PARSEING }));
 
     const blob = yield call(dataUrlToBlob, dataurl);
 
@@ -236,25 +230,21 @@ function* requestConvertWorker(action: RequestConvertAction) {
     const { id } = action;
 
     if (id in converting) return; // already converting
+    converting[id] = true;
 
     const state = yield select();
+
     const {extensions:{ [id]:extension }} = state;
-
-    if (!extension) return; // not a valid extension id
-
-    converting[id] = true;
-    yield put(update(id, { status:STATUS.CONVERTING }));
-
+    if (!extension) return delete converting[id]; // not a valid extension id
     const { zipFileId, storeUrl } = extension;
 
-    const {files:{ [zipFileId]:{ data:zipDataUrl } }} = state;
+    const {files:{ [zipFileId]:{ data:zipDataUrl }={} }} = state;
+    if (!zipDataUrl) return delete converting[id]; // no zip file for such a extension id
 
-    if (!zipDataUrl) return; // no zip file for such a extension id
-    console.log('zipDataUrl:', zipDataUrl);
+    yield put(update(id, { status:STATUS.CONVERTING }));
 
     const zipBlob = yield call(dataUrlToBlob, zipDataUrl);
     const zip = yield call(Zip.loadAsync, zipBlob);
-    console.log('zipppp:', zip);
 
     const extId = get_extensionID(storeUrl);
     const manifest = JSON.parse(yield call([zip.file('manifest.json'), 'async'], 'string'));
@@ -266,7 +256,9 @@ function* requestConvertWorker(action: RequestConvertAction) {
     };
     zip.file('manifest.json', JSON.stringify(manifest));
 
-    const xpiDataUrl = 'data:application/zip;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
+    // application/x-xpinstall
+    // const xpiDataUrl = 'data:application/zip;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
+    const xpiDataUrl = 'data:application/x-xpinstall;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
     console.log('xpiDataUrl:', xpiDataUrl);
     const xpiFileId = yield (yield put(addFile(xpiDataUrl))).promise;
     console.log('xpiFileId:', xpiFileId);
@@ -275,6 +267,7 @@ function* requestConvertWorker(action: RequestConvertAction) {
     delete converting[id];
 
     yield put(deleteFile(zipFileId));
+    yield put(update(id, { zipFileId:undefined }));
 
 }
 function* requestConvertWatcher() {
@@ -282,6 +275,80 @@ function* requestConvertWatcher() {
 }
 sagas.push(requestConvertWatcher);
 
+//
+const INSTALL_UNSIGNED = A`INSTALL_UNSIGNED`;
+type InstallUnsignedAction = { type:typeof INSTALL_UNSIGNED, id:Id };
+const installUnsigned = (id): InstallUnsignedAction => ({ type:INSTALL_UNSIGNED, id })
+function* installUnsignedWorker(action: InstallUnsignedAction) {
+    const { id } = action;
+
+    const state = yield select();
+
+    const {extensions:{ [id]:extension }} = state;
+    if (!extension) return; // not a valid extension id
+    const { xpiFileId } = extension;
+
+    const {files:{ [xpiFileId]:{ data:xpiDataUrl }={} }} = state;
+    if (!xpiDataUrl) return; // no zip file for such a extension id
+
+    const xpiBlob = yield call(dataUrlToBlob, xpiDataUrl);
+    const xpiBlobUrl = URL.createObjectURL(xpiBlob);
+
+    yield call(extensiona, 'tabs.create', { url:xpiBlobUrl });
+
+    // TODO: URL.revokeObjectURL(xpiUrl);
+
+}
+function* installUnsignedWatcher() {
+    yield takeEvery(INSTALL_UNSIGNED, installUnsignedWorker);
+}
+sagas.push(installUnsignedWatcher);
+
+//
+const SAVE = A`SAVE`;
+type SaveAction = { type:typeof SAVE, id:Id, kind:'ext'|'unsigned'|'signed' };
+const save = (id, kind): SaveAction => ({ type:SAVE, id, kind })
+function* saveWorker(action: SaveAction) {
+    const { id, kind } = action;
+
+    const { fileIdKey, fileExt } = getSaveKindDetails(kind);
+
+    const state = yield select();
+
+    const {extensions:{ [id]:extension }} = state;
+    if (!extension) return; // not a valid extension id
+    const { name, listingTitle, [fileIdKey]:fileId } = extension;
+
+    const {files:{ [fileId]:{ data:fileDataUrl }={} }} = state;
+    if (!fileDataUrl) return; // no zip file for such a extension id
+
+    const fileBlob = yield call(dataUrlToBlob, fileDataUrl);
+    const fileBlobUrl = URL.createObjectURL(fileBlob);
+
+    yield call(extensiona, 'downloads.download', {
+        filename: `${getName(name, listingTitle)}.${fileExt}`,
+        saveAs: true,
+        url: fileBlobUrl
+    });
+
+    // URL.revokeObjectURL(fileBlobUrl); // TODO: delete once download done
+
+}
+function* saveWatcher() {
+    yield takeEvery(SAVE, saveWorker);
+}
+sagas.push(saveWatcher);
+
+function getSaveKindDetails(kind) {
+    switch (kind) {
+        case 'ext': return { fileIdKey:'fileId', fileExt:'crx' };
+        case 'unsigned': return { fileIdKey:'xpiFileId', fileExt:'xpi' };
+        case 'signed': return { fileIdKey:'signedFileId', fileExt:'xpi' };
+        default: throw new Error(`Unknown save kind: "${kind}"`);
+    }
+}
+
+//
 let NEXT_ID = -1;
 function* getId() {
     if (NEXT_ID === -1) {
@@ -320,5 +387,9 @@ export default function reducer(state: Shape = INITIAL, action:Action): Shape {
     }
 }
 
+function getName(name, listingTitle) {
+    return name || listingTitle.substr(0, listingTitle.lastIndexOf(' - '));
+}
+
 export type { Entry, Status }
-export { requestAdd, STATUS, requestDownload, requestParse, requestConvert }
+export { requestAdd, STATUS, requestDownload, requestParse, requestConvert, installUnsigned, save }

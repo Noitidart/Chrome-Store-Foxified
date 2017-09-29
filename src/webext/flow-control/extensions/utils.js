@@ -5,7 +5,7 @@ type StatusFail = { [string]:string }; // redux-form SubmissionError style keys 
 type StatusResolve = StatusOk => void
 type StatusPromise = Promise<StatusOk | StatusFail>
 export type StatusInjection = { promise:StatusPromise, resolve:StatusResolve }
-export function injectStatusPromise<T>(action: T): T {
+export function injectStatusPromise<T: { type:string }>(action: T): T {
     action.promise = new Promise(resolve => action.resolve = resolve);
     return action;
 }
@@ -56,7 +56,7 @@ export function crxToZip(crxBuf: ArrayBuffer): ArrayBuffer {
     return zipBuf;
 }
 
-export function deleteUndefined(obj: {}) {
+export function deleteUndefined<T: {}>(obj: T): T {
     // mutates obj
     for (const [k, v] of Object.entries(obj)) {
         if (v === undefined) delete obj[k];

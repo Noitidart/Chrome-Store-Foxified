@@ -3,7 +3,7 @@
 import React, { PureComponent } from 'react'
 import moment from 'moment'
 
-import { STATUS } from '../../../../../../flow-control/extensions'
+import { STATUS, installUnsigned, save } from '../../../../../../flow-control/extensions'
 
 import CWS_LOGO from './images/chrome-web-store-logo-2012-2015.svg'
 import EXT_LOGO_GENERIC from './images/extension-generic-flat-black.svg'
@@ -13,7 +13,8 @@ import './index.css'
 import type { Entry as Extension, Status } from '../../../../../../flow-control/extensions'
 
 type Props = {
-    ...Extension
+    ...Extension,
+    dispatchProxied: *
 }
 
 function getStatusMessage(status: Status) {
@@ -23,6 +24,10 @@ function getStatusMessage(status: Status) {
         case STATUS.CONVERTING: return 'Converting';
         // no default
     }
+}
+
+function getName(name, listingTitle) {
+    return name || listingTitle.substr(0, listingTitle.lastIndexOf(' - '));
 }
 
 class Card extends PureComponent<Props, void> {
@@ -39,7 +44,7 @@ class Card extends PureComponent<Props, void> {
                 <div className="Card--row Card--row--title">
                     <img className="Card--logo" src={EXT_LOGO_GENERIC} alt="" />
                     <h3 className="Card--title">
-                        { name || listingTitle.substr(0, listingTitle.lastIndexOf(' - ')) }
+                        { getName(name, listingTitle) }
                     </h3>
                 </div>
                 <hr className="Card--divider-title" />
@@ -59,27 +64,13 @@ class Card extends PureComponent<Props, void> {
                         <div className="Card--label">
                             Save to Disk
                         </div>
-                        { fileId !== undefined &&
-                            <a href="#" className="Card--link">
-                                <span className="Card--link-label">
-                                    CRX
-                                </span>
-                            </a>
-                        }
-                        { xpiFileId !== undefined &&
-                            <a href="#" className="Card--link">
-                                Unsigned
-                            </a>
-                        }
-                        { signedFileId !== undefined &&
-                            <a href="#" className="Card--link">
-                                Signed
-                            </a>
-                        }
+                        { fileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveExt}>CRX</a> }
+                        { xpiFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveUnsigned}>Unsigned</a> }
+                        { signedFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveSigned}>Signed</a> }
                     </div>
                 }
                 <div className="Card--row">
-                    <a href="#" className="Card--link">Install Temporary</a>
+                    <a href="#" className="Card--link" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a>
                     <a href="#" className="Card--link">Install</a>
                 </div>
                 <div className="Card--footer">
@@ -88,6 +79,28 @@ class Card extends PureComponent<Props, void> {
             </div>
         )
     }
+
+    handleClickInstallUnsigned = stopEvent(() => this.props.dispatchProxied(installUnsigned(this.props.id)) ) // TODO: show box explaining unsigned only installs in dev/nightly if they are beta/release/esr - and show directions on how to install it as temporary
+
+    handleClickSaveExt = stopEvent(() => this.props.dispatchProxied(save(this.props.id, 'ext')) )
+    handleClickSaveUnsigned = stopEvent(() => this.props.dispatchProxied(save(this.props.id, 'unsigned')) )
+    handleClickSaveSigned = stopEvent(() => this.props.dispatchProxied(save(this.props.id, 'signed')) )
 }
+
+function stopEvent(func) {
+    return e => {
+        e.preventDefault();
+        e.stopPropagation();
+        func(e);
+    }
+}
+
+// function stopEvent(func<T: Node>: (e: SyntheticEvent<T>) => void) {
+//     return e => {
+//         e.preventDefault();
+//         e.stopPropagation();
+//         func(e);
+//     }
+// }
 
 export default Card

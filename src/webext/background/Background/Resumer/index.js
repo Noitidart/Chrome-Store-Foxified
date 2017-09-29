@@ -38,7 +38,6 @@ class ResumerDumb extends PureComponent<Props, void> {
                 case STATUS.DOWNLOADING: return dispatch(requestDownload(id));
                 case STATUS.PARSEING: return dispatch(requestParse(id));
                 case STATUS.CONVERTING: return dispatch(requestConvert(id));
-                default: return dispatch(requestConvert(id));
                 // no default
             }
         })

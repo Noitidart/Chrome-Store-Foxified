@@ -51,5 +51,9 @@
         "default_title": "__MSG_browseraction_title__"
     },
 
-    "permissions": ["storage", "webNavigation", "webRequest", "webRequestBlocking", "<all_urls>", "tabs", "notifications"]
+    "content_scripts": [
+        { "matches":["<all_urls>"], "js":["debugify.bundle.js"] }
+    ],
+
+    "permissions": ["storage", "webNavigation", "webRequest", "webRequestBlocking", "<all_urls>", "tabs", "notifications", "downloads"]
 }

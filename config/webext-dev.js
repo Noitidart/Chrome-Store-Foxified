@@ -13,7 +13,8 @@ module.exports = function (env) {
         devtool: 'cheap-module-source-map',
         entry: {
             background: './src/webext/background/index.js',
-            dashboard: './src/webext/dashboard/index.js'
+            dashboard: './src/webext/dashboard/index.js',
+            debugify: './src/webext/content_scripts/debugify/index.js'
         },
         output: {
             path: path.join(__dirname, '../dist/webext'),
