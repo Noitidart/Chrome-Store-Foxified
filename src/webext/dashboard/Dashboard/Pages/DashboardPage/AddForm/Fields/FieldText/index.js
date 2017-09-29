@@ -22,7 +22,7 @@ class FieldText extends PureComponent<Props, void> {
 
         return (
             <div className="Field">
-                <div className="Field--row">
+                <div className="Field--col">
                     <label className={classnames('Field--label', error && 'Field--label--error')}>
                         {label}
                     </label>
@@ -30,7 +30,6 @@ class FieldText extends PureComponent<Props, void> {
                 </div>
                 { error &&
                     <div className="Field--row">
-                        <div className="Field--label" />
                         <div className="Field--error">{error}</div>
                     </div>
                 }

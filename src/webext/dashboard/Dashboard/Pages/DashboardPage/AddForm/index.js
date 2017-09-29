@@ -33,18 +33,41 @@ class AddFormDumb extends PureComponent<Props, void> {
         console.log('this.props:', this.props);
         return (
             <form onSubmit={handleSubmit} className="AddForm">
-                <ErrorBox form={form} error={error} />
-                <Field type="text" component={FieldText} name="storeUrl" disabled={submitting} label="Extension URL" />
-                <div className="Field--row">
-                    <div className="Field--label" />
-                    <div className="Field--desc">
-                        Example: <pre className="AddForm--pre-inline">https://chrome.google.com/webstore/detail/pull-refresh/ldmkbocokmbbffifgfoejohifpcienih</pre>
+                <fieldset className="AddForm--fieldset">
+                    <legend>Add New Extension</legend>
+                    <ErrorBox form={form} error={error} />
+                    <div className="Field--row">
+                        <div className="AddForm--col">
+                            <Field type="text" component={FieldText} name="storeUrl" disabled={submitting} label="Store URL" />
+                            <div className="Field--col">
+                                <div className="Field--label" />
+                                <div className="Field--desc">
+                                    Example: <pre className="AddForm--pre-inline">https://chrome.google.com/webstore/detail/pull-refresh/ldmkbocokmbbffifgfoejohifpcienih</pre>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="AddForm--or">
+                            <hr className="AddForm--hr" />
+                            <span className="AddForm--or--label">OR</span>
+                            <hr className="AddForm--hr" />
+                        </div>
+                        <div className="AddForm--col">
+                            <div className="Field--col">
+                                <div className="Field--label">My Computer</div>
+                                <input className="Field--input-text" readOnly defaultValue="No file selected - click here to browse" />
+                            </div>
+                            <div className="Field--row">
+                                <div className="Field--desc">
+                                    Select a extensison package file from your computer
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <button disabled={submitting}>Download</button>
-                    { submitting && <span>Validating with server...</span> }
-                </div>
+                    <div className="AddForm--control">
+                        <button disabled={submitting} style={{fontSize:'1.1em',fontWeight:500}}>Add to Firefox</button>
+                        { submitting && <span>Validating with server...</span> }
+                    </div>
+                </fieldset>
             </form>
         )
     }

@@ -8,3 +8,39 @@
     font-size: 1.2em;
     margin: 0; /* firefox has a default margin on pre */
 }
+
+.AddForm--col {
+    display: flex;
+    flex-direction: column;
+    flex: 3;
+}
+
+.AddForm--or {
+    display: flex;
+    flex: 1;
+    align-items: center;
+}
+
+.AddForm--hr {
+    height: 2px;
+    border: 0;
+    background-color: #444444;
+    margin: 0 20px;
+    flex: 1;
+}
+
+.AddForm--or--label {
+    font-weight: 700;
+}
+
+.AddForm--fieldset {
+    display: flex;
+    flex-direction: column;
+}
+
+.AddForm--control {
+    font-size: 1.1em;
+    font-weight: 500;
+    display: flex;
+    justify-content: center;
+}

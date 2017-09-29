@@ -21,14 +21,21 @@
 
 .Field--desc {
     font-size: 0.7em;
+    white-space: nowrap;
 }
 
 .Field--label {
     font-weight: 500;
     width: 10em;
+    margin-bottom: 3px;
 }
 
 .Field--row {
     display: flex;
     margin: 3px 0;
+}
+
+.Field--col {
+    display: flex;
+    flex-direction: column;
 }
