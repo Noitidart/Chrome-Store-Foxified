@@ -201,10 +201,12 @@ function* requestParseWorker(action: RequestParseAction) {
     if (name.startsWith('__MSG')) {
         // get default localized name
         const defaultLocale = manifest.default_locale;
-        const messages = JSON.parse(yield call([zip.file(`_locales/$defaultLocale/messages.json`), 'async'], 'string'));
+        const messages = JSON.parse(yield call([zip.file(`_locales/${defaultLocale}/messages.json`), 'async'], 'string'));
+        console.log('messages:', messages);
         const nameKey = name.substring('__MSG_'.length, name.length-2);
         console.log('messages nameKey:', nameKey);
-        name = messages[nameKey].message;
+        const entry = Object.entries(messages).find( ([key]) => key.toLowerCase() === nameKey.toLowerCase() );
+        name = entry[1].message;
         console.log('name:', name);
     }
 

@@ -17,6 +17,10 @@ type Props = {
     dispatchProxied: *
 }
 
+type State = {
+    ago: string
+}
+
 function getStatusMessage(status: Status) {
     switch (status) {
         case STATUS.DOWNLOADING: return 'Downloading';
@@ -30,9 +34,22 @@ function getName(name, listingTitle) {
     return name || listingTitle.substr(0, listingTitle.lastIndexOf(' - '));
 }
 
-class Card extends PureComponent<Props, void> {
+class Card extends PureComponent<Props, State> {
+    agoInterval
+    state = {
+        ago: this.getAgo()
+    }
+
+    componentDidMount() {
+        this.agoInterval = setInterval(() => this.setState(() => ({ ago:this.getAgo() })), 30000);
+    }
+    componentWillUnmount() {
+        clearInterval(this.agoInterval);
+    }
     render() {
         const { name, date, storeUrl, listingTitle, status, fileId, xpiFileId, signedFileId } = this.props;
+        const { ago } = this.state;
+
         return (
             <div className="Card">
                 <div className="Card--background" />
@@ -74,7 +91,7 @@ class Card extends PureComponent<Props, void> {
                     <a href="#" className="Card--link">Install</a>
                 </div>
                 <div className="Card--footer">
-                    { moment(date).fromNow() }
+                    { ago }
                 </div>
             </div>
         )
@@ -85,6 +102,10 @@ class Card extends PureComponent<Props, void> {
     handleClickSaveExt = stopEvent(() => this.props.dispatchProxied(save(this.props.id, 'ext')) )
     handleClickSaveUnsigned = stopEvent(() => this.props.dispatchProxied(save(this.props.id, 'unsigned')) )
     handleClickSaveSigned = stopEvent(() => this.props.dispatchProxied(save(this.props.id, 'signed')) )
+
+    getAgo() {
+        return moment(this.props.date).fromNow();
+    }
 }
 
 function stopEvent(func) {
