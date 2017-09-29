@@ -35,7 +35,7 @@ function getName(name, listingTitle) {
 }
 
 class Card extends PureComponent<Props, State> {
-    agoInterval
+    agoInterval: number
     state = {
         ago: this.getAgo()
     }
@@ -47,17 +47,12 @@ class Card extends PureComponent<Props, State> {
         clearInterval(this.agoInterval);
     }
     render() {
-        const { name, date, storeUrl, listingTitle, status, fileId, xpiFileId, signedFileId } = this.props;
+        const { name, date, version, storeUrl, listingTitle, status, fileId, xpiFileId, signedFileId } = this.props;
         const { ago } = this.state;
 
         return (
             <div className="Card">
                 <div className="Card--background" />
-                { status &&
-                    <div className="Card--header">
-                        { getStatusMessage(status) }
-                    </div>
-                }
                 <div className="Card--row Card--row--title">
                     <img className="Card--logo" src={EXT_LOGO_GENERIC} alt="" />
                     <h3 className="Card--title">
@@ -86,10 +81,26 @@ class Card extends PureComponent<Props, State> {
                         { signedFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveSigned}>Signed</a> }
                     </div>
                 }
-                <div className="Card--row">
-                    <a href="#" className="Card--link" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a>
-                    <a href="#" className="Card--link">Install</a>
-                </div>
+                { version !== undefined &&
+                    <div className="Card--row">
+                        <div className="Card--label">
+                            Version
+                        </div>
+                        <span className="Card--text">{version}</span>
+                    </div>
+                }
+                { !status &&
+                    <div className="Card--row Card--row--buttons">
+                        { xpiFileId && !signedFileId && <a href="#" className="Card--link Card--link-button" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a> }
+                        { signedFileId && <a href="#" className="Card--link Card--link-button">Install</a> }
+                        { !xpiFileId && !signedFileId && <span>Invalid status state</span> }
+                    </div>
+                }
+                { status &&
+                    <div className="Card--row">
+                        { getStatusMessage(status) }
+                    </div>
+                }
                 <div className="Card--footer">
                     { ago }
                 </div>

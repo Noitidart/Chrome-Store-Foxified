@@ -49,6 +49,11 @@
     padding-right: 10px;
 }
 
+.Card--row--buttons {
+    height: 1.5em;
+    font-size: 1.1em;
+}
+
 .Card--divider-title {
     background-color: var(--border-color);
     height: 1px;
@@ -60,12 +65,17 @@
 .Card--label {
     font-weight: 500;
     width: 10em;
+    flex-shrink: 0;
 }
 
 .Card--link {
     display: flex;
     font-size: 0.9em;
     text-decoration: none;
+}
+
+.Card--link-button {
+    font-size: 1em;
 }
 
 .Card--link:hover {
@@ -109,3 +119,6 @@
     text-align: center;
 }
 
+.Card--text {
+    font-size: 0.9em;
+}

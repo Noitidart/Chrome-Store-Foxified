@@ -319,7 +319,7 @@ function* saveWorker(action: SaveAction) {
 
     const {extensions:{ [id]:extension }} = state;
     if (!extension) return; // not a valid extension id
-    const { name, listingTitle, [fileIdKey]:fileId } = extension;
+    const { name, listingTitle, version, [fileIdKey]:fileId } = extension;
 
     const {files:{ [fileId]:{ data:fileDataUrl }={} }} = state;
     if (!fileDataUrl) return; // no zip file for such a extension id
@@ -328,7 +328,7 @@ function* saveWorker(action: SaveAction) {
     const fileBlobUrl = URL.createObjectURL(fileBlob);
 
     yield call(extensiona, 'downloads.download', {
-        filename: `${getName(name, listingTitle)}.${fileExt}`,
+        filename: `${getName(name, listingTitle)}-${version}.${fileExt}`,
         saveAs: true,
         url: fileBlobUrl
     });
