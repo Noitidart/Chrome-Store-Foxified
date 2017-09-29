@@ -1,6 +1,6 @@
 // https://raw.githubusercontent.com/Rob--W/crxviewer/56f537300618b04b35ee09451d0a275d4c01aa95/src/cws_pattern.js
 
-import './chrome-platform-info'
+import { getPlatformInfo } from './chrome-platform-info'
 
 /* eslint-disable */
 
@@ -37,7 +37,7 @@ var amo_file_version_match_pattern = '*://addons.mozilla.org/*firefox/files/brow
 
 // string extensionID if valid URL
 // null otherwise
-function get_extensionID(url) {
+export function get_extensionID(url) {
     var match = cws_pattern.exec(url);
     if (match) return match[1];
     match = cws_download_pattern.exec(url);
@@ -74,7 +74,7 @@ function get_xpi_url(addonSlug) {
 
 // Returns location of CRX file for a given extensionID or CWS url or Opera add-on URL
 // or Firefox addon URL.
-export function get_crx_url(extensionID_or_url) {
+export async function get_crx_url(extensionID_or_url) {
     var url;
     var match = ows_pattern.exec(extensionID_or_url);
     if (match) {
@@ -99,7 +99,7 @@ export function get_crx_url(extensionID_or_url) {
         return extensionID_or_url;
     }
 
-    var platformInfo = getPlatformInfo();
+    var platformInfo = await getPlatformInfo();
 
     // Omitting this value is allowed, but add it just in case.
     // Source: http://cs.chromium.org/file:omaha_query_params.cc%20GetProdIdString

@@ -4,6 +4,7 @@ import { Provider } from 'react-redux'
 import { gReduxServer } from '../'
 
 import BrowserAction from './BrowserAction'
+import Resumer from './Resumer'
 
 class Background extends PureComponent<void, void> {
     render() {
@@ -11,6 +12,7 @@ class Background extends PureComponent<void, void> {
             <Provider store={gReduxServer.store}>
                 <div>
                     <BrowserAction />
+                    <Resumer />
                 </div>
             </Provider>
         )

@@ -2,30 +2,30 @@
 
 import { select, takeEvery, call, put, race } from 'redux-saga/effects'
 import { delay } from 'redux-saga'
+import Zip from 'jszip'
 
-import { get_webstore_url, get_crx_url, get_webstore_name } from '../../cws_pattern'
+import { addFile, deleteFile } from '../files'
+import { get_webstore_url, get_crx_url, get_webstore_name, get_extensionID } from '../../cws_pattern'
 import { omit } from 'cmn/lib/all'
-import { injectStatusPromise } from './utils'
+import { injectStatusPromise, blobToDataUrl, dataUrlToBlob, blobToArrBuf, crxToZip, arrBufToDataUrl, deleteUndefined } from './utils'
 
 import type { StatusInjection } from './utils'
+import type { FileId } from '../files'
 
 const A = ([actionType]: string[]) => 'EXTENSIONS_' + actionType; // Action type prefixer
 
 export const sagas = [];
 
 const STATUS = {
-    DOWNLOADING: 0,
-    DOWNLOADED: 1,
-    PARSING: 2, // get meta info - unzipping
-    CONVERTING: 3,
-    CONVERTED: 4,
-    SIGNING: 5,
-    SIGNED: 6
+    DOWNLOADING: 'DOWNLOADING',
+    PARSEING: 'PARSEING', // get meta info - unzipping
+    CONVERTING: 'CONVERTING',
+    SIGNING: 'SIGNING'
 }
 
 type Id = string;
 type Kind = 'cws' | 'amo' | 'ows';
-type Status = string; // $Keys<typeof STATUS>;
+type Status = string; // $Keys<typeof STATUS>; // for some reason stupid flow is not recognizing $Keys
 type Entry = {
     kind: Kind,
     date: number, // listing check date - udated when donwnload is started
@@ -33,14 +33,18 @@ type Entry = {
     listingTitle: string, // title of the listing on the store
     status: Status,
     hasInstalled?: true, // once installed, no need to keep it highlighted.
+    fileId?: FileId, // crx file id once downloaded
+    zipFileId?: FileId,
+    xpiFileId?: FileId, // once converted
+    signedFileId?: FileId, // once signed
     //
     // status === DOWNLOADING
-    progress?: number, // percent 0-100
+    progress?: number, // percent 0-100 // while downloading
     // status >= DOWNLOADING
-    size?: number,
-    // status > PARSING
-    name?: string,
-    version?: string,
+    size?: number, // once downloaded
+    // status > PARSEING
+    name?: string, // once parseed
+    version?: string, // once parseed
 }
 
 export type Shape = {
@@ -87,6 +91,7 @@ function* requestAddWorker(action: RequestAddAction) {
     const exists = !!Object.values(extensions).find( ({ storeUrl:aStoreUrl }) => aStoreUrl === storeUrlFixed );
     if (exists) return resolve({ storeUrl:'You have previously already downloaded this extension' });
 
+    // validate
     let listingTitle;
     {
         let res, timeout;
@@ -98,20 +103,184 @@ function* requestAddWorker(action: RequestAddAction) {
         listingTitle = html.match(/<title>(.+?)<\/title>/)[1];
     }
 
+    resolve();
+
+    const id = yield call(getId);
     yield put(add({
-        id: yield call(getId),
+        id,
         kind: storeName,
         storeUrl: storeUrlFixed,
         listingTitle,
         date: Date.now()
     }));
 
-    resolve();
+    yield put(requestDownload(id));
 }
 function* requestAddWatcher() {
     yield takeEvery(REQUEST_ADD, requestAddWorker);
 }
 sagas.push(requestAddWatcher);
+
+//
+const REQUEST_DOWNLOAD = A`REQUEST_DOWNLOAD`;
+type RequestDownloadAction = { type:typeof REQUEST_DOWNLOAD, id:Id };
+const requestDownload = (id): RequestDownloadAction => ({ type:REQUEST_DOWNLOAD, id })
+const downloading: {[Id]:true} = {};
+function* requestDownloadWorker(action: RequestDownloadAction) {
+    const { id } = action;
+
+    if (id in downloading) return; // already downloading
+
+    const {extensions:{ [id]:extension }} = yield select();
+
+    if (!extension) return; // not a valid extension id
+
+    downloading[id] = true;
+    yield put(update(id, { status:STATUS.DOWNLOADING, progress:0 }));
+
+    const { storeUrl } = extension;
+    const url = yield call(get_crx_url, storeUrl);
+    console.log('url:', url)
+
+    let fileBlob;
+    {
+        let res, timeout;
+        try { res = yield call(fetch, url) }
+        catch(ex) { return } //  resolve({ _error:'Unhandled error while validating URL: ' + ex.message })
+        if (res.status !== 200) return; // resolve({ storeUrl:`Invalid status of "${res.status}" at URL.` });
+        fileBlob = yield call([res, res.blob]);
+    }
+
+    console.log('fileBlob:', fileBlob);
+    const fileDataUrl = yield call(blobToDataUrl, fileBlob);
+    const fileId = yield (yield put(addFile(fileDataUrl))).promise;
+    console.log('fileId:', fileId);
+
+    yield put(update(id, { fileId, size:fileBlob.size, status:undefined, progress:undefined }));
+    delete downloading[id];
+
+    yield put(requestParse(id));
+}
+function* requestDownloadWatcher() {
+    yield takeEvery(REQUEST_DOWNLOAD, requestDownloadWorker);
+}
+sagas.push(requestDownloadWatcher);
+
+//
+const REQUEST_PARSE = A`REQUEST_PARSE`;
+type RequestParseAction = { type:typeof REQUEST_PARSE, id:Id };
+const requestParse = (id): RequestParseAction => ({ type:REQUEST_PARSE, id })
+const parseing: { [Id]:true } = {};
+function* requestParseWorker(action: RequestParseAction) {
+    const { id } = action;
+
+    if (id in parseing) return; // already parseing
+
+    const state = yield select();
+    const {extensions:{ [id]:extension }} = state;
+
+    if (!extension) return; // not a valid extension id
+
+    parseing[id] = true;
+    yield put(update(id, { status:STATUS.PARSEING }));
+
+    const { fileId } = extension;
+
+    const {files:{ [fileId]:{ data:dataurl } }} = state;
+
+    if (!dataurl) return; // no file for such a extension id
+    console.log('dataurl:', dataurl);
+
+    const blob = yield call(dataUrlToBlob, dataurl);
+
+    // turn blob into zip - blob is a crx
+    const buf = yield call(blobToArrBuf, blob);
+    const zipBuf = crxToZip(buf);
+
+    const zip = yield call(Zip.loadAsync, zipBuf);
+
+    const manifest = JSON.parse(yield call([zip.file('manifest.json'), 'async'], 'string'));
+    console.log('manifest', manifest);
+
+    const { version } = manifest;
+    let { name } = manifest;
+    if (name.startsWith('__MSG')) {
+        // get default localized name
+        const defaultLocale = manifest.default_locale;
+        const messages = JSON.parse(yield call([zip.file(`_locales/$defaultLocale/messages.json`), 'async'], 'string'));
+        const nameKey = name.substring('__MSG_'.length, name.length-2);
+        console.log('messages nameKey:', nameKey);
+        name = messages[nameKey].message;
+        console.log('name:', name);
+    }
+
+    const zipDataUrl = yield call(arrBufToDataUrl, zipBuf, 'application/zip');
+    const zipFileId = yield (yield put(addFile(zipDataUrl))).promise;
+
+    yield put(update(id, { zipFileId, version, name, status:undefined }));
+    delete parseing[id];
+
+    yield put(requestConvert(id));
+}
+function* requestParseWatcher() {
+    yield takeEvery(REQUEST_PARSE, requestParseWorker);
+}
+sagas.push(requestParseWatcher);
+
+//
+const REQUEST_CONVERT = A`REQUEST_CONVERT`;
+type RequestConvertAction = { type:typeof REQUEST_CONVERT, id:Id };
+const requestConvert = (id): RequestConvertAction => ({ type:REQUEST_CONVERT, id })
+const converting: { [Id]:true } = {};
+function* requestConvertWorker(action: RequestConvertAction) {
+    const { id } = action;
+
+    if (id in converting) return; // already converting
+
+    const state = yield select();
+    const {extensions:{ [id]:extension }} = state;
+
+    if (!extension) return; // not a valid extension id
+
+    converting[id] = true;
+    yield put(update(id, { status:STATUS.CONVERTING }));
+
+    const { zipFileId, storeUrl } = extension;
+
+    const {files:{ [zipFileId]:{ data:zipDataUrl } }} = state;
+
+    if (!zipDataUrl) return; // no zip file for such a extension id
+    console.log('zipDataUrl:', zipDataUrl);
+
+    const zipBlob = yield call(dataUrlToBlob, zipDataUrl);
+    const zip = yield call(Zip.loadAsync, zipBlob);
+    console.log('zipppp:', zip);
+
+    const extId = get_extensionID(storeUrl);
+    const manifest = JSON.parse(yield call([zip.file('manifest.json'), 'async'], 'string'));
+    console.log('manifest', manifest);
+    manifest.applications = {
+        gecko: {
+            id: extId + '@chrome-store-foxified-unsigned'
+        }
+    };
+    zip.file('manifest.json', JSON.stringify(manifest));
+
+    const xpiDataUrl = 'data:application/zip;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
+    console.log('xpiDataUrl:', xpiDataUrl);
+    const xpiFileId = yield (yield put(addFile(xpiDataUrl))).promise;
+    console.log('xpiFileId:', xpiFileId);
+
+    yield put(update(id, { xpiFileId, status:undefined }));
+    delete converting[id];
+
+    yield put(deleteFile(zipFileId));
+
+}
+function* requestConvertWatcher() {
+    yield takeEvery(REQUEST_CONVERT, requestConvertWorker);
+}
+sagas.push(requestConvertWatcher);
 
 let NEXT_ID = -1;
 function* getId() {
@@ -144,11 +313,12 @@ export default function reducer(state: Shape = INITIAL, action:Action): Shape {
             const { id, data } = action;
             const dataOld = state[id];
             const idNew = 'id' in data ? data.id : id;
-            return { ...state, [idNew]:{ ...dataOld, ...data } };
+            const dataNew = deleteUndefined({ ...dataOld, ...data });
+            return { ...state, [idNew]:dataNew };
         }
         default: return state;
     }
 }
 
-export type { Entry }
-export { requestAdd }
+export type { Entry, Status }
+export { requestAdd, STATUS, requestDownload, requestParse, requestConvert }

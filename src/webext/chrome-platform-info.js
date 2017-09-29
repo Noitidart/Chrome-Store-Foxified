@@ -22,25 +22,26 @@
 
 'use strict';
 
-// Set platform info if unset
-if (typeof chrome === 'object' && chrome.runtime &&
-    chrome.runtime.getPlatformInfo && !localStorage.getItem('platformInfo')) {
-    chrome.runtime.getPlatformInfo(function(platformInfo) {
-        localStorage.setItem('platformInfo', JSON.stringify(platformInfo));
-    });
-}
+// // Set platform info if unset
+// if (typeof chrome === 'object' && chrome.runtime &&
+//     chrome.runtime.getPlatformInfo && !localStorage.getItem('platformInfo')) {
+//     chrome.runtime.getPlatformInfo(function(platformInfo) {
+//         localStorage.setItem('platformInfo', JSON.stringify(platformInfo));
+//     });
+// }
 
 /**
  * Get platform info.
  * If it's not available in localStorage, then the chrome.runtime.getPlatformInfo
  * method hasn't returned anything useful. Fall back to UA-sniffing.
  **/
-function getPlatformInfo() {
-    var platformInfo = localStorage.getItem('platformInfo');
-    if (!platformInfo) {
-        return getPlatformInfoFallback();
-    }
-    platformInfo = JSON.parse(platformInfo);
+export async function getPlatformInfo() {
+    // var platformInfo = localStorage.getItem('platformInfo');
+    // if (!platformInfo) {
+    //     return getPlatformInfoFallback();
+    // }
+    // platformInfo = JSON.parse(platformInfo);
+    var platformInfo = await extensiona('runtime.getPlatformInfo');
     // Firefox does not have nacl_arch.
     if (!platformInfo.nacl_arch) {
         platformInfo.nacl_arch = getPlatformInfoFallback().nacl_arch;
