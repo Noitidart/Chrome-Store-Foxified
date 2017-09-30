@@ -3,21 +3,28 @@
 import { delay } from 'redux-saga'
 import { takeEvery, call, put } from 'redux-saga/effects'
 
-export type Shape = number;
+import { deleteUndefined } from '../extensions/utils'
 
-const INITIAL = 10;
+export type Shape = {
+    amoServerStatus?: ServerStatus,
+    amoLoggedIn?: boolean,
+}
+
+const INITIAL = {};
 export const sagas = [];
 
-const A = ([actionType]: string[]) => 'COUNTER_' + actionType; // Action type prefixer
+const A = ([actionType]: string[]) => 'API_' + actionType; // Action type prefixer
 
-//
-const UP = A`UP`;
-type UpAction = { type:typeof UP };
-function up(): UpAction {
-    return {
-        type: UP
-    }
+const SERVER_STATUS = {
+    DOWN: 'DOWN',
+    UP: 'UP'
 }
+type ServerStatus = string; // $Keys<typeof SERVER_STATUS>
+
+const UPDATE = A`UPDATE`;
+// type UpdateAction = { type:typeof UPDATE, id:Id, data:$Shape<Shape> };
+type UpdateAction = { type:typeof UPDATE, id:Id, data:Shape };
+const update = (id, data): UpdateAction => ({ type:UPDATE, data });
 
 //
 const UP_ASYNC = A`UP_ASYNC`;
@@ -36,25 +43,17 @@ const upAsyncWatcher = function* upAsyncWatcher() {
 sagas.push(upAsyncWatcher);
 
 //
-const DN = A`DN`;
-type DownAction = { type:typeof DN };
-function dn(): DownAction {
-    return {
-        type: DN
-    }
-}
-
-//
 type Action =
-  | UpAction
-  | DownAction;
+  | UpdateAction;
 
 export default function reducer(state: Shape = INITIAL, action:Action): Shape {
     switch(action.type) {
-        case UP: return state + 1;
-        case DN: return state - 1;
+        case UPDATE: {
+            const { data } = action;
+            return deleteUndefined({ ...state, ...data });
+        }
         default: return state;
     }
 }
 
-export { upAsync, up, dn }
+export { update }

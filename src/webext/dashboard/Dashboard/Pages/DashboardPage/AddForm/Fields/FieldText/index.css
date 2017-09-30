@@ -1,41 +1,6 @@
-.Field {
-    display: flex;
-    flex-direction: column;
-}
-.Field--error {
-    display: flex;
-    font-weight: 500;
-    color: #C33D3D;
-    font-size: 0.85em;
-}
-.Field--label--error {
-    color: #C33D3D;
-}
-
 .Field--input-text {
     flex: 1;
 }
 .Field--input-text--error {
     border: 1px solid #E7B2B2;
-}
-
-.Field--desc {
-    font-size: 0.7em;
-    white-space: nowrap;
-}
-
-.Field--label {
-    font-weight: 500;
-    width: 10em;
-    margin-bottom: 3px;
-}
-
-.Field--row {
-    display: flex;
-    margin: 3px 0;
-}
-
-.Field--col {
-    display: flex;
-    flex-direction: column;
 }

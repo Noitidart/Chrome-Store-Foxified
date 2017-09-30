@@ -3,7 +3,7 @@
 import { PureComponent } from 'react'
 import { connect } from 'react-redux'
 
-import { STATUS, requestDownload, requestParse, requestConvert } from '../../../flow-control/extensions'
+import { STATUS, requestDownload, requestParse, requestConvert, requestSign } from '../../../flow-control/extensions'
 
 import type { Shape as ExtensionsShape } from '../../../flow-control/extensions'
 import type { Shape as AppShape } from '../../../flow-control'
@@ -38,6 +38,7 @@ class ResumerDumb extends PureComponent<Props, void> {
                 case STATUS.DOWNLOADING: return dispatch(requestDownload(id));
                 case STATUS.PARSEING: return dispatch(requestParse(id));
                 case STATUS.CONVERTING: return dispatch(requestConvert(id));
+                case STATUS.SIGNING: return dispatch(requestSign(id));
                 // no default
             }
         })

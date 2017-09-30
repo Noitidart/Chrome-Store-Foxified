@@ -23,6 +23,17 @@ const STATUS = {
     SIGNING: 'SIGNING'
 }
 
+const SIGNED_STATUS = {
+    AMO_CREDENTIALING: 'AMO_CREDENTIALING', // getting amo user.key user.secret
+    UNZIPPING: 'UNZIPPING',
+    REZIPPING: 'REZIPPING',
+    TIMEOFFSETIFYING: 'TIMEOFFSETIFYING',
+    AMO_UPLOADING: 'AMO_UPLOADING',
+    AMO_DOWNLOADING: 'AMO_DOWNLOADING'
+}
+
+const AMO_DOMAIN = 'https://addons.mozilla.org';
+
 type Id = string;
 type Kind = 'cws' | 'amo' | 'ows';
 type Status = string; // $Keys<typeof STATUS>; // for some reason stupid flow is not recognizing $Keys
@@ -37,6 +48,7 @@ type Entry = {
     zipFileId?: FileId,
     xpiFileId?: FileId, // once converted
     signedFileId?: FileId, // once signed
+    signedStatus?: string, // status of signing process
     //
     // status === DOWNLOADING
     progress?: number, // percent 0-100 // while downloading
@@ -76,7 +88,9 @@ type RequestAddAction = { type:typeof REQUEST_ADD, storeUrl:string, ...StatusInj
 const requestAdd = (storeUrl): RequestAddAction => injectStatusPromise({ type:REQUEST_ADD, storeUrl });
 
 function* requestAddWorker(action: RequestAddAction) {
-    const { storeUrl, resolve } = action;
+    const { storeUrl, fileDataUrl, resolve } = action;
+
+    if (storeUrl && fileDataUrl) return resolve({ _error:'Must only input a one or the other, a store url OR a file from your computer, not both.'})
 
     const storeUrlFixed = get_webstore_url(storeUrl);
     if (!storeUrlFixed) return resolve({ storeUrl:'Not a valid store URL.' });
@@ -141,7 +155,7 @@ function* requestDownloadWorker(action: RequestDownloadAction) {
 
     let fileBlob;
     {
-        let res, timeout;
+        let res;
         try { res = yield call(fetch, url) }
         catch(ex) { return } //  resolve({ _error:'Unhandled error while validating URL: ' + ex.message })
         if (res.status !== 200) return; // resolve({ storeUrl:`Invalid status of "${res.status}" at URL.` });
@@ -258,8 +272,6 @@ function* requestConvertWorker(action: RequestConvertAction) {
     };
     zip.file('manifest.json', JSON.stringify(manifest));
 
-    // application/x-xpinstall
-    // const xpiDataUrl = 'data:application/zip;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
     const xpiDataUrl = 'data:application/x-xpinstall;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
     console.log('xpiDataUrl:', xpiDataUrl);
     const xpiFileId = yield (yield put(addFile(xpiDataUrl))).promise;
@@ -271,11 +283,88 @@ function* requestConvertWorker(action: RequestConvertAction) {
     yield put(deleteFile(zipFileId));
     yield put(update(id, { zipFileId:undefined }));
 
+    yield put(requestSign(id));
 }
 function* requestConvertWatcher() {
     yield takeEvery(REQUEST_CONVERT, requestConvertWorker);
 }
 sagas.push(requestConvertWatcher);
+
+//
+const REQUEST_SIGN = A`REQUEST_SIGN`;
+type RequestSignAction = { type:typeof REQUEST_SIGN, id:Id };
+const requestSign = (id): RequestSignAction => ({ type:REQUEST_SIGN, id })
+const signing: { [Id]:true } = {};
+function* requestSignWorker(action: RequestSignAction) {
+    const { id } = action;
+
+    if (id in signing) return; // already signing
+    // signing[id] = true;
+
+    // const state = yield select();
+
+    // const {extensions:{ [id]:extension }} = state;
+    // if (!extension) return delete signing[id]; // not a valid extension id
+    // const { xpiFileId } = extension;
+
+    // const {files:{ [xpiFileId]:fileEntry }} = state;
+    // if (!fileEntry) return delete signing[id]; // no zip file for such a extension id
+
+    // // any time after this point, if amo goes down, it should restart from here - because what if user changed amo account
+    // yield put(update(id, { status:STATUS.SIGNING, signedStatus:SIGNED_STATUS.AMO_CREDENTIALING }));
+
+    // // get user.key and user.secret everytime fresh, because user may have logged into another account
+    // // holds: amo down, amo user not logged in, amo agreement not accepted
+    // yield fork()
+    // const { userKey, userSecret } = yield take('AMO_SIGNING_CREDENTIALS');
+
+    // try {
+    //     const res = fetch(`${AMODOMAIN}/en-US/developers/addon/api/key/`);
+    // } catch(ex) {
+    //     console.error('res failed, catastrophic, ex:', ex.message);
+    //     console.error('res failed, catastrophic, ex:', ex);
+    //     return delete signing[id];
+    // }
+    // if (res.status !== 200) {
+    //     yield fork()
+    //     yield take('AMO_UP'); // wait for AMO to come back up
+    // }
+
+    // // modify id in xpiBlob to use hash of user.id
+    //     // unzip
+    //     // mod
+    //     // rezip
+
+    // // get offset of system clock to unix clock - then calc corrected time
+
+    // // upload to amo - PUT - AMO_DOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/'
+    // // this version can already be uploaded, if it is, then check continue to check review status
+    // // holds: amo down, amo user not logged in
+
+    // // loop to keep checking auto review status - GET - AMODOMAIN + '/api/v3/addons/' + encodeURIComponent(xpiid) + '/versions/' + xpiversion + '/'
+    // // if review failed then give up signing and let user know
+    // // holds: amo down, amo user not logged in
+
+    // // download signed
+    // // holds: amo down, amo user not logged in
+
+
+
+    // //
+    // const xpiDataUrl = fileEntry.data;
+    // const xpiBlob = yield call(dataUrlToBlob, xpiDataUrl);
+
+    // yield put(update(id, { xpiFileId, status:undefined }));
+    // delete signing[id];
+
+    // yield put(deleteFile(zipFileId));
+    // yield put(update(id, { zipFileId:undefined }));
+
+}
+function* requestSignWatcher() {
+    yield takeEvery(REQUEST_SIGN, requestSignWorker);
+}
+sagas.push(requestSignWatcher);
 
 //
 const INSTALL_UNSIGNED = A`INSTALL_UNSIGNED`;
@@ -394,4 +483,4 @@ function getName(name, listingTitle) {
 }
 
 export type { Entry, Status }
-export { requestAdd, STATUS, requestDownload, requestParse, requestConvert, installUnsigned, save }
+export { requestAdd, STATUS, requestDownload, requestParse, requestConvert, installUnsigned, save, requestSign }
