@@ -7,14 +7,23 @@ import Cards from './Cards'
 
 import './index.css'
 
-class DashboardPage extends PureComponent<void, void> {
+type Props = {
+    location: {
+        state: {
+            key: string
+        }
+    }
+}
+
+class DashboardPage extends PureComponent<Props, void> {
     render() {
+        console.log('props:', this.props);
         return (
             <div>
                 <p className="Page--intro">
                     A panel to all your extension downloads
                 </p>
-                <AddForm />
+                <AddForm form={`register_${Date.now()}`} />
                 <Cards />
             </div>
         )

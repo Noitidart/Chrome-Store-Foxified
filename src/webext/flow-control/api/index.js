@@ -6,6 +6,7 @@ import { depth0Or1Equal } from 'cmn/lib/recompose'
 import shallowEqual from 'recompose/shallowEqual'
 
 import { deleteUndefined, getId } from '../utils'
+import { splitActionId } from './utils'
 
 type ActionStatus = {
     code?: string,
@@ -49,15 +50,7 @@ const SERVER = 'https://addons.mozilla.org';
 const isServerDown = function* isServerUp() { return yield select(state => state.api.isDown) }
 
 // yielders/take's - can do like `yield take(SERVER_UP)`
-const SERVER_UP = ({ type, id, }) => action.type === UPDATE && action.key === 'isDown' && 'isDown' in action.data && !action.data.isDown
-
-// utils
-const restartPendings = function* restartPendings() {
-    const pendings = yield select(state => state.api.pendings);
-    for (const pending of pendings) {
-        yield put(pending.action);
-    }
-}
+const SERVER_UP = ({ type, data }) => type === UPDATE && 'isDown' in data && !data.isDown
 
 const fetchApi = function* fetchApi(input:string, init={}, update) {
     while (true) {
@@ -87,16 +80,6 @@ const fetchApi = function* fetchApi(input:string, init={}, update) {
 const UPDATE = A`UPDATE`;
 type UpdateAction = { type:typeof UPDATE, key?:string, data:$Shape<Shape> };
 const update = (data): UpdateAction => ({ type:UPDATE, data });
-
-//
-const ADD_PENDING = A`ADD_PENDING`;
-type AddPendingAction = { type:typeof ADD_PENDING, action:StepableAction };
-const addPending = (action): AddPendingAction => ({ type:ADD_PENDING, action });
-
-//
-const REMOVE_PENDING = A`REMOVE_PENDING`;
-type RemovePendingAction = { type:typeof REMOVE_PENDING, action:StepableAction };
-const removePending = (id, data): RemovePendingAction => ({ type:REMOVE_PENDING, action });
 
 // pings server until it is back up
 const PING_UP = A`PING_UP`;
@@ -140,8 +123,8 @@ const pingAuthSaga = function* pingAuthSaga() {
         const res = yield call(fetchApi, SERVER);
 
         if (res.status === 401) {
+            console.warn('pingAuthSaga still logged out, got 401');
             yield call(delay, 5000);
-            console.warn('pingAuthSaga fetch ex:', ex.message);
 
             continue;
         }
@@ -183,8 +166,6 @@ type StepableAction = // an action that can be resumed? so actions should be spl
 
 //
 type Action =
-  | AddPendingAction
-  | RemovePendingAction
   | UpdateAction;
 
 export default function reducer(state: Shape = INITIAL, action:Action): Shape {
@@ -198,7 +179,7 @@ export default function reducer(state: Shape = INITIAL, action:Action): Shape {
             const cleanKeys = {};
 
             for (const [keyFull, value] of Object.entries(data)) {
-                const [key, id] = keyFull.split('_');
+                const [key, id] = splitActionId(keyFull);
                 if (id === undefined) {
                     const valueOld = state[key];
                     stateNew[key] = value === undefined ? undefined : { ...valueOld, ...value };
@@ -219,19 +200,6 @@ export default function reducer(state: Shape = INITIAL, action:Action): Shape {
                 deleteUndefined(stateNew[key]);
             }
             return deleteUndefined(stateNew);
-        }
-        case ADD_PENDING: {
-            // go through pendings, shallow comparing action
-            const pendingsOld = state.pendings;
-            const hasAction = pendingsOld.find(pending => shallowEqual(pending.action, action.action));
-            return hasAction ? state : { ...state, pendings:[...pendingsOld, action.action] };
-        }
-        case REMOVE_PENDING: {
-            const pendingsOld = state.pendings;
-            return {
-                ...state,
-                pendings: pendingsOld.filter(pending => !shallowEqual(pending.action, action.action)) // keep pending if its action does not match action.action (triggerAction)
-            }
         }
         default: return state;
     }

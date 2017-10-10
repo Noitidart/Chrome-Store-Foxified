@@ -6,7 +6,7 @@ import wrapDisplayName from 'recompose/wrapDisplayName'
 import { SubmissionError } from 'redux-form'
 
 import * as API from '../flow-control/api'
-import { getStatus, isStatusBusy } from '../flow-control/api/utils'
+import { getStatus, isStatusBusy, splitActionId } from '../flow-control/api/utils'
 
 import withMonitor from '../withMonitor'
 
@@ -41,7 +41,7 @@ function withApiForm(WrappedComponent) {
 
         triggerSubmit = values => {
             const { dispatch, actionId } = this.props;
-            const [ action ] = actionId.split('_');
+            const [ action ] = splitActionId(actionId);
             dispatch(API[action](values));
         }
         monitorSubmit = async () => {

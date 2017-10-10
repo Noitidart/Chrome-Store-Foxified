@@ -3,46 +3,27 @@
 import { delay } from 'redux-saga'
 import { take, takeEvery, call, put, select } from 'redux-saga/effects'
 
-import { deleteUndefined, getId } from '../utils'
+export type Shape = Action[]
 
-export type Shape = {
-    [Id]: { id:Id, action:Action }
-}
-
-const INITIAL = {};
+const INITIAL = [];
 export const sagas = [];
 
 const A = ([actionType]: string[]) => 'PENDINGS_' + actionType;
 
 //
 const ADD = A`ADD`;
-type AddAction = { type:typeof ADD, action:Action, id:Id };
-const add = (action, id): AddAction => ({ type:ADD, action, id });
+type AddAction = { type:typeof ADD, action:Action };
+const addPending = (action): AddAction => ({ type:ADD, action });
 
 //
 const REMOVE = A`REMOVE`;
-type RemoveAction = { type:typeof REMOVE, id:Id };
-const remove = (id): RemoveAction => ({ type:REMOVE, id });
-
-//
-const REQUEST_ADD = A`REQUEST_ADD`;
-type RequestAddAction = { type:typeof REQUEST_ADD, action:Action }
-const requestAdd = (action): RequestAddAction => ({ type:REQUEST_ADD, action });
-
-const requestAddSaga = function* requestAddSaga() {
-    // re-run resume whenever resume action happens
-    while (true) {
-        yield take(REQUEST_ADD);
-        const id = call(getId, 'pendings');
-        yield put(add(action.action, id));
-    }
-}
-sagas.push(requestAddSaga);
+type RemoveAction = { type:typeof REMOVE, action:Action };
+const removePending = (action): RemoveAction => ({ type:REMOVE, action });
 
 //
 const RESUME = A`RESUME`
 type ResumeAction = { type:typeof RESUME };
-const resume = (): ResumeAction => ({ type:RESUME });
+const resumePendings = (): ResumeAction => ({ type:RESUME });
 const resumeSaga = function* resumeSaga() {
     // on startup run resume, then re-run resume whenever resume action happens
 
@@ -82,17 +63,10 @@ type Action =
 
 export default function reducer(state: Shape = INITIAL, action:Action): Shape {
     switch(action.type) {
-        case ADD: {
-            const pending = { ...action };
-            delete pending.type;
-            return { ...state, [pending.id]:pending };
-        }
-        case REMOVE: {
-            const { id } = action;
-            const stateNew = { ...state };
-            delete stateNew[id];
-            return stateNew;
-        }
+        case ADD: return [ ...state, action.action ];
+        case REMOVE: return state.filter( aAction => aAction !== action.action);
         default: return state;
     }
 }
+
+export { addPending, removePending, resumePendings }

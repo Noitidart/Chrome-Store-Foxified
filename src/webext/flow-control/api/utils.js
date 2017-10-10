@@ -30,10 +30,11 @@ export function fetchApi(input:string, init={}) {
 //         statusErrors?: {}
 //     };
 
-export function getStatus(keyFull: string, api: ApiShape, isNotTopLevel: boolean): void | ActionStatus {
+export function getStatus(keyFull: string, api: ApiShape, isNotTopLevel?: boolean): void | ActionStatus {
+    // isNotTopLevel is programatic, devuser should never set
     // console.log('getStatus :: keyFull:', keyFull, 'api:', api);
     // real status, is the deepest stauts, following "other"
-    const [key, id] = keyFull.split('_');
+    const [key, id] = splitActionId(keyFull);
     const value = id === undefined ? api[key] : api[key][id];
 
     const isTopLevel = !isNotTopLevel;
@@ -61,4 +62,11 @@ export function isStatusBusy(status: ActionStatus) {
     if (!status) return false;
     const { code='OK' } = status;
     return !code.startsWith('OK') && !code.startsWith('ERROR');
+}
+
+export function splitActionId(actionId: string) {
+    const ix = actionId.indexOf('_');
+    const name = ix === -1 ? actionId : actionId.substr(0, ix);
+    const id = ix === -1 ? undefined : actionId.substr(ix + 1);
+    return [name, id];
 }

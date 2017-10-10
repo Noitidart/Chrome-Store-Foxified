@@ -68,7 +68,7 @@ export function deleteUndefined<T: {}>(obj: T): T {
 
 // fetchEpoch
 type FetchEpochOptions = {
-    timeout: number // ms,
+    timeout: number, // ms,
     compensate: boolean // subtracts half of the xhr request time from the time extracted from page
 }
 type FetchEpochServers = {
@@ -113,12 +113,12 @@ async function fetchEpoch(options: FetchEpochOptions={}) {
 	for (const { url, process } of servers) {
 		try {
 			const start = Date.now();
-			const res = await timeout(options.timeout, fetch(url, fetchOpt));
+			const res = await timeout(options.timeout, fetch(url));
 			const duration = Date.now() - start;
 			const halfDuration = Math.round(duration / 2);
 
 			let ms = await process(res.xhr);
-			if (opt.compensate) ms -= halfDuration;
+			if (options.compensate) ms -= halfDuration;
 			return ms;
 		} catch(ex) {
             console.warn(`Failed to get epoch from server "${url}", error: ${ex.message}`);

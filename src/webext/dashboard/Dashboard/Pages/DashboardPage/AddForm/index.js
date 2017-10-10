@@ -91,7 +91,7 @@ class AddFormDumb extends PureComponent<Props, State> {
     flexAnyField = name => this.setState(() => ({ or:name }))
 }
 
-const AddFormControlled = reduxForm({ form:FORM_NAME })
+const AddFormControlled = reduxForm()
 
 const AddForm = AddFormControlled(AddFormDumb)
 

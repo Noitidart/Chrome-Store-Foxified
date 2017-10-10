@@ -254,4 +254,4 @@ function getName(name, listingTitle) {
 }
 
 export type { Entry, Status }
-export { requestAdd, STATUS, requestDownload, requestParse, requestConvert, installUnsigned, save, requestSign }
+export { requestAdd, STATUS, installUnsigned, save }
