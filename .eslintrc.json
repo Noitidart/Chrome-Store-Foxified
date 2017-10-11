@@ -19,11 +19,13 @@
         }
     },
     "plugins": [
-        "react"
+        "react",
+        "flowtype"
     ],
     "extends": [
         "eslint:recommended",
-        "plugin:react/recommended"
+        "plugin:react/recommended",
+        "plugin:flowtype/recommended"
     ],
     "parser": "babel-eslint",
     "rules": {
@@ -36,6 +38,8 @@
         "no-undef": 2,
         "react/prop-types": 0,
         "no-unused-vars": 1,
-        "no-constant-condition": 0
+        "no-constant-condition": 0,
+        "flowtype/space-after-type-colon": 0,
+        "flowtype/union-intersection-spacing": 0
     }
 }

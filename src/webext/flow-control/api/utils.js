@@ -4,7 +4,7 @@ import { SERVER } from './'
 
 import type { Shape as ApiShape, ActionStatus } from './'
 
-export function fetchApi(input:string, init={}) {
+export function fetchApi(input: string, init={}) {
     // if init.body is object, then it JSON.stringify's it
     // if input is string, and doesnt start with http, then `https://${fetchApi.SERVER}/api/` is prefixed to it
         // and adds the default api headers in but doesnt overwrite if it already has those keys

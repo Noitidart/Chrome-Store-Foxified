@@ -1,3 +1,5 @@
+// @flow
+
 import { Client as PortsClient } from 'cmn/lib/comm/webext-ports'
 import { callInTemplate } from 'cmn/lib/comm/comm'
 import proxyFactory from 'cmn/lib/comm/redux/proxy-hoc'

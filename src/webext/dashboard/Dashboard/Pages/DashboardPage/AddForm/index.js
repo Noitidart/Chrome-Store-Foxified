@@ -1,3 +1,5 @@
+// @flow
+
 import React, { PureComponent } from 'react'
 import { SubmissionError, Field, reduxForm } from 'redux-form'
 import classnames from 'cmn/lib/classnames'

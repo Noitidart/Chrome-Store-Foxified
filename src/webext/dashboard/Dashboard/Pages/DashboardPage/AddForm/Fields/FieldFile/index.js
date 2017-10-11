@@ -1,3 +1,5 @@
+// @flow
+
 import React, { PureComponent } from 'react'
 import classnames from 'cmn/lib/classnames'
 

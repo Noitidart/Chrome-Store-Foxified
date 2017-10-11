@@ -1,3 +1,5 @@
+// @flow
+
 import React, { PureComponent } from 'react'
 import { Route, Switch, withRouter } from 'react-router-dom'
 
