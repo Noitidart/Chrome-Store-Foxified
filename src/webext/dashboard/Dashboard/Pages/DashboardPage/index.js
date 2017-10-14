@@ -17,13 +17,14 @@ type Props = {
 
 class DashboardPage extends PureComponent<Props, void> {
     render() {
+        const {location:{state:{ key }}} = this.props;
         console.log('props:', this.props);
         return (
             <div>
                 <p className="Page--intro">
                     A panel to all your extension downloads
                 </p>
-                <AddForm form={`register_${Date.now()}`} />
+                <AddForm />
                 <Cards />
             </div>
         )

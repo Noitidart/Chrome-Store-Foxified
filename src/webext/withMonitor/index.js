@@ -39,7 +39,7 @@ function withMonitor(WrappedComponent) {
                 return super.render();
             }
 
-            monitorChange: MonitorChange = predicate => {
+            monitor: MonitorChange = predicate => {
                 return new Promise (resolve => {
                     const { monitors } = this;
                     const hasPredicate = monitors.find( monitor => monitor.predicate === predicate );

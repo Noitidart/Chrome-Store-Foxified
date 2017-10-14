@@ -1,10 +1,11 @@
 // @flow
 
 import React, { PureComponent } from 'react'
-import { SubmissionError, Field, reduxForm } from 'redux-form'
+import { Field } from 'redux-form'
 import classnames from 'cmn/lib/classnames'
 
 import { callInBackground } from '../../../../connect'
+import { withApiForm } from '../../../../../withApiForm'
 
 import ErrorBox from './ErrorBox'
 import FieldText from './Fields/FieldText'
@@ -26,29 +27,20 @@ type State = {
     or?: 'computer' | 'storeUrl'
 }
 
-const FORM_NAME = 'add-ext';
-
 class AddFormDumb extends PureComponent<Props, State> {
     state = {
         or: undefined
     }
 
-    constructor(props) {
-        super(props);
-        this.handleSubmit = this.props.handleSubmit(this.handleSubmit);
-    }
+    triggerSubmit: () => void // withApiForm
 
-    componentDidUpdate() {
-        console.log('this.props:', this.props);
-    }
     render() {
         const { submitting, form, error } = this.props;
         const { or } = this.state;
-        const { handleSubmit } = this;
 
-        console.log('or:', or);
+        console.log('this.triggerSubmit:', this.triggerSubmit);
         return (
-            <form onSubmit={handleSubmit} className="AddForm">
+            <form onSubmit={this.triggerSubmit} className="AddForm">
                 <fieldset className="AddForm--fieldset">
                     <legend>Add New Extension</legend>
                     <ErrorBox form={form} error={error} />
@@ -84,17 +76,14 @@ class AddFormDumb extends PureComponent<Props, State> {
         )
     }
 
-    handleSubmit = async values => {
-        const errors = await new Promise( resolve => callInBackground('dispatchSubmitAddForm', values.storeUrl, resolve) );
-        if (errors) throw new SubmissionError(errors);
-        else this.props.reset();
+    handleSubmitOk = reply => {
+        console.log('reply:', reply);
+        this.props.reset();
     }
 
     flexAnyField = name => this.setState(() => ({ or:name }))
 }
 
-const AddFormControlled = reduxForm()
-
-const AddForm = AddFormControlled(AddFormDumb)
+const AddForm = withApiForm('valdiate')(AddFormDumb)
 
 export default AddForm
