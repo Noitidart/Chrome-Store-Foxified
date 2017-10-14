@@ -16,9 +16,9 @@ export const getId = function* getId(reducer: string) {
     if (!(reducer in NEXT_ID)) {
         const { [reducer]:entrys } = yield select();
         const ids = Object.keys(entrys);
-        NEXT_ID[reducer] = ids.length ? Math.max(...ids) : -1;
+        NEXT_ID[reducer] = (ids.length ? Math.max(...ids) : -1).toString();
     }
-    return ++NEXT_ID[reducer];
+    return (++NEXT_ID[reducer]).toString();
 }
 /*
 //

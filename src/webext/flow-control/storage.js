@@ -1,3 +1,5 @@
+// @flow
+
 /* REQUIRES "storage" permission in manifest.json */
 
 class AsyncBrowserExtensionStorage {

@@ -3,6 +3,8 @@
 import { delay } from 'redux-saga'
 import { take, takeEvery, call, put, select } from 'redux-saga/effects'
 
+import { REHYDRATE } from '../redux-persist/constants'
+
 export type Shape = Action[]
 
 const INITIAL = [];
@@ -29,12 +31,9 @@ const resumeSaga = function* resumeSaga() {
 
     // wait for redux-persit rehydration
     while (true) {
-        const action = yield take('*');
-        console.log('will try to check rehydrated');
+        yield take(REHYDRATE);
         const {_persist:{ rehydrated }} = yield select();
-        console.log('resume saga rehydrated:', rehydrated);
         if (rehydrated) {
-            console.log('action that caused rehydrated to be set to true, action:', action);
             yield call(resumeTask);
             break;
         }

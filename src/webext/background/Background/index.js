@@ -6,7 +6,6 @@ import store from '../../flow-control'
 import ForRehydrated from '../../ForRehydrated'
 import BrowserAction from './BrowserAction'
 
-
 const renderProp = () => <div><BrowserAction /></div>;
 
 class Background extends PureComponent<void, void> {

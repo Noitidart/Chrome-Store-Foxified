@@ -2,7 +2,6 @@
 
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
-import wrapDisplayName from 'recompose/wrapDisplayName'
 
 import type { Shape as AppShape } from '../flow-control'
 
@@ -10,15 +9,15 @@ type RenderProp = (rehydrated: boolean) => Element
 type LoadingProps = {
     rehydrated: false
 }
-type OwnProps =
-  {
-    LoadingComponent?: ComponentType<LoadingProps>,
-    render: RenderProp
-  } &
-  {
-    LoadingComponent?: ComponentType<LoadingProps>,
+type OwnProps = {
+    LoadingComponent?: ComponentType<LoadingProps>
+} & ({
+    render: RenderProp,
+    children: void
+} | {
+    render: void,
     children: RenderProp
-  }
+})
 
 type Props = {
     ...OwnProps,

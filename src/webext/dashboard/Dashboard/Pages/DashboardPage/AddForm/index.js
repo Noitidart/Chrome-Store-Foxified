@@ -5,7 +5,7 @@ import { Field } from 'redux-form'
 import classnames from 'cmn/lib/classnames'
 
 import { callInBackground } from '../../../../connect'
-import { withApiForm } from '../../../../../withApiForm'
+import withApiForm from '../../../../../withApiForm'
 
 import ErrorBox from './ErrorBox'
 import FieldText from './Fields/FieldText'

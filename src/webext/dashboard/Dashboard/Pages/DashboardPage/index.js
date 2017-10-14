@@ -9,7 +9,7 @@ import './index.css'
 
 type Props = {
     location: {
-        state: {
+        state?: {
             key: string
         }
     }
@@ -17,7 +17,7 @@ type Props = {
 
 class DashboardPage extends PureComponent<Props, void> {
     render() {
-        const {location:{state:{ key }}} = this.props;
+        // const {location:{state:{ key }}} = this.props;
         console.log('props:', this.props);
         return (
             <div>
