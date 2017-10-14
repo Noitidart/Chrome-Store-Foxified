@@ -16,7 +16,7 @@ import Background from './Background'
 // gPortsComm is needed because gReduxServer gets incoming through this. Meaning "things like ./app use callInBackground to connect to redux server"
 const gPortsComm = new PortsServer(BACKEND);
 export const callInPort = BACKEND.callInPort = callInTemplate.bind(null, gPortsComm, null);
-export let gReduxServer;
+export let gReduxServer; // needed export so it can be tapped by redux-comm
 
 document.addEventListener('DOMContentLoaded', () => {
     BACKEND.gReduxServer = gReduxServer = new ReduxServer(store, ()=>null)
