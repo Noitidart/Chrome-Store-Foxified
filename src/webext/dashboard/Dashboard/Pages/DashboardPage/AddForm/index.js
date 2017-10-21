@@ -84,6 +84,6 @@ class AddFormDumb extends PureComponent<Props, State> {
     flexAnyField = name => this.setState(() => ({ or:name }))
 }
 
-const AddForm = withApiForm('valdiate')(AddFormDumb)
+const AddForm = withApiForm()(AddFormDumb)
 
 export default AddForm

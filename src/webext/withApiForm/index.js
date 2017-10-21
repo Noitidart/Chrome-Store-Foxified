@@ -14,7 +14,10 @@ import type { Shape as AppShape } from '../flow-control'
 import type { ActionStatus } from '../flow-control/api'
 
 type OwnProps = {
-    actionId: Id // register_12 or just register
+    form: string,
+    api?: {}, // if cannot rely on redux to connect
+    actionId: Id, // register_12 or just register
+    dispatch?: Dispatch // not necessarily dispatch, but anything dispatch-like that gets me to the store
 }
 
 type Props = {
@@ -23,17 +26,18 @@ type Props = {
     dispatch?: Dispatch
 }
 
-// must be wrapped by redux-form
+// must be wrapped by redux-form link910018
 
-function withApiForm(actionId: string, reduxFormConfig?: {}={}, dispatcher?: ()=>void) {
+function withApiForm() {
     return function(WrappedComponent: ComponentType) {
         class WithApiFormDumb extends WrappedComponent<Props> {
             static displayName = wrapDisplayName(WrappedComponent, 'withApiForm')
 
             constructor(props) {
                 super(props);
-                this.triggerSubmit = this.props.handleSubmit(this.triggerSubmit);
-                this.monitorSubmit = this.props.handleSubmit(this.monitorSubmit);
+                console.log('props:', props);
+                this.triggerSubmit = props.handleSubmit(this.triggerSubmit); // link910018
+                this.monitorSubmit = props.handleSubmit(this.monitorSubmit); // link910018
             }
 
             render() {
@@ -43,11 +47,7 @@ function withApiForm(actionId: string, reduxFormConfig?: {}={}, dispatcher?: ()=
             triggerSubmit = values => {
                 const { dispatch, actionId } = this.props;
                 const [ action ] = splitActionId(actionId);
-                if (dispatcher) {
-                    dispatcher(API[action](values))
-                } else {
-                    dispatch(API[action](values));
-                }
+                dispatch(API[action](values));
             }
             monitorSubmit = async () => {
                 const { actionId, dispatch, status } = this.props;
@@ -70,14 +70,12 @@ function withApiForm(actionId: string, reduxFormConfig?: {}={}, dispatcher?: ()=
 
         }
 
-        const withForm = connect({
-            form: `form-${actionId}`,
-            ...reduxFormConfig
-        });
+        const withForm = reduxForm();
 
         const withRedux = connect(
             // function({ api }: AppShape, { actionId }: OwnProps) {
-            function({ api }: AppShape) {
+            function({ api:apiState }: AppShape, { actionId, api:apiBackup }: OwnProps) {
+                const api = apiState || apiBackup;
                 return {
                     status: getStatus(actionId, api)
                 }

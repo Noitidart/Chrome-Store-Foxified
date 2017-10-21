@@ -35,7 +35,17 @@ export function getStatus(keyFull: string, api: ApiShape, isNotTopLevel?: boolea
     // console.log('getStatus :: keyFull:', keyFull, 'api:', api);
     // real status, is the deepest stauts, following "other"
     const [key, id] = splitActionId(keyFull);
-    const value = id === undefined ? api[key] : api[key][id];
+
+    // if no value yet then undefined, its a preemptive actionId like in withApiForm
+    let value;
+    if (id === undefined) {
+        if (api[key] === undefined) return undefined;
+        value = api[key];
+    } else {
+        if (api[key] === undefined) return undefined;
+        else if (api[key][id] === undefined) return undefined;
+        else value = api[key][id];
+    }
 
     const isTopLevel = !isNotTopLevel;
     if (isTopLevel && !value ) return undefined; // if top level, meaning first iteration of extractStatus, then it is possible that an entry does not exist. all sublevels MUST exist though

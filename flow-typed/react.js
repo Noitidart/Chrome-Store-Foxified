@@ -7,4 +7,4 @@ type ChildrenArray = React.ChildrenArray;
 type Element = React.Element; // React.Element<typeof Component>
 type ElementRef = React.ElementRef; // React.ElementRef<typeof Component>
 type ComponentType = React.ComponentType;
-type StatelessComponent = React.StatelessFunctionalComponent;
+type PureComponentType = React.StatelessFunctionalComponent;
