@@ -17,13 +17,13 @@ type OwnProps = {
     form: string,
     api?: {}, // if cannot rely on redux to connect
     actionId: Id, // register_12 or just register
-    dispatch?: Dispatch // not necessarily dispatch, but anything dispatch-like that gets me to the store
+    dispatch?: ({}) => void // not necessarily dispatch, but anything dispatch-like that gets me to the store
 }
 
 type Props = {
     ...OwnProps,
     status: ActionStatus,
-    dispatch?: Dispatch
+    dispatcher: Dispatch // or ownProps.dispatch
 }
 
 // must be wrapped by redux-form link910018
@@ -35,9 +35,21 @@ function withApiForm() {
 
             constructor(props) {
                 super(props);
-                console.log('props:', props);
                 this.triggerSubmit = props.handleSubmit(this.triggerSubmit); // link910018
                 this.monitorSubmit = props.handleSubmit(this.monitorSubmit); // link910018
+            }
+
+            componentDidUpdate(propsOld) {
+                const { status } = this.props;
+                const { status:statusOld } = propsOld;
+
+                if (status && status !== statusOld) this.monitorSubmit(); // status changed, so time for new display, it might be that it was so fast that status.code is back to OK and statusOld.code was also OK, thats why i needed reference to object UNLESS its undefiend, then dont monitorSubmit
+
+                if (super.componentDidUpdate) super.componentDidUpdate();
+            }
+            componentWillMount() {
+                if (this.props.status !== undefined) this.monitorSubmit();
+                if (super.componentWillMount) super.componentWillMount();
             }
 
             render() {
@@ -45,12 +57,14 @@ function withApiForm() {
             }
 
             triggerSubmit = values => {
-                const { dispatch, actionId } = this.props;
+                const { dispatcher, actionId } = this.props;
                 const [ action ] = splitActionId(actionId);
-                dispatch(API[action](values));
+                dispatcher(API[action]({ actionId, values }));
             }
+
+            hasSubmitCompleted = props => !isStatusBusy(props.status)
             monitorSubmit = async () => {
-                const { actionId, dispatch, status } = this.props;
+                const { actionId, dispatcher, status } = this.props;
 
                 if (status === undefined) return console.error('WARNING how getting into monitorSubmit when status is undefined?? this should never happen');
                 try {
@@ -61,10 +75,10 @@ function withApiForm() {
                 }
 
                 const {status:{ errors, reply }} = this.props; // must destructure first, because this dispatch happen so fast apparently that it changes props to status undefined
-                dispatch(API.update({ [actionId]:undefined }));
+                dispatcher(API.update({ [actionId]:undefined }));
 
                 if (errors) throw new SubmissionError({ _err:status, ...errors });
-                else this.handleSubmitOk && this.handleSubmitOk(reply);
+                else if (this.handleSubmitOk) this.handleSubmitOk(reply);
 
             }
 
@@ -78,6 +92,11 @@ function withApiForm() {
                 const api = apiState || apiBackup;
                 return {
                     status: getStatus(actionId, api)
+                }
+            },
+            function(dispatch: Dispatch, props: OwnProps) {
+                return {
+                    dispatcher: props.dispatch || dispatch
                 }
             }
         )

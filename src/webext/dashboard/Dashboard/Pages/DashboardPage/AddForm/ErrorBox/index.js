@@ -35,7 +35,7 @@ class ErrorBoxDumb extends PureComponent<Props, void> {
         // console.log('ErroBox props:', this.props);
 
         const fieldErrors = !isObjectEmpty(syncErrors) || !isObjectEmpty(asyncErrors) || !isObjectEmpty(submitErrors) ? { ...syncErrors, ...asyncErrors, ...submitErrors } : null;
-        console.log('fieldErrors:', fieldErrors);
+        // console.log('fieldErrors:', fieldErrors);
 
         if (!error && !fieldErrors || error && !fieldErrors && submitting) {
             return null;

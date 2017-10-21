@@ -20,6 +20,11 @@ export const getId = function* getId(reducer: string) {
     }
     return (++NEXT_ID[reducer]).toString();
 }
+
+let NEXT_ID_SYNC = 0;
+export function getIdSync() {
+    return (NEXT_ID_SYNC++).toString();
+}
 /*
 //
 const REQUEST_ADD = A`REQUEST_ADD`;

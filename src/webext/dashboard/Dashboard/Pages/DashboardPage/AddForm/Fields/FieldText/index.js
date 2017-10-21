@@ -23,7 +23,6 @@ class FieldText extends PureComponent<Props, void> {
     render() {
         const {meta:{ error }, input, input:{ value }, label } = this.props;
 
-        console.log('field text props:', this.props);
         return (
             <div className="Field">
                 <div className="Field--col">

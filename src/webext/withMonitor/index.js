@@ -47,7 +47,7 @@ function withMonitor(WrappedComponent) {
                     const predicateWrapped: PredicateWrapped = () => {
                         const rez = predicate(this.props, this.state);
                         if (rez) {
-                            const ix = monitors.findIndex( aPredicateWrapped => aPredicateWrapped === predicateWrapped );
+                            const ix = monitors.findIndex( ({ predicateWrapped:aPredicateWrapped }) => aPredicateWrapped === predicateWrapped );
                             monitors.splice(ix, 1);
                             resolve(rez);
                         }

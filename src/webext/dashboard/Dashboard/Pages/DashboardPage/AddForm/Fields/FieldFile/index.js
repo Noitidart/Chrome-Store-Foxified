@@ -35,7 +35,7 @@ class FieldFile extends PureComponent<Props, State> {
     render() {
         const {meta:{ error }, input, input:{ value }, label } = this.props;
         const { fileName } = this.state;
-        console.log('in render, fileName:', fileName, 'value:', value);
+
         return (
             <div className="Field">
                 <div className="Field--col">

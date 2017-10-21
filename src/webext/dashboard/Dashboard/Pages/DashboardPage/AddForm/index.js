@@ -35,10 +35,9 @@ class AddFormDumb extends PureComponent<Props, State> {
     triggerSubmit: () => void // withApiForm
 
     render() {
-        const { submitting, form, error } = this.props;
+        const { submitting, form, error, status } = this.props;
         const { or } = this.state;
 
-        console.log('this.triggerSubmit:', this.triggerSubmit);
         return (
             <form onSubmit={this.triggerSubmit} className="AddForm">
                 <fieldset className="AddForm--fieldset">
@@ -69,7 +68,7 @@ class AddFormDumb extends PureComponent<Props, State> {
                     </div>
                     <div className="AddForm--control">
                         <button disabled={submitting} style={{fontSize:'1.1em',fontWeight:500}}>Add to Firefox</button>
-                        { submitting && <span>Validating with server...</span> }
+                        { submitting && <span>{status.code}</span> }
                     </div>
                 </fieldset>
             </form>
@@ -77,7 +76,7 @@ class AddFormDumb extends PureComponent<Props, State> {
     }
 
     handleSubmitOk = reply => {
-        console.log('reply:', reply);
+        console.log('SUBMT IS A OK! reply:', reply);
         this.props.reset();
     }
 

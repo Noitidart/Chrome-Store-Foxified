@@ -25,13 +25,12 @@ class DashboardPageDumb extends PureComponent<Props, void> {
     render() {
         const {location:{state:{ key:pageKey=DATE_PAGE_LOADED }={}}, dispatchProxied, api } = this.props;
 
-        console.log('pageKey:', pageKey, 'dispatchProxied:', dispatchProxied);
         return (
             <div>
                 <p className="Page--intro">
                     A panel to all your extension downloads
                 </p>
-                <AddForm form={`register_${pageKey}`} actionId={`register_${pageKey}`} dispatch={dispatchProxied} api={api} />
+                <AddForm form={`validate_${pageKey}`} actionId={`validate_${pageKey}`} dispatch={dispatchProxied} api={api} />
                 <Cards />
             </div>
         )

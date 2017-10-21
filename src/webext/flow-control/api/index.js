@@ -5,14 +5,17 @@ import { take, takeEvery, call, put, select, all } from 'redux-saga/effects'
 import { depth0Or1Equal } from 'cmn/lib/recompose'
 import shallowEqual from 'recompose/shallowEqual'
 
-import { deleteUndefined, getId } from '../utils'
+import { deleteUndefined, getId, getIdSync } from '../utils'
 import { splitActionId } from './utils'
+
+import type { IOEffect } from 'redux-saga/effects'
 
 type ActionStatus = {
     code?: string,
     placeholders?: string[], // for use when do extension.i18n.getMessage(`PINGUP_${status}`, placeholders)
     other?: string, // `${key}_${id}` of other things status to show in here
-    errors?: {} // for redux form
+    errors?: {}, // for redux form
+    reply?: {}
 }
 
 type StatusError = 'ERROR' // | 'ERROR_*'
@@ -47,23 +50,38 @@ export type Shape = {
         other?: 'pingDown' | 'pingLoggedIn' | 'pingOffline'
     },
     sign?: {
-        code: 'CREDING' | 'MODING' | 'TIMING' | 'UPLOADING' | 'REVIEWING' | 'DOWNLOADING' | StatusDone,
-        other?: 'pingDown' | 'pingLoggedIn' | 'pingAgree' | 'pingOffline',
-        error?: string
+        [Id]: {
+            code: 'CREDING' | 'MODING' | 'TIMING' | 'UPLOADING' | 'REVIEWING' | 'DOWNLOADING' | StatusDone,
+            other?: 'pingDown' | 'pingLoggedIn' | 'pingAgree' | 'pingOffline',
+            error?: string
+        }
     },
     validate?: {
-        code: 'FETCHING',
-        other?: 'pingCwsDown'
+        [Id]: {
+            code: 'FETCHING',
+            other?: 'pingCwsDown'
+        }
     },
     fetch: {
         [Id]: {
             code: 'FETCHING' | 'WAITING',
             other?: 'pingDown' | 'pingOffline'
         }
+    },
+    download: {
+        [Id]: {
+            code: 'FETCHING' | 'WAITING',
+            other?: 'pingCwsDown' | 'pingOffline'
+        }
     }
 }
 
-const INITIAL = {}
+const INITIAL = { // crossfile-link18381000 - must delcare empty objets for ones with `[Id]` - multi in parallel stuff
+    download: {},
+    fetch: {},
+    sign: {},
+    validate: {}
+}
 export const sagas = [];
 
 const A = ([actionType]: string[]) => 'API_' + actionType;
@@ -77,7 +95,7 @@ const isServerDown = function* isServerUp() { return yield select(state => state
 // yielders/take's - can do like `yield take(SERVER_UP)`
 const SERVER_UP = ({ type, data }) => type === UPDATE && 'isDown' in data && !data.isDown
 
-const fetchApi = function* fetchApi(input:string, init={}, update) {
+const fetchApi = function* fetchApi(input:string, init={}, update): Generator<IOEffect, void, any> {
     while (true) {
         if (call(isServerDown)) {
             yield put(update({ other:'pingDown' }));
@@ -111,7 +129,7 @@ const PING_OFFLINE = A`PING_OFFLINE`;
 type PingOfflineAction = { type:typeof PING_OFFLINE };
 const pingOffline = (): PingOfflineAction => ({ type:PING_OFFLINE });
 
-const pingOfflineSaga = function* pingOfflineSaga() {
+const pingOfflineSaga = function* pingOfflineSaga(): Generator<IOEffect, void, any> {
     const updateThis = (thisData?:{}, otherData?:{}) => update({ isOffline:thisData, ...otherData });
 
     while (true) {
@@ -154,7 +172,7 @@ const PING_DOWN = A`PING_DOWN`;
 type PingDownAction = { type:typeof PING_DOWN };
 const pingDown = (): PingDownAction => ({ type:PING_DOWN });
 
-const pingDownSaga = function* pingDownSaga() {
+const pingDownSaga = function* pingDownSaga(): Generator<IOEffect, void, any> {
     const updateThis = (thisData?:{}, otherData?:{}) => update({ isLoggedIn:thisData, ...otherData });
 
     while (true) {
@@ -186,7 +204,7 @@ const PING_CWS_DOWN = A`PING_CWS_DOWN`;
 type PingCwsDownAction = { type:typeof PING_CWS_DOWN };
 const pingCwsDown = (): PingCwsDownAction => ({ type:PING_CWS_DOWN });
 
-const pingCwsDownSaga = function* pingCwsDownSaga() {
+const pingCwsDownSaga = function* pingCwsDownSaga(): Generator<IOEffect, void, any> {
     const updateThis = (thisData?:{}, otherData?:{}) => update({ isCwsDown:thisData, ...otherData });
 
     while (true) {
@@ -218,7 +236,7 @@ const PING_LOGGEDIN = A`PING_LOGGEDIN`;
 type PingLoggedInAction = { type:typeof PING_LOGGEDIN };
 const pingLoggedIn = (): PingLoggedInAction => ({ type:PING_LOGGEDIN });
 
-const pingLoggedInSaga = function* pingLoggedInSaga() {
+const pingLoggedInSaga = function* pingLoggedInSaga(): Generator<IOEffect, void, any> {
 
     const updateThis = (thisData?:{}, otherData?:{}) => update({ isLoggedIn:thisData, ...otherData });
 
@@ -246,18 +264,16 @@ sagas.push(pingLoggedInSaga);
 
 //
 const SIGN = A`SIGN`;
-type RegisterAction = { type:typeof SIGN, values:{| name:string, email:string, password:string, passwordConfirmation:string |} };
-const sign = (values): RegisterAction => ({ type:SIGN, values });
+type SignAction = { type:typeof SIGN, values:{| name:string, email:string, password:string, passwordConfirmation:string |} };
+const sign = (values): SignAction => ({ type:SIGN, values });
 
-const signSaga = function* signSaga(actionId:string, action: RegisterAction) {
-
-    if (typeof actionId === 'number') actionId = 'sign_' + actionId;
-
-    const updateThis = (thisData?:{}, otherData?:{}) => update({ [actionId]:thisData, ...otherData });
-
+const signSaga = function* sign(action: SignAction): Generator<IOEffect, void, any> {
     while (true) {
-        const { values } = yield take(SIGN);
+        const action: SignAction = yield take(SIGN);
+        const { values } = action;
         console.log('in sign saga, values:', values);
+
+        const { updateThis, actionId } = yield call(standardApi, 'validate', action);
 
         yield put(updateThis({ code:'FETCHING' }));
 
@@ -269,10 +285,69 @@ const signSaga = function* signSaga(actionId:string, action: RegisterAction) {
 sagas.push(signSaga);
 
 //
+const VALIDATE = 'VALIDATE';
+type ValidateAction = { type:typeof VALIDATE, values:{| fileDataUrl?:string, storeUrl?:string, actionId?:Id |} };
+const validate = (values, actionId): ValidateAction => ({ type:VALIDATE, values, actionId });
+
+const validateSaga = function* validateSaga(): Generator<IOEffect, void, any> {
+    while (true) {
+        const action: ValidateAction = yield take(VALIDATE);
+        const { values } = action;
+        console.log('in validate saga, values:', values);
+
+        const { updateThis, actionId } = yield call(standardApi, 'validate', action);
+
+        console.log('updateThis:', updateThis, 'actionId:', actionId);
+
+        yield put(updateThis({ code:'FETCHING' }));
+
+        yield call(delay, 5000);
+
+        yield put(updateThis({ code:'OK' }));
+    }
+}
+sagas.push(validateSaga);
+
+//
+const DOWNLOAD = 'DOWNLOAD';
+type DownloadAction = { type:typeof DOWNLOAD, values:{| actionId?:Id |} };
+const download = (values): DownloadAction => ({ type:DOWNLOAD, values });
+
+const downloadSaga = function* downloadSaga(): Generator<IOEffect, void, any> {
+    while (true) {
+        const action: DownloadAction = yield take(DOWNLOAD);
+        const { values } = action;
+        console.log('in download saga, values:', values);
+
+        const { updateThis, actionId } = yield call(standardApi, 'download', action);
+
+        yield put(updateThis({ code:'FETCHING' }));
+
+        yield call(delay, 5000);
+
+        yield put(updateThis({ code:'OK' }));
+    }
+}
+sagas.push(downloadSaga);
+
+type ApiAction = Action | { actionId?:string }
+type UpdateThis = (thisData?:{}, otherData?:{}) => UpdateAction
+const standardApi = function* standardApi(verb: string, action:ApiAction): Generator<IOEffect, { actionId:Id, updateThis:UpdateThis }, any> {
+    let {values:{ actionId }} = action;
+    if (!actionId) actionId = yield call(getIdSync);
+    if (!actionId.startsWith(`${verb}_`)) actionId = `${verb}_${actionId}`;
+
+    const updateThis: UpdateThis = (thisData, otherData) => update({ [actionId]:thisData, ...otherData });
+
+    return { actionId, updateThis };
+}
+
+//
 type StepableAction = // an action that can be resumed? so actions should be split at which point data needs to be saved in order for a resume?
-  | SIGN
-  | VALIDATE
-  | DOWNLOAD;
+  | typeof VALIDATE
+  | typeof SIGN
+  | typeof VALIDATE
+  | typeof DOWNLOAD;
 
 //
 type Action =
@@ -288,13 +363,17 @@ export default function reducer(state: Shape = INITIAL, action:Action): Shape {
             const stateNew = { ...state };
             const cleanKeys = {};
 
+            console.log('will loop');
+
             for (const [keyFull, value] of Object.entries(data)) {
                 const [key, id] = splitActionId(keyFull);
                 if (id === undefined) {
                     const valueOld = state[key];
                     stateNew[key] = value === undefined ? undefined : { ...valueOld, ...value };
                 } else {
+                    console.log('building from valueOld');
                     const valueOld = state[key][id];
+                    console.log('valueOld:', valueOld, 'value:', value);
                     cleanKeys[key] = 1;
                     stateNew[key] = {
                         ...state[key],
@@ -306,6 +385,7 @@ export default function reducer(state: Shape = INITIAL, action:Action): Shape {
                 }
             }
 
+            console.log('will deleteUndefined');
             for (const key of Object.keys(cleanKeys)) {
                 deleteUndefined(stateNew[key]);
             }
@@ -316,4 +396,4 @@ export default function reducer(state: Shape = INITIAL, action:Action): Shape {
 }
 
 export type { ActionStatus }
-export { SERVER, sign }
+export { SERVER, sign, validate, download, update }
