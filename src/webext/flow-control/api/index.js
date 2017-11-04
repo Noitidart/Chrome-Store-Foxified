@@ -6,7 +6,7 @@ import { take, takeEvery, call, put, select, all } from 'redux-saga/effects'
 import shallowEqual from 'recompose/shallowEqual'
 import { isObject } from 'cmn/lib/all'
 
-import { deleteUndefined, getIdPersisted, getId } from '../utils'
+import { deleteUndefined, getIdSaga, getId } from '../utils'
 import { splitActionId } from './utils'
 
 import { canAdd } from '../extensions'
@@ -199,7 +199,7 @@ const validateWorker = function* validateWorker(action: ValidateAction): Generat
 
     // resolve();
 
-    // const id = yield call(getIdPersisted, 'extensions');
+    // const id = yield call(getIdSaga, 'extensions');
     // yield put(add({
     //     id,
     //     kind: storeName,

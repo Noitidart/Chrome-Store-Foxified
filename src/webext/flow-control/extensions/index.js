@@ -8,7 +8,7 @@ import { addFile, deleteFile } from '../files'
 import { get_webstore_url, get_crx_url, get_webstore_name, get_extensionID } from '../../cws_pattern'
 import { omit } from 'cmn/lib/all'
 import { injectStatusPromise, blobToDataUrl, dataUrlToBlob, blobToArrBuf, crxToZip, arrBufToDataUrl, deleteUndefined, fetchEpoch, getBase64FromDataUrl } from './utils'
-import { getId } from '../utils'
+import { getId, getIdSaga } from '../utils'
 
 import type { StatusInjection } from './utils'
 import type { FileId } from '../files'
@@ -123,9 +123,11 @@ function* requestAddWorker(action: RequestAddAction) {
         }
 
         yield put(add({
+            id: yield getIdSaga('extensions'),
             kind,
             storeUrl: storeUrlFixed,
             listingTitle,
+            status: STATUS.DOWNLOADING,
             date: Date.now()
         }));
     } else if (fileDataUrl) {
@@ -158,17 +160,17 @@ function* requestAddWorker(action: RequestAddAction) {
         }
 
         yield put(add({
+            id: yield getIdSaga('extensions'),
             kind,
             fileDataUrl,
             name,
             version,
+            status: STATUS.CONVERTING,
             date: Date.now()
         }));
     }
 
     resolve();
-
-    yield call(process,
 }
 function* requestAddWatcher() {
     yield takeEvery(REQUEST_ADD, requestAddWorker);
@@ -279,8 +281,8 @@ export default function reducer(state: Shape = INITIAL, action:Action): Shape {
         }
         case ADD: {
             const { entry } = action;
-            const id = getId('extensions', state);
-            return { ...state, [id]:entry };
+            if (!('id' in entry)) entry.id = getId('extensions', state)
+            return { ...state, [entry.id]:entry };
         }
         case PUT: {
             const { id, data } = action;

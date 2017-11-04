@@ -11,7 +11,7 @@ export function deleteUndefined<T: {}>(obj: T): T {
 }
 
 const NEXT_ID: { [string]: Id } = {};
-export const getIdPersisted = function* getId(reducer: string): Id {
+export const getIdSaga = function* getId(reducer: string): Id {
     // reducer must have shpae { [Id]: { id } }
     if (!(reducer in NEXT_ID)) {
         const { [reducer]:entrys } = yield select();

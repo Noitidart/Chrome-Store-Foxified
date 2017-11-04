@@ -5,8 +5,9 @@ import moment from 'moment'
 
 import { STATUS, installUnsigned, save } from '../../../../../../flow-control/extensions'
 
-import CWS_LOGO from './images/chrome-web-store-logo-2012-2015.svg'
-import EXT_LOGO_GENERIC from './images/extension-generic-flat-black.svg'
+import IMAGE_CWS from './images/chrome-web-store-logo-2012-2015.svg'
+import IMAGE_EXT_GENERIC from './images/extension-generic-flat-black.svg'
+import IMAGE_FOLDER from './images/folder.svg'
 
 import './index.css'
 
@@ -47,14 +48,14 @@ class Card extends PureComponent<Props, State> {
         clearInterval(this.agoInterval);
     }
     render() {
-        const { name, date, version, storeUrl, listingTitle, status, fileId, xpiFileId, signedFileId } = this.props;
+        const { name, date, version, storeUrl, listingTitle, status, fileId, xpiFileId, signedFileId, kind } = this.props;
         const { ago } = this.state;
 
         return (
             <div className="Card">
                 <div className="Card--background" />
                 <div className="Card--row Card--row--title">
-                    <img className="Card--logo" src={EXT_LOGO_GENERIC} alt="" />
+                    <img className="Card--logo" src={IMAGE_EXT_GENERIC} alt="" />
                     <h3 className="Card--title">
                         { getName(name, listingTitle) }
                     </h3>
@@ -65,9 +66,9 @@ class Card extends PureComponent<Props, State> {
                         Source
                     </div>
                     <a href={storeUrl} target="_blank" className="Card--link">
-                        <img src={CWS_LOGO} alt="" className="Card--link-image" />
+                        <img src={kind === 'file' ? IMAGE_FOLDER : IMAGE_CWS} alt="" className="Card--link-image" />
                         <span className="Card--link-label">
-                            {listingTitle}
+                        { kind === 'file' ? 'Your Computer' : listingTitle }
                         </span>
                     </a>
                 </div>
