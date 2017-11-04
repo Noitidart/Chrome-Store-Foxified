@@ -1,5 +1,7 @@
 // @flow
 
+import HmacSHA256 from 'crypto-js/hmac-sha256'
+import EncBase64 from 'crypto-js/enc-base64'
 import { timeout } from 'cmn/lib/all'
 
 type StatusOk = void;
@@ -73,15 +75,15 @@ type FetchEpochOptions = {
 }
 type FetchEpochServers = {
     url: string,
-    process: (res:{}) => number // return ms or throw
+    process: (res:{}) => Promise<number> // return ms or throw
 }
-async function fetchEpoch(options: FetchEpochOptions={}) {
+export async function fetchEpoch(options: FetchEpochOptions={}) {
     options = Object.assign({
         timeout: 10000,
         compensate: true
     }, options);
 
-	const servers: FetchEpochServers = [
+	const servers: FetchEpochServers[] = [
 		{
             url: 'https://trigger-community.sundayschoolonline.org/unixtime.php',
 			process: async res => {
@@ -117,7 +119,7 @@ async function fetchEpoch(options: FetchEpochOptions={}) {
 			const duration = Date.now() - start;
 			const halfDuration = Math.round(duration / 2);
 
-			let ms = await process(res.xhr);
+			let ms = await process(res);
 			if (options.compensate) ms -= halfDuration;
 			return ms;
 		} catch(ex) {
@@ -131,4 +133,51 @@ async function fetchEpoch(options: FetchEpochOptions={}) {
 export function getBase64FromDataUrl(dataUrl:string): string {
     const needle = 'base64,'
     return dataUrl.substr(dataUrl.indexOf(needle) + needle.length);
+}
+
+export function hashCode(str: string): number {
+    // https://stackoverflow.com/a/7616484/1828637
+    var hash = 0, i, chr;
+    if (str.length === 0) return hash;
+    for (i = 0; i < str.length; i++) {
+        chr   = str.charCodeAt(i);
+        hash  = (hash << 5) - hash + chr;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+}
+
+export async function generateJWTToken(aKey, aSecret, aDateMs) {
+
+    if (!aDateMs) aDateMs = await fetchEpoch();
+	// aKey and aSecret should both be strings
+	// jwt signature function for using with signing addons on AMO (addons.mozilla.org)
+	var part1 = b64utoa(stringifySorted({
+		typ: 'JWT',
+		alg: 'HS256'
+	}));
+
+    var iat = Math.ceil(aDateMs / 1000); // in seconds
+	var part2 = b64utoa(stringifySorted({
+		iss: aKey,
+		jti: Math.random().toString(),
+		iat,
+		exp: iat + 60 * 5
+    }));
+
+    var part3 = HmacSHA256(part1 + '.' + part2, aSecret).toString(EncBase64).replace(/=+$/m, '');
+    return part1 + '.' + part2 + '.' + part3;
+
+}
+
+function stringifySorted(obj) {
+    return JSON.stringify(obj, Object.keys(obj).sort());
+}
+
+function b64utoa(aStr) {
+	// base64url encode
+	return btoa(aStr)
+		.replace(/\+/g, '-')
+		.replace(/\//g, '_')
+		.replace(/=+$/m, '')
 }

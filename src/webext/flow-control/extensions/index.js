@@ -8,7 +8,7 @@ import { calcSalt } from 'cmn/lib/all'
 import { addFile, deleteFile } from '../files'
 import { get_webstore_url, get_crx_url, get_webstore_name, get_extensionID } from '../../cws_pattern'
 import { omit } from 'cmn/lib/all'
-import { injectStatusPromise, blobToDataUrl, dataUrlToBlob, blobToArrBuf, crxToZip, arrBufToDataUrl, deleteUndefined, fetchEpoch, getBase64FromDataUrl } from './utils'
+import { injectStatusPromise, blobToDataUrl, dataUrlToBlob, blobToArrBuf, crxToZip, arrBufToDataUrl, deleteUndefined, fetchEpoch, getBase64FromDataUrl, hashCode, generateJWTToken } from './utils'
 import { getId, getIdSaga } from '../utils'
 
 import type { StatusInjection } from './utils'
@@ -47,6 +47,10 @@ type Entry = {
     fileId?: FileId, // crx file id once downloaded or if browesd from computer
     listingTitle: string, // title of the listing on the store
     status: Status,
+    statusExtra: null |
+        { validationUrl: string } | // if status === "FAILED_REVIEW"
+        { progress: number } // if status "DOWNLOADING", "UPLOADING", number is 0 - 1
+    ,
     hasInstalled?: true, // once installed, no need to keep it highlighted.
     zipFileId?: FileId,
     xpiFileId?: FileId, // once converted
@@ -189,30 +193,28 @@ const process = (id): ProcessAction => ({ type:PROCESS, id });
 function* processWorker(action: ProcessAction) {
     const { id } = action;
 
-    yield put(patch(id, { status:undefined }));
-
     const {extensions:{ [id]:ext }} = yield select();
 
     let { signedFileId, xpiFileId, fileId } = ext;
 
     if (!signedFileId && !xpiFileId && !fileId) {
         // its a store url which hasnt been downloaded yet - so download it
-        yield put(patch(id, { status:STATUS.DOWNLOADING, progress:0 }));
+        yield put(patch(id, { status:STATUS.DOWNLOADING, statusExtra:{ progress:0 } }));
 
         const url = yield call(get_crx_url, ext.storeUrl);
-        const fileRes = yield call(fetch, url);
-        const fileBlob = yield call([fileRes, fileRes.blob]);
-        const fileDataUrl = yield call(blobToDataUrl, fileBlob);
+        const res = yield call(fetch, url);
+        const blob = yield call([res, res.blob]);
+        const fileDataUrl = yield call(blobToDataUrl, blob);
 
         fileId = yield (yield put(addFile(fileDataUrl))).promise;
-        yield put(patch(id, { progress:undefined, fileId }));
+        yield put(patch(id, { statusExtra:{ progress:100 }, fileId }));
     }
 
     if (!signedFileId && !xpiFileId) {
         const {files:{ [fileId]:{ data:fileDataUrl }={} }} = yield select();
 
         // turn crx to zip and read manifest
-        yield put(patch(id, { status:STATUS.PARSEING }));
+        yield put(patch(id, { status:STATUS.PARSEING, statusExtra:undefined }));
 
         const blob = yield call(dataUrlToBlob, fileDataUrl);
         const zipBuf = crxToZip(yield call(blobToArrBuf, blob));
@@ -232,7 +234,7 @@ function* processWorker(action: ProcessAction) {
         if (ext.kind !== 'file') yield put(patch(id, { version, name }));
 
         // convert zip to xpi
-        yield put(patch(id, { status:STATUS.CONVERTING }));
+        yield put(patch(id, { status:STATUS.CONVERTING, statusExtra:undefined }));
 
         const generatedPrefix = 'generated-';
         const extId = ext.storeUrl ? get_extensionID(ext.storeUrl) : `${generatedPrefix}${calcSalt({ len:32-generatedPrefix.length })}`;
@@ -250,7 +252,7 @@ function* processWorker(action: ProcessAction) {
         // const xpiDataUrl = 'data:application/zip;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
         const xpiDataUrl = 'data:application/x-xpinstall;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
         xpiFileId = yield (yield put(addFile(xpiDataUrl))).promise;
-        yield put(patch(id, { xpiFileId, status:undefined }));
+        yield put(patch(id, { xpiFileId }));
 
         if (ext.kind === 'file') yield put(deleteFile(ext.fileId));
     }
@@ -258,9 +260,194 @@ function* processWorker(action: ProcessAction) {
     // sign it
     if (!signedFileId) {
 
-        yield call(delay, 2000);
+        // get user.key and user.secret everytime fresh, because user may have logged into another account
+        yield put(patch(id, { status:'CREDENTIALING', statusExtra:undefined }));
+        let userKey, userSecret;
+        {
+            const res = yield call(fetch, `${AMO_DOMAIN}/en-US/developers/addon/api/key/`, {
+                credentials: 'include'
+            });
+            const html = yield call([res, res.text]);
 
-        yield put(patch(id, { status:'Signing not yet setup' }));
+            if (html.includes('accept-agreement')) {
+                yield put(patch(id, { status:'NEEDS_AGREE', statusExtra:undefined }));
+                return;
+            } else if (!html.includes('firefox/users/edit') && !html.includes('android/users/edit')) {
+                yield put(patch(id, { status:'NOT_LOGGED_IN', statusExtra:undefined }));
+                return;
+            } else {
+                const keyInputHtmlPatt = /input[^<]+jwtkey[^>]+/i;
+                const secretInputHtmlPatt = /input[^<]+jwtsecret[^>]+/i
+
+                let keyInputHtml, secretInputHtml;
+
+                keyInputHtml = keyInputHtmlPatt.exec(html);
+                secretInputHtml = secretInputHtmlPatt.exec(html);
+
+                if (!keyInputHtml || !secretInputHtml) {
+                    // need to generate keys
+                    const tokenHtml = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(html);
+                    console.log('tokenHtml:', tokenHtml);
+                    if (!tokenHtml) return yield put(patch(id, { status:'Could not generate credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
+
+                    const token = /value=["']?(.*?)["' /<]/i.exec(tokenHtml);
+                    if (!token) return yield put(patch(id, { status:'Could not extract token for credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
+
+
+                    const res = yield call(fetch, `${AMO_DOMAIN}/en-US/developers/addon/api/key/`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            Referer: AMO_DOMAIN + '/en-US/developers/addon/api/key/',
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: JSON.stringify({
+                            csrfmiddlewaretoken: token,
+                            action: 'generate'
+                        })
+                    });
+                    const html2 = yield call([res, res.text]);
+
+                    keyInputHtml = keyInputHtmlPatt.exec(html2);
+                    secretInputHtml = secretInputHtmlPatt.exec(html2);
+                }
+
+                if (!keyInputHtml || !secretInputHtml) return yield put(patch(id, { status:'Could not extract generated credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
+
+                const valuePatt = /value=["']?(.*?)["' /<]/i;
+                userKey = valuePatt.exec(keyInputHtml);
+                userSecret = valuePatt.exec(secretInputHtml);
+
+                if (!userKey || !userSecret) return yield put(patch(id, { status:'Could not credential values - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
+
+                userKey = userKey[1];
+                userSecret = userSecret[1];
+            }
+        }
+
+        // modify id in xpiBlob to use hash of user.id
+        yield put(patch(id, { status:'MODING', statusExtra:undefined }));
+
+        const userHash = hashCode(userKey);
+        const {files:{ [xpiFileId]:{ data:xpiDataUrl }={} }} = yield select();
+        const blob = yield call(dataUrlToBlob, xpiDataUrl);
+        const zipBuf = crxToZip(yield call(blobToArrBuf, blob));
+        const zip = yield call(Zip.loadAsync, zipBuf);
+        const manifestTxt = yield call([zip.file('manifest.json'), 'async'], 'string');
+        const manifestNewTxt = manifestTxt.replace('@chrome-store-foxified-unsigned', `@chrome-store-foxified-${userHash}`);
+        zip.file('manifest.json', JSON.stringify(manifestNewTxt));
+        const presignedBlob = yield call([zip, zip.generateAsync], { type:'blob' });
+
+        console.log('manifestTxt:', manifestTxt);
+        console.log('manifestNewTxt:', manifestNewTxt);
+
+
+        // upload
+        const { version, applications:{gecko:{ id:signingId }}} = JSON.parse(manifestNewTxt);
+
+        yield put(patch(id, { status:'UPLOADING', statusExtra:{ progress:0 } }));
+        {
+            const body = new FormData();
+            body.append('Content-Type', 'multipart/form-data');
+            const presignedFile = new File([presignedBlob], 'dummyname.xpi'); // http://stackoverflow.com/a/24746459/1828637
+            body.append('upload', presignedFile);
+
+            const res = yield call(fetch, `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`, {
+                method: 'PUT',
+                credentials: 'include',
+                body,
+                headers: {
+                    Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
+                }
+            });
+            const reply = yield call([res, res.json]);
+            console.log('UPLOADING res.status:', res.status, 'reply:', reply);
+
+            if (![201, 202, 409].includes(res.status)) {
+                let error;
+                try {
+                    ({ error } = reply); // yield call([res, res.json]));
+                } catch(ignore) {} // eslint-disable-line no-empty
+                console.log('error:', error);
+                return yield put(patch(id, { status:`Failed to upload to AMO. ${error || ''}`, statusExtra:undefined }));
+            }
+        }
+
+        // wait for review - and get downloadUrl
+        let downloadUrl;
+        {
+            while(true) {
+                yield put(patch(id, { status:'CHECKING_REVIEW', statusExtra:undefined }));
+
+                const res = yield call(fetch, `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`, {
+                    credentials: 'include',
+                    headers: {
+                        Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
+                    }
+                });
+                const reply = yield call([res, res.json]);
+                console.log('CHECKING res.status:', res.status, 'reply:', reply);
+
+                if (res.status !== 200) {
+                    let error;
+                    try {
+                        ({ error } = reply); // yield call([res, res.json]));
+                    } catch(ignore) {} // eslint-disable-line no-empty
+                    return yield put(patch(id, { status:`Failed to upload to AMO. ${error || ''}`, statusExtra:undefined }));
+                }
+
+                const { reviewed, passed_review, files:[ file ], validation_url } = reply;
+                const isDownloadReady = !!file;
+
+                if (isDownloadReady) {
+                    // ok review complete and approved - download it
+                    downloadUrl = file.download_url;
+                    break;
+                } else {
+                    // not yet signed, maybe failed?
+                    if (reviewed && !passed_review) {
+                        // failed review
+                        yield put(patch(id, { status:'FAILED_REVIEW', statusExtra:{ validationUrl:validation_url } }));
+                    } else {
+                        for (let i=1; i<=10; i++) {
+                            yield put(patch(id, { status:'WAITING_REVIEW', statusExtra:{ sec:i } }));
+                            yield call(delay, 1000);
+                        }
+                    }
+                }
+            }
+        }
+
+        // download it
+        yield put(patch(id, { status:'DOWNLOADING_SIGNED', statusExtra:{ progress:0 } }));
+        {
+            console.log('downloadUrl:', downloadUrl);
+            const res = yield call(fetch, downloadUrl, {
+                credentials: 'include',
+                headers: {
+                    Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
+                }
+            });
+            const reply = yield call([res, res.json]);
+            console.log('DOWNLOADING res.status:', res.status);
+
+            if (res.status !== 200) {
+                let error;
+                try {
+                    ({ error } = reply); // yield call([res, res.json]));
+                } catch(ignore) {} // eslint-disable-line no-empty
+                return yield put(patch(id, { status:`Failed to download from AMO. ${error || ''}`, statusExtra:undefined }));
+            }
+
+            const blob = yield call([res, res.blob]);
+            const signedDataUrl = yield call(blobToDataUrl, blob);
+
+            const signedFileId = yield (yield put(addFile(signedDataUrl))).promise;
+            yield put(patch(id, { signedFileId }));
+        }
+
+        yield put(patch(id, { status:undefined, statusExtra:undefined }));
+
     }
 
 }

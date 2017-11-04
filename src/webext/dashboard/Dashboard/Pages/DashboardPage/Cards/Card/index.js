@@ -57,7 +57,7 @@ class Card extends PureComponent<Props, State> {
                     <div className="Card--label">
                         Source
                     </div>
-                    <a href={storeUrl} target="_blank" className="Card--link">
+                    <a className="Card--link" href={storeUrl} target="_blank" rel="noopener noreferrer">
                         <img src={kind === 'file' ? IMAGE_FOLDER : IMAGE_CWS} alt="" className="Card--link-image" />
                         <span className="Card--link-label">
                         { kind === 'file' ? 'Your Computer' : listingTitle }
@@ -93,7 +93,9 @@ class Card extends PureComponent<Props, State> {
                 }
                 { status &&
                     <div className="Card--row">
-                        { this.getStatusMessage() }
+                        <div className="Card--status-wrap">
+                            { this.getStatusMessage() }
+                        </div>
                     </div>
                 }
                 <div className="Card--footer">
@@ -114,18 +116,52 @@ class Card extends PureComponent<Props, State> {
     }
 
     getStatusMessage() {
-        const { status } = this.props;
+        const { status, statusExtra } = this.props;
         switch (status) {
-            case STATUS.DOWNLOADING: return 'Downloading';
+            case STATUS.DOWNLOADING: return `Downloading from store ${statusExtra.progress}%`;
             case STATUS.PARSEING: return 'Parsing';
             case STATUS.CONVERTING: return 'Converting';
-            default: return (
+            case 'CREDENTIALING': return 'Checking AMO Credentials';
+            case 'NOT_LOGGED_IN': return (
                 <div className="Card--status-wrap">
-                    <span className="Card--status--bad">{status} -</span>
+                    <span className="Card--status--bad">You are not logged in on AMO</span>
+                    <span className="Card--status--bad">&nbsp;-&nbsp;</span>
+                    <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/" target="_blank" rel="noopener noreferrer">Login Now</a>
                     &nbsp;
                     <a href="#" className="Card--link Card--link--retry" onClick={this.retry}>Retry Now</a>
                 </div>
-            )
+            );
+            case 'NEEDS_AGREE': return (
+                <div className="Card--status-wrap">
+                    <span className="Card--status--bad">You need to accept AMO agreement</span>
+                    <span className="Card--status--bad">&nbsp;-&nbsp;</span>
+                    <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/en-US/developers/addon/api/key/" target="_blank" rel="noopener noreferrer">View Agreement</a>
+                    &nbsp;
+                    <a href="#" className="Card--link Card--link--retry" onClick={this.retry}>Retry Now</a>
+                </div>
+            );
+            case 'GENERATING_KEYS': return 'Generating AMO Credentials';
+            case 'MODING': return 'Preparing presigned package';
+            case 'UPLOADING': return `Uploading for review ${statusExtra.progress}%`;
+            case 'CHECKING_REVIEW': return 'Checking review progress';
+            case 'WAITING_REVIEW': return `Waiting for review - ${statusExtra.sec}s`;
+            case 'FAILED_REVIEW': return (
+                <div className="Card--status-wrap">
+                    <span className="Card--status--bad">AMO validation failed</span>
+                    <span className="Card--status--bad">&nbsp;-&nbsp;</span>
+                    <a className="Card--link Card--link--retry" href={statusExtra.validationUrl} target="_blank" rel="noopener noreferrer">View Validation Results</a>
+                    &nbsp;
+                    <a href="#" className="Card--link Card--link--retry" onClick={this.retry}>Retry Now</a>
+                </div>
+            );
+            case 'DOWNLOADING_SIGNED': return `Downloading signed ${statusExtra.progress}%`;
+            default: return (
+                <div className="Card--status-wrap">
+                    <span className="Card--status--bad">{status}</span>
+                    <span className="Card--status--bad">&nbsp;-&nbsp;</span>
+                    <a href="#" className="Card--link Card--link--retry" onClick={this.retry}>Retry Now</a>
+                </div>
+            );
         }
     }
 
