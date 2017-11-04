@@ -12,6 +12,7 @@ import { getId } from '../utils'
 
 import type { StatusInjection } from './utils'
 import type { FileId } from '../files'
+import type { IOEffect } from 'redux-saga/effects'
 
 const A = ([actionType]: string[]) => 'EXTENSIONS_' + actionType; // Action type prefixer
 
@@ -36,12 +37,13 @@ const SIGNED_STATUS = {
 const AMO_DOMAIN = 'https://addons.mozilla.org';
 
 type Id = string;
-type Kind = 'cws' | 'amo' | 'ows';
+type Kind = 'cws' | 'amo' | 'ows' | 'file';
 type Status = string; // $Keys<typeof STATUS>; // for some reason stupid flow is not recognizing $Keys
 type Entry = {
     kind: Kind,
     date: number, // listing check date - udated when donwnload is started
-    storeUrl: string,
+    storeUrl?: string,
+    fileDataUrl?: string, // crx
     listingTitle: string, // title of the listing on the store
     status: Status,
     hasInstalled?: true, // once installed, no need to keep it highlighted.
@@ -77,63 +79,103 @@ type DeleteAction = { type:typeof DELETE, idOrIds:Id|Id[] };
 const del = (idOrIds): DeleteAction => ({ type:DELETE, idOrIds });
 
 //
-const UPDATE = A`UPDATE`;
-// type UpdateAction = { type:typeof UPDATE, id:Id, data:$Shape<Entry> };
-type UpdateAction = { type:typeof UPDATE, id:Id, data:Entry };
-const update = (id, data): UpdateAction => ({ type:UPDATE, id, data });
+const PUT = A`PUT`;
+// type PutAction = { type:typeof PUT, id:Id, data:$Shape<Entry> };
+type PutAction = { type:typeof PUT, id:Id, data:Entry };
+const putExtension = (id, data): PutAction => ({ type:PUT, id, data });
 
 //
-// storeUrl is webstore url - one that matches return of cws_pattern.js :: get_webstore_url
 const REQUEST_ADD = A`REQUEST_ADD`;
-type RequestAddAction = { type:typeof REQUEST_ADD, storeUrl:string, ...StatusInjection };
-const requestAdd = (storeUrl): RequestAddAction => injectStatusPromise({ type:REQUEST_ADD, storeUrl });
+type RequestAddAction = { type:typeof REQUEST_ADD, storeUrl:string, fileDataUrl:string, ...StatusInjection };
+const requestAdd = ({ storeUrl, fileDataUrl }: { storeUrl:string, fileDataUrl:string }): RequestAddAction => injectStatusPromise({ type:REQUEST_ADD, storeUrl, fileDataUrl });
 
 function* requestAddWorker(action: RequestAddAction) {
     const { storeUrl, fileDataUrl, resolve } = action;
 
-    if (storeUrl && fileDataUrl) return resolve({ _error:'Must only input a one or the other, a store url OR a file from your computer, not both.'})
+    if (storeUrl && fileDataUrl) return resolve({ _error:'Must only input a one or the other, a store url OR a file from your computer, not both.' });
 
-    const storeUrlFixed = get_webstore_url(storeUrl);
-    if (!storeUrlFixed) return resolve({ storeUrl:'Not a valid store URL.' });
-    console.log('storeUrlFixed:', storeUrlFixed);
+    let kind;
+    if (storeUrl) {
+        const storeUrlFixed = get_webstore_url(storeUrl);
+        if (!storeUrlFixed) return resolve({ storeUrl:'Not a valid store URL.' });
+        console.log('storeUrlFixed:', storeUrlFixed);
 
-    const storeName = get_webstore_name(storeUrl);
-    if (!['cws'].includes(storeName)) return resolve({ storeUrl:`Extensions from ${storeName.toUpperCase()} are not supported.` });
+        const storeName = get_webstore_name(storeUrl);
+        if (!['cws'].includes(storeName)) return resolve({ storeUrl:`Extensions from ${storeName.toUpperCase()} are not supported.` });
+        kind = storeName;
 
-    // check for duplicates
-    const { extensions } = yield select();
-    const exists = !!Object.values(extensions).find( ({ storeUrl:aStoreUrl }) => aStoreUrl === storeUrlFixed );
-    if (exists) return resolve({ storeUrl:'You have previously already downloaded this extension' });
 
-    // validate
-    let listingTitle;
-    {
-        let res, timeout;
-        try { ({ res, timeout } = yield race({ timeout:call(delay, 10000), res:call(fetch, storeUrlFixed) })) }
-        catch(ex) { return resolve({ _error:'Unhandled error while validating URL: ' + ex.message }) }
-        if (timeout) return resolve({ _error:'Connection timed out, please try again later.' });
-        if (res.status !== 200) return resolve({ storeUrl:`Invalid status of "${res.status}" at URL.` });
-        const html = yield call([res, res.text]);
-        listingTitle = html.match(/<title>(.+?)<\/title>/)[1];
+        // check for duplicates
+        const { extensions } = yield select();
+        const exists = !!Object.values(extensions).find( ({ storeUrl:aStoreUrl }) => aStoreUrl === storeUrlFixed );
+        if (exists) return resolve({ storeUrl:'You have previously already downloaded this extension' });
+
+        // validate
+        let listingTitle;
+        {
+            let res, timeout;
+            try { ({ res, timeout } = yield race({ timeout:call(delay, 10000), res:call(fetch, storeUrlFixed) })) }
+            catch(ex) { return resolve({ _error:'Unhandled error while validating URL: ' + ex.message }) }
+            if (timeout) return resolve({ _error:'Connection timed out, please try again later.' });
+            if (res.status !== 200) return resolve({ storeUrl:`Invalid status of "${res.status}" at URL.` });
+            const html = yield call([res, res.text]);
+            listingTitle = html.match(/<title>(.+?)<\/title>/)[1];
+        }
+
+        yield put(add({
+            kind,
+            storeUrl: storeUrlFixed,
+            listingTitle,
+            date: Date.now()
+        }));
+    } else if (fileDataUrl) {
+        // extract crx and check for duplicate ids
+        kind = 'file';
+
+        // turn crx to zip and read manifest
+        const blob = yield call(dataUrlToBlob, fileDataUrl);
+        const zipBuf = crxToZip(yield call(blobToArrBuf, blob));
+        const zip = yield call(Zip.loadAsync, zipBuf);
+        const manifest = JSON.parse(yield call([zip.file('manifest.json'), 'async'], 'string'));
+        const { version } = manifest;
+        let { name } = manifest;
+        if (name.startsWith('__MSG')) {
+            // get default localized name
+            const defaultLocale = manifest.default_locale;
+            const messages = JSON.parse(yield call([zip.file(`_locales/${defaultLocale}/messages.json`), 'async'], 'string'));
+            const nameKey = name.substring('__MSG_'.length, name.length-2);
+            const entry = Object.entries(messages).find( ([key]) => key.toLowerCase() === nameKey.toLowerCase() );
+            name = entry[1].message;
+        }
+
+        // check if name, version already exist
+        const { extensions } = yield select();
+        for (const extension of Object.values(extensions)) {
+            if (extension.name === name) {
+                // duplicate found
+                return resolve({ fileDataUrl:'You have previously already added this extension' });
+            }
+        }
+
+        yield put(add({
+            kind,
+            fileDataUrl,
+            name,
+            version,
+            date: Date.now()
+        }));
     }
 
     resolve();
 
-    const id = yield call(getId, 'extensions');
-    yield put(add({
-        id,
-        kind: storeName,
-        storeUrl: storeUrlFixed,
-        listingTitle,
-        date: Date.now()
-    }));
-
-    yield put(process(id));
+    yield call(process,
 }
 function* requestAddWatcher() {
     yield takeEvery(REQUEST_ADD, requestAddWorker);
 }
 sagas.push(requestAddWatcher);
+
+//
 
 //
 const PROCESS = A`PROCESS`
@@ -170,6 +212,7 @@ function* installUnsignedWorker(action: InstallUnsignedAction) {
     yield call(extensiona, 'tabs.create', { url:xpiBlobUrl });
 
     // TODO: URL.revokeObjectURL(xpiUrl);
+
 
 }
 function* installUnsignedWatcher() {
@@ -225,7 +268,7 @@ function getSaveKindDetails(kind) {
 type Action =
   | AddAction
   | DeleteAction
-  | UpdateAction;
+  | PutAction;
 
 export default function reducer(state: Shape = INITIAL, action:Action): Shape {
     switch(action.type) {
@@ -235,10 +278,11 @@ export default function reducer(state: Shape = INITIAL, action:Action): Shape {
             return omit({ ...state }, ...ids);
         }
         case ADD: {
-            const { entry, entry:{ id } } = action;
+            const { entry } = action;
+            const id = getId('extensions', state);
             return { ...state, [id]:entry };
         }
-        case UPDATE: {
+        case PUT: {
             const { id, data } = action;
             const dataOld = state[id];
             const idNew = 'id' in data ? data.id : id;
@@ -254,4 +298,4 @@ function getName(name, listingTitle) {
 }
 
 export type { Entry, Status }
-export { requestAdd, STATUS, installUnsigned, save }
+export { STATUS, installUnsigned, save, requestAdd }

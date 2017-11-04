@@ -51,4 +51,9 @@
     font-weight: 500;
     display: flex;
     justify-content: center;
+    align-items: center;
+}
+
+.AddForm--status {
+    margin: 0 10px;
 }

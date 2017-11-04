@@ -7,7 +7,7 @@ type StatusFail = { [string]:string }; // redux-form SubmissionError style keys 
 type StatusResolve = StatusOk => void
 type StatusPromise = Promise<StatusOk | StatusFail>
 export type StatusInjection = { promise:StatusPromise, resolve:StatusResolve }
-export function injectStatusPromise<T: { type:string }>(action: T): T {
+export function injectStatusPromise<T: Action>(action: T): T {
     action.promise = new Promise(resolve => action.resolve = resolve);
     return action;
 }

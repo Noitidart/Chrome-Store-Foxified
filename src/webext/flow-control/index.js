@@ -8,7 +8,7 @@ import { fork, all } from 'redux-saga/effects'
 import AsyncBrowserExtensionStorage from './storage'
 import filesTransform from './filesTransform.js'
 
-import api, { sagas as apiSagas } from './api'
+// import api, { sagas as apiSagas } from './api'
 import browserAction from './browser-action'
 import core from './core'
 import counter, { sagas as counterSagas } from './counter'
@@ -17,7 +17,7 @@ import extensions, { sagas as extensionsSagas } from './extensions'
 import files from './files'
 import pendings, { sagas as pendingsSagas } from './pendings'
 
-import type { Shape as ApiShape } from './api'
+// import type { Shape as ApiShape } from './api'
 import type { Shape as BrowserActionShape } from './browser-action'
 import type { Shape as CoreShape } from './core'
 import type { Shape as CounterShape } from './counter'
@@ -28,7 +28,7 @@ import type { Shape as PendingsShape } from './pendings'
 
 export type Shape = {
     _persist: { version:number, rehydrated:boolean },
-    api: ApiShape,
+    // api: ApiShape,
     browserAction: BrowserActionShape,
     counter: CounterShape,
     core: CoreShape,
@@ -51,8 +51,8 @@ const persistConfig = {
 }
 
 const sagaMiddleware = createSagaMiddleware();
-const reducers = persistReducer(persistConfig, combineReducers({ api, browserAction, core, counter, elements, extensions, files, pendings }));
-const sagas = [ ...apiSagas, ...counterSagas, ...extensionsSagas, ...pendingsSagas ];
+const reducers = persistReducer(persistConfig, combineReducers({ /* api, */ browserAction, core, counter, elements, extensions, files, pendings }));
+const sagas = [ /*...apiSagas,*/ ...counterSagas, ...extensionsSagas, ...pendingsSagas ];
 
 const store = createStore(reducers, applyMiddleware(sagaMiddleware));
 

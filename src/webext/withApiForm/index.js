@@ -59,7 +59,7 @@ function withApiForm() {
             triggerSubmit = values => {
                 const { dispatcher, actionId } = this.props;
                 const [ action ] = splitActionId(actionId);
-                dispatcher(API[action]({ actionId, values }));
+                dispatcher(API[action](actionId, values));
             }
 
             hasSubmitCompleted = props => !isStatusBusy(props.status)

@@ -1,11 +1,10 @@
 // @flow
 
 import React, { PureComponent } from 'react'
-import { Field } from 'redux-form'
+import { reduxForm, Field, SubmissionError } from 'redux-form'
 import classnames from 'cmn/lib/classnames'
 
 import { callInBackground } from '../../../../connect'
-import withApiForm from '../../../../../withApiForm'
 
 import ErrorBox from './ErrorBox'
 import FieldText from './Fields/FieldText'
@@ -32,14 +31,17 @@ class AddFormDumb extends PureComponent<Props, State> {
         or: undefined
     }
 
-    triggerSubmit: () => void // withApiForm
+    constructor(props) {
+        super(props);
+        this.handleSubmit = this.props.handleSubmit(this.handleSubmit);
+    }
 
     render() {
-        const { submitting, form, error, status } = this.props;
+        const { submitting, form, error } = this.props;
         const { or } = this.state;
 
         return (
-            <form onSubmit={this.triggerSubmit} className="AddForm">
+            <form onSubmit={this.handleSubmit} className="AddForm">
                 <fieldset className="AddForm--fieldset">
                     <legend>Add New Extension</legend>
                     <ErrorBox form={form} error={error} />
@@ -67,22 +69,28 @@ class AddFormDumb extends PureComponent<Props, State> {
                         </div>
                     </div>
                     <div className="AddForm--control">
-                        <button disabled={submitting} style={{fontSize:'1.1em',fontWeight:500}}>Add to Firefox</button>
-                        { submitting && <span>{status.code}</span> }
+                        <button type="submit" disabled={submitting} style={{fontSize:'1.1em',fontWeight:500}}>Add to Firefox</button>
+                        { submitting && <span className="AddForm--status">Validating...</span> }
                     </div>
                 </fieldset>
             </form>
         )
     }
 
-    handleSubmitOk = reply => {
-        console.log('SUBMT IS A OK! reply:', reply);
-        this.props.reset();
+    handleSubmit = async values => {
+        console.log('in handle submit')
+        const errors = await new Promise( resolve => callInBackground('dispatchSubmitAddForm', values, resolve) );
+        if (errors) throw new SubmissionError(errors);
+        else this.props.reset();
     }
 
     flexAnyField = name => this.setState(() => ({ or:name }))
 }
 
-const AddForm = withApiForm()(AddFormDumb)
+const AddFormControlled = reduxForm({
+    form: 'submit'
+})
+
+const AddForm = AddFormControlled(AddFormDumb)
 
 export default AddForm

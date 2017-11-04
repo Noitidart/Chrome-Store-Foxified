@@ -11,7 +11,7 @@ export function deleteUndefined<T: {}>(obj: T): T {
 }
 
 const NEXT_ID: { [string]: Id } = {};
-export const getId = function* getId(reducer: string) {
+export const getIdPersisted = function* getId(reducer: string): Id {
     // reducer must have shpae { [Id]: { id } }
     if (!(reducer in NEXT_ID)) {
         const { [reducer]:entrys } = yield select();
@@ -21,10 +21,21 @@ export const getId = function* getId(reducer: string) {
     return (++NEXT_ID[reducer]).toString();
 }
 
-let NEXT_ID_SYNC = 0;
-export function getIdSync() {
-    return (NEXT_ID_SYNC++).toString();
+const NEXT_ID_SYNC = {}
+export function getId(reducer: string, state?: {}): Id {
+    if (!state) {
+        if (!(reducer in NEXT_ID_SYNC)) {
+            NEXT_ID_SYNC[reducer] = 0;
+        }
+    } else {
+        if (!(reducer in NEXT_ID_SYNC)) {
+            const ids = Object.keys(state);
+            NEXT_ID_SYNC[reducer] = (ids.length ? Math.max(...ids) : 0).toString();
+        }
+    }
+    return (++NEXT_ID_SYNC[reducer]).toString();
 }
+
 /*
 //
 const REQUEST_ADD = A`REQUEST_ADD`;
