@@ -2,8 +2,9 @@
 
 import React, { PureComponent } from 'react'
 import moment from 'moment'
+import { pushAlternating } from 'cmn/lib/all'
 
-import { STATUS, installUnsigned, save } from '../../../../../../flow-control/extensions'
+import { STATUS, installUnsigned, save, process } from '../../../../../../flow-control/extensions'
 
 import IMAGE_CWS from './images/chrome-web-store-logo-2012-2015.svg'
 import IMAGE_EXT_GENERIC from './images/extension-generic-flat-black.svg'
@@ -20,15 +21,6 @@ type Props = {
 
 type State = {
     ago: string
-}
-
-function getStatusMessage(status: Status) {
-    switch (status) {
-        case STATUS.DOWNLOADING: return 'Downloading';
-        case STATUS.PARSEING: return 'Parsing';
-        case STATUS.CONVERTING: return 'Converting';
-        // no default
-    }
 }
 
 function getName(name, listingTitle) {
@@ -77,9 +69,11 @@ class Card extends PureComponent<Props, State> {
                         <div className="Card--label">
                             Save to Disk
                         </div>
-                        { fileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveExt}>CRX</a> }
-                        { xpiFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveUnsigned}>Unsigned</a> }
-                        { signedFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveSigned}>Signed</a> }
+                        { pushAlternating([
+                            fileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveExt} key="file">CRX</a>,
+                            xpiFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveUnsigned} key="xpi">Unsigned</a>,
+                            signedFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveSigned} key="signed">Signed</a>
+                        ].filter(el => el), <span>&nbsp;|&nbsp;</span>) }
                     </div>
                 }
                 { version !== undefined &&
@@ -90,7 +84,7 @@ class Card extends PureComponent<Props, State> {
                         <span className="Card--text">{version}</span>
                     </div>
                 }
-                { !status &&
+                { (!status || (xpiFileId || signedFileId)) &&
                     <div className="Card--row Card--row--buttons">
                         { xpiFileId && !signedFileId && <a href="#" className="Card--link Card--link-button" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a> }
                         { signedFileId && <a href="#" className="Card--link Card--link-button">Install</a> }
@@ -99,7 +93,7 @@ class Card extends PureComponent<Props, State> {
                 }
                 { status &&
                     <div className="Card--row">
-                        { getStatusMessage(status) }
+                        { this.getStatusMessage() }
                     </div>
                 }
                 <div className="Card--footer">
@@ -117,6 +111,28 @@ class Card extends PureComponent<Props, State> {
 
     getAgo() {
         return moment(this.props.date).fromNow();
+    }
+
+    getStatusMessage() {
+        const { status } = this.props;
+        switch (status) {
+            case STATUS.DOWNLOADING: return 'Downloading';
+            case STATUS.PARSEING: return 'Parsing';
+            case STATUS.CONVERTING: return 'Converting';
+            default: return (
+                <div className="Card--status-wrap">
+                    <span className="Card--status--bad">{status} -</span>
+                    &nbsp;
+                    <a href="#" className="Card--link Card--link--retry" onClick={this.retry}>Retry Now</a>
+                </div>
+            )
+        }
+    }
+
+    retry = e => {
+        const { dispatchProxied, id } = this.props;
+        e.preventDefault();
+        dispatchProxied(process(id));
     }
 }
 

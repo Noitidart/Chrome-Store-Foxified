@@ -188,67 +188,80 @@ const process = (id): ProcessAction => ({ type:PROCESS, id });
 
 function* processWorker(action: ProcessAction) {
     const { id } = action;
+
+    yield put(patch(id, { status:undefined }));
+
     const {extensions:{ [id]:ext }} = yield select();
 
-    let fileDataUrl;
-    if (ext.kind === 'file') {
-        ({files:{ [ext.fileId]:{ data:fileDataUrl }={} }} = yield select());
-    } else {
-        // download it
+    let { signedFileId, xpiFileId, fileId } = ext;
+
+    if (!signedFileId && !xpiFileId && !fileId) {
+        // its a store url which hasnt been downloaded yet - so download it
         yield put(patch(id, { status:STATUS.DOWNLOADING, progress:0 }));
 
         const url = yield call(get_crx_url, ext.storeUrl);
         const fileRes = yield call(fetch, url);
         const fileBlob = yield call([fileRes, fileRes.blob]);
-        fileDataUrl = yield call(blobToDataUrl, fileBlob);
+        const fileDataUrl = yield call(blobToDataUrl, fileBlob);
 
-        yield put(patch(id, { progress:undefined }));
+        fileId = yield (yield put(addFile(fileDataUrl))).promise;
+        yield put(patch(id, { progress:undefined, fileId }));
     }
 
-    // turn crx to zip and read manifest
-    yield put(patch(id, { status:STATUS.PARSEING }));
+    if (!signedFileId && !xpiFileId) {
+        const {files:{ [fileId]:{ data:fileDataUrl }={} }} = yield select();
 
-    const blob = yield call(dataUrlToBlob, fileDataUrl);
-    const zipBuf = crxToZip(yield call(blobToArrBuf, blob));
-    const zip = yield call(Zip.loadAsync, zipBuf);
-    const manifest = JSON.parse(yield call([zip.file('manifest.json'), 'async'], 'string'));
-    const { version } = manifest;
-    let { name } = manifest;
-    if (name.startsWith('__MSG')) {
-        // get default localized name
-        const defaultLocale = manifest.default_locale;
-        const messages = JSON.parse(yield call([zip.file(`_locales/${defaultLocale}/messages.json`), 'async'], 'string'));
-        const nameKey = name.substring('__MSG_'.length, name.length-2);
-        const entry = Object.entries(messages).find( ([key]) => key.toLowerCase() === nameKey.toLowerCase() );
-        name = entry[1].message;
-    }
+        // turn crx to zip and read manifest
+        yield put(patch(id, { status:STATUS.PARSEING }));
 
-    if (ext.kind !== 'file') yield put(patch(id, { version, name }));
-
-    // convert zip to xpi
-    yield put(patch(id, { status:STATUS.CONVERTING }));
-
-    const generatedPrefix = 'generated-';
-    const extId = ext.storeUrl ? get_extensionID(ext.storeUrl) : `${generatedPrefix}${calcSalt({ len:32-generatedPrefix.length })}`;
-    const manifestNew = {
-        ...manifest,
-        applications: {
-            gecko: {
-                id: extId + '@chrome-store-foxified-unsigned'
-            }
+        const blob = yield call(dataUrlToBlob, fileDataUrl);
+        const zipBuf = crxToZip(yield call(blobToArrBuf, blob));
+        const zip = yield call(Zip.loadAsync, zipBuf);
+        const manifest = JSON.parse(yield call([zip.file('manifest.json'), 'async'], 'string'));
+        const { version } = manifest;
+        let { name } = manifest;
+        if (name.startsWith('__MSG')) {
+            // get default localized name
+            const defaultLocale = manifest.default_locale;
+            const messages = JSON.parse(yield call([zip.file(`_locales/${defaultLocale}/messages.json`), 'async'], 'string'));
+            const nameKey = name.substring('__MSG_'.length, name.length-2);
+            const entry = Object.entries(messages).find( ([key]) => key.toLowerCase() === nameKey.toLowerCase() );
+            name = entry[1].message;
         }
-    };
 
-    zip.file('manifest.json', JSON.stringify(manifestNew));
-    // application/x-xpinstall
-    // const xpiDataUrl = 'data:application/zip;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
-    const xpiDataUrl = 'data:application/x-xpinstall;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
-    const xpiFileId = yield (yield put(addFile(xpiDataUrl))).promise;
-    yield put(patch(id, { xpiFileId, fileId:undefined, status:undefined }));
+        if (ext.kind !== 'file') yield put(patch(id, { version, name }));
 
-    if (ext.kind === 'file') yield put(deleteFile(ext.fileId));
+        // convert zip to xpi
+        yield put(patch(id, { status:STATUS.CONVERTING }));
+
+        const generatedPrefix = 'generated-';
+        const extId = ext.storeUrl ? get_extensionID(ext.storeUrl) : `${generatedPrefix}${calcSalt({ len:32-generatedPrefix.length })}`;
+        const manifestNew = {
+            ...manifest,
+            applications: {
+                gecko: {
+                    id: extId + '@chrome-store-foxified-unsigned'
+                }
+            }
+        };
+
+        zip.file('manifest.json', JSON.stringify(manifestNew));
+        // application/x-xpinstall
+        // const xpiDataUrl = 'data:application/zip;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
+        const xpiDataUrl = 'data:application/x-xpinstall;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
+        xpiFileId = yield (yield put(addFile(xpiDataUrl))).promise;
+        yield put(patch(id, { xpiFileId, status:undefined }));
+
+        if (ext.kind === 'file') yield put(deleteFile(ext.fileId));
+    }
 
     // sign it
+    if (!signedFileId) {
+
+        yield call(delay, 2000);
+
+        yield put(patch(id, { status:'Signing not yet setup' }));
+    }
 
 }
 function* processWatcher() {
@@ -334,7 +347,7 @@ function getSaveKindDetails(kind) {
 type Action =
   | AddAction
   | DeleteAction
-  | PutAction;
+  | PatchAction;
 
 export default function reducer(state: Shape = INITIAL, action:Action): Shape {
     switch(action.type) {
@@ -366,4 +379,4 @@ function getName(name, listingTitle) {
 }
 
 export type { Entry, Status }
-export { STATUS, installUnsigned, save, requestAdd }
+export { STATUS, installUnsigned, save, requestAdd, process }

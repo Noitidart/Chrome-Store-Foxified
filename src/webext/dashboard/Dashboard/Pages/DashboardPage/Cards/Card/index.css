@@ -41,6 +41,7 @@
 .Card--row {
     display: flex;
     padding: 10px 15px;
+    align-items: center;
 }
 
 .Card--row--title { /* always used in conunction with .Card--row so it is className="Card--row Card--row--title" */
@@ -121,4 +122,21 @@
 
 .Card--text {
     font-size: 0.9em;
+}
+
+.Card--status-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+}
+
+.Card--status--bad {
+    font-weight: 500;
+    color: #C33D3D;
+}
+
+.Card--link--retry {
+    font-size: 1em;
+    font-weight: 500;
 }
