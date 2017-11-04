@@ -3,6 +3,7 @@
 import { select, takeEvery, take, call, put, race } from 'redux-saga/effects'
 import { delay } from 'redux-saga'
 import Zip from 'jszip'
+import { calcSalt } from 'cmn/lib/all'
 
 import { addFile, deleteFile } from '../files'
 import { get_webstore_url, get_crx_url, get_webstore_name, get_extensionID } from '../../cws_pattern'
@@ -43,11 +44,10 @@ type Entry = {
     kind: Kind,
     date: number, // listing check date - udated when donwnload is started
     storeUrl?: string,
-    fileDataUrl?: string, // crx
+    fileId?: FileId, // crx file id once downloaded or if browesd from computer
     listingTitle: string, // title of the listing on the store
     status: Status,
     hasInstalled?: true, // once installed, no need to keep it highlighted.
-    fileId?: FileId, // crx file id once downloaded
     zipFileId?: FileId,
     xpiFileId?: FileId, // once converted
     signedFileId?: FileId, // once signed
@@ -79,10 +79,10 @@ type DeleteAction = { type:typeof DELETE, idOrIds:Id|Id[] };
 const del = (idOrIds): DeleteAction => ({ type:DELETE, idOrIds });
 
 //
-const PUT = A`PUT`;
-// type PutAction = { type:typeof PUT, id:Id, data:$Shape<Entry> };
-type PutAction = { type:typeof PUT, id:Id, data:Entry };
-const putExtension = (id, data): PutAction => ({ type:PUT, id, data });
+const PATCH = A`PATCH`;
+// type PutAction = { type:typeof PATCH, id:Id, data:$Shape<Entry> };
+type PatchAction = { type:typeof PATCH, id:Id, data:Entry };
+const patch = (id, data): PatchAction => ({ type:PATCH, id, data });
 
 //
 const REQUEST_ADD = A`REQUEST_ADD`;
@@ -94,7 +94,7 @@ function* requestAddWorker(action: RequestAddAction) {
 
     if (storeUrl && fileDataUrl) return resolve({ _error:'Must only input a one or the other, a store url OR a file from your computer, not both.' });
 
-    let kind;
+    let id, kind;
     if (storeUrl) {
         const storeUrlFixed = get_webstore_url(storeUrl);
         if (!storeUrlFixed) return resolve({ storeUrl:'Not a valid store URL.' });
@@ -122,12 +122,13 @@ function* requestAddWorker(action: RequestAddAction) {
             listingTitle = html.match(/<title>(.+?)<\/title>/)[1];
         }
 
+        id = yield getIdSaga('extensions');
+
         yield put(add({
-            id: yield getIdSaga('extensions'),
+            id,
             kind,
             storeUrl: storeUrlFixed,
             listingTitle,
-            status: STATUS.DOWNLOADING,
             date: Date.now()
         }));
     } else if (fileDataUrl) {
@@ -159,18 +160,21 @@ function* requestAddWorker(action: RequestAddAction) {
             }
         }
 
+        id = yield getIdSaga('extensions');
+
         yield put(add({
-            id: yield getIdSaga('extensions'),
+            id,
+            fileId: yield (yield put(addFile(fileDataUrl))).promise,
             kind,
-            fileDataUrl,
             name,
             version,
-            status: STATUS.CONVERTING,
             date: Date.now()
         }));
     }
 
     resolve();
+
+    yield put(process(id));
 }
 function* requestAddWatcher() {
     yield takeEvery(REQUEST_ADD, requestAddWorker);
@@ -178,13 +182,73 @@ function* requestAddWatcher() {
 sagas.push(requestAddWatcher);
 
 //
-
-//
 const PROCESS = A`PROCESS`
 type ProcessAction = { type:typeof PROCESS, id:Id };
 const process = (id): ProcessAction => ({ type:PROCESS, id });
 
 function* processWorker(action: ProcessAction) {
+    const { id } = action;
+    const {extensions:{ [id]:ext }} = yield select();
+
+    let fileDataUrl;
+    if (ext.kind === 'file') {
+        ({files:{ [ext.fileId]:{ data:fileDataUrl }={} }} = yield select());
+    } else {
+        // download it
+        yield put(patch(id, { status:STATUS.DOWNLOADING, progress:0 }));
+
+        const url = yield call(get_crx_url, ext.storeUrl);
+        const fileRes = yield call(fetch, url);
+        const fileBlob = yield call([fileRes, fileRes.blob]);
+        fileDataUrl = yield call(blobToDataUrl, fileBlob);
+
+        yield put(patch(id, { progress:undefined }));
+    }
+
+    // turn crx to zip and read manifest
+    yield put(patch(id, { status:STATUS.PARSEING }));
+
+    const blob = yield call(dataUrlToBlob, fileDataUrl);
+    const zipBuf = crxToZip(yield call(blobToArrBuf, blob));
+    const zip = yield call(Zip.loadAsync, zipBuf);
+    const manifest = JSON.parse(yield call([zip.file('manifest.json'), 'async'], 'string'));
+    const { version } = manifest;
+    let { name } = manifest;
+    if (name.startsWith('__MSG')) {
+        // get default localized name
+        const defaultLocale = manifest.default_locale;
+        const messages = JSON.parse(yield call([zip.file(`_locales/${defaultLocale}/messages.json`), 'async'], 'string'));
+        const nameKey = name.substring('__MSG_'.length, name.length-2);
+        const entry = Object.entries(messages).find( ([key]) => key.toLowerCase() === nameKey.toLowerCase() );
+        name = entry[1].message;
+    }
+
+    if (ext.kind !== 'file') yield put(patch(id, { version, name }));
+
+    // convert zip to xpi
+    yield put(patch(id, { status:STATUS.CONVERTING }));
+
+    const generatedPrefix = 'generated-';
+    const extId = ext.storeUrl ? get_extensionID(ext.storeUrl) : `${generatedPrefix}${calcSalt({ len:32-generatedPrefix.length })}`;
+    const manifestNew = {
+        ...manifest,
+        applications: {
+            gecko: {
+                id: extId + '@chrome-store-foxified-unsigned'
+            }
+        }
+    };
+
+    zip.file('manifest.json', JSON.stringify(manifestNew));
+    // application/x-xpinstall
+    // const xpiDataUrl = 'data:application/zip;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
+    const xpiDataUrl = 'data:application/x-xpinstall;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
+    const xpiFileId = yield (yield put(addFile(xpiDataUrl))).promise;
+    yield put(patch(id, { xpiFileId, fileId:undefined, status:undefined }));
+
+    if (ext.kind === 'file') yield put(deleteFile(ext.fileId));
+
+    // sign it
 
 }
 function* processWatcher() {
@@ -284,12 +348,14 @@ export default function reducer(state: Shape = INITIAL, action:Action): Shape {
             if (!('id' in entry)) entry.id = getId('extensions', state)
             return { ...state, [entry.id]:entry };
         }
-        case PUT: {
+        case PATCH: {
             const { id, data } = action;
             const dataOld = state[id];
-            const idNew = 'id' in data ? data.id : id;
-            const dataNew = deleteUndefined({ ...dataOld, ...data });
-            return { ...state, [idNew]:dataNew };
+            // const idNew = 'id' in data ? data.id : id;
+            // const dataNew = deleteUndefined({ ...dataOld, ...data });
+            const dataNew = deleteUndefined({ ...dataOld, ...data, id }); // id repeated in here to ensure this is a patch
+            // return { ...state, [idNew]:dataNew };
+            return { ...state, [id]:dataNew };
         }
         default: return state;
     }

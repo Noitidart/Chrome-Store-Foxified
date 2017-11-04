@@ -81,7 +81,10 @@ class AddFormDumb extends PureComponent<Props, State> {
         console.log('in handle submit')
         const errors = await new Promise( resolve => callInBackground('dispatchSubmitAddForm', values, resolve) );
         if (errors) throw new SubmissionError(errors);
-        else this.props.reset();
+        else {
+            this.props.reset();
+            this.setState(() => ({ or:undefined }));
+        }
     }
 
     flexAnyField = name => this.setState(() => ({ or:name }))
