@@ -107,7 +107,7 @@ function* requestAddWorker(action: RequestAddAction) {
         console.log('storeUrlFixed:', storeUrlFixed);
 
         const storeName = get_webstore_name(storeUrl);
-        if (!['cws'].includes(storeName)) return resolve({ storeUrl:`Extensions from ${storeName.toUpperCase()} are not supported.` });
+        if (!['cws', 'ows'].includes(storeName)) return resolve({ storeUrl:`Extensions from ${storeName.toUpperCase()} are not supported.` });
         kind = storeName;
 
 

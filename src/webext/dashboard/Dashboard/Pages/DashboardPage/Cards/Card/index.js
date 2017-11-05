@@ -6,6 +6,7 @@ import { pushAlternating } from 'cmn/lib/all'
 
 import { STATUS, install, save, process } from '../../../../../../flow-control/extensions'
 
+import IMAGE_OWS from './images/opera-addons-logo.svg'
 import IMAGE_CWS from './images/chrome-web-store-logo-2012-2015.svg'
 import IMAGE_EXT_GENERIC from './images/extension-generic-flat-black.svg'
 import IMAGE_FOLDER from './images/folder.svg'
@@ -36,6 +37,15 @@ function pushAlternatingCallback(aTargetArr, aCallback: (index:number) => any) {
 	}
 
 	return aTargetArr;
+}
+
+function getSourceImage(kind) {
+    switch (kind) {
+        case 'cws': return IMAGE_CWS;
+        case 'ows': return IMAGE_OWS;
+        case 'file': return IMAGE_FOLDER;
+        // no default
+    }
 }
 
 function getName(name, listingTitle) {
@@ -140,7 +150,7 @@ class Card extends PureComponent<Props, State> {
                         Source
                     </div>
                     <a className="Card--link" href={storeUrl} target="_blank" rel="noopener noreferrer">
-                        <img src={kind === 'file' ? IMAGE_FOLDER : IMAGE_CWS} alt="" className="Card--link-image" />
+                        <img src={getSourceImage(kind)} alt="" className="Card--link-image" />
                         <span className="Card--link-label">
                             { kind === 'file' ? 'Your Computer' : listingTitle }
                         </span>

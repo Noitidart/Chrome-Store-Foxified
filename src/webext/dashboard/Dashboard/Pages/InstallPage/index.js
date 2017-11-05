@@ -63,6 +63,7 @@ class InstallPageDumb extends Component<Props, State> {
         let storeUrl;
         switch (kind) {
             case 'cws': storeUrl = get_webstore_url(`https://chrome.google.com/webstore/detail/random/${extid}`); break;
+            case 'ows': storeUrl = get_webstore_url(`https://addons.opera.com/en/extensions/details/${extid}`); break;
             default: throw new Error('bad kind');
         }
         const errorsOrId = await new Promise( resolve => callInBackground('dispatchSubmitAddForm', { storeUrl }, resolve) );
