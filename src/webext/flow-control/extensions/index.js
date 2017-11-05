@@ -47,9 +47,10 @@ type Entry = {
     fileId?: FileId, // crx file id once downloaded or if browesd from computer
     listingTitle: string, // title of the listing on the store
     status: Status,
-    statusExtra: null |
-        { validationUrl: string } | // if status === "FAILED_REVIEW"
-        { progress: number } // if status "DOWNLOADING", "UPLOADING", number is 0 - 1
+    statusExtra: null
+        | { validationUrl: string } // if status === "FAILED_REVIEW"
+        | { progress: number } // if status "DOWNLOADING", "UPLOADING", number is 0 - 1
+        | { resStatus: number, error: string } // if FAILED_UPLOAD
     ,
     hasInstalled?: true, // once installed, no need to keep it highlighted.
     zipFileId?: FileId,
@@ -197,7 +198,7 @@ function* processWorker(action: ProcessAction) {
 
     let { signedFileId, xpiFileId, fileId } = ext;
 
-    if (!signedFileId && !xpiFileId && !fileId) {
+    if (signedFileId === undefined && xpiFileId === undefined && fileId === undefined) {
         // its a store url which hasnt been downloaded yet - so download it
         yield put(patch(id, { status:STATUS.DOWNLOADING, statusExtra:{ progress:0 } }));
 
@@ -210,7 +211,7 @@ function* processWorker(action: ProcessAction) {
         yield put(patch(id, { statusExtra:{ progress:100 }, fileId }));
     }
 
-    if (!signedFileId && !xpiFileId) {
+    if (signedFileId === undefined && xpiFileId === undefined) {
         const {files:{ [fileId]:{ data:fileDataUrl }={} }} = yield select();
 
         // turn crx to zip and read manifest
@@ -258,7 +259,7 @@ function* processWorker(action: ProcessAction) {
     }
 
     // sign it
-    if (!signedFileId) {
+    if (signedFileId === undefined) {
 
         // get user.key and user.secret everytime fresh, because user may have logged into another account
         yield put(patch(id, { status:'CREDENTIALING', statusExtra:undefined }));
@@ -335,12 +336,10 @@ function* processWorker(action: ProcessAction) {
         const zip = yield call(Zip.loadAsync, zipBuf);
         const manifestTxt = yield call([zip.file('manifest.json'), 'async'], 'string');
         const manifestNewTxt = manifestTxt.replace('@chrome-store-foxified-unsigned', `@chrome-store-foxified-${userHash}`);
-        zip.file('manifest.json', JSON.stringify(manifestNewTxt));
+        zip.file('manifest.json', manifestNewTxt);
         const presignedBlob = yield call([zip, zip.generateAsync], { type:'blob' });
 
-        console.log('manifestTxt:', manifestTxt);
-        console.log('manifestNewTxt:', manifestNewTxt);
-
+        console.log('presignedBlob url:', URL.createObjectURL(presignedBlob));
 
         // upload
         const { version, applications:{gecko:{ id:signingId }}} = JSON.parse(manifestNewTxt);
@@ -369,7 +368,8 @@ function* processWorker(action: ProcessAction) {
                     ({ error } = reply); // yield call([res, res.json]));
                 } catch(ignore) {} // eslint-disable-line no-empty
                 console.log('error:', error);
-                return yield put(patch(id, { status:`Failed to upload to AMO. ${error || ''}`, statusExtra:undefined }));
+                return yield put(patch(id, { status:'FAILED_UPLOAD', statusExtra:{ resStatus:res.status, error } }));
+                // return yield put(patch(id, { status:`Failed to upload to AMO. ${error || `It is likely this extension will also fail manual upload.`}`, statusExtra:undefined }));
             }
         }
 
@@ -396,7 +396,7 @@ function* processWorker(action: ProcessAction) {
                     return yield put(patch(id, { status:`Failed to upload to AMO. ${error || ''}`, statusExtra:undefined }));
                 }
 
-                const { reviewed, passed_review, files:[ file ], validation_url } = reply;
+                const { processed, validation_results, reviewed, passed_review, files:[ file ], validation_url } = reply;
                 const isDownloadReady = !!file;
 
                 if (isDownloadReady) {
@@ -405,11 +405,11 @@ function* processWorker(action: ProcessAction) {
                     break;
                 } else {
                     // not yet signed, maybe failed?
-                    if (reviewed && !passed_review) {
-                        // failed review
-                        yield put(patch(id, { status:'FAILED_REVIEW', statusExtra:{ validationUrl:validation_url } }));
-                    } else {
-                        for (let i=1; i<=10; i++) {
+                    console.log('processed:', processed, 'validation_results:', validation_results, 'reviewed:', reviewed, 'passed_review:', passed_review);
+                    if (processed && validation_results && !validation_results.success) return yield put(patch(id, { status:'FAILED_REVIEW', statusExtra:{ validationUrl:validation_url } }));
+                    // if (reviewed && !passed_review) return yield put(patch(id, { status:'FAILED_REVIEW', statusExtra:{ validationUrl:validation_url } }));
+                    else {
+                        for (let i=10; i>=1; i--) {
                             yield put(patch(id, { status:'WAITING_REVIEW', statusExtra:{ sec:i } }));
                             yield call(delay, 1000);
                         }
@@ -428,13 +428,12 @@ function* processWorker(action: ProcessAction) {
                     Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
                 }
             });
-            const reply = yield call([res, res.json]);
             console.log('DOWNLOADING res.status:', res.status);
 
             if (res.status !== 200) {
                 let error;
                 try {
-                    ({ error } = reply); // yield call([res, res.json]));
+                    ({ error } = yield call([res, res.json]));
                 } catch(ignore) {} // eslint-disable-line no-empty
                 return yield put(patch(id, { status:`Failed to download from AMO. ${error || ''}`, statusExtra:undefined }));
             }
@@ -448,6 +447,7 @@ function* processWorker(action: ProcessAction) {
 
         yield put(patch(id, { status:undefined, statusExtra:undefined }));
 
+        yield put(install(id, true));
     }
 
 }
@@ -457,34 +457,35 @@ function* processWatcher() {
 sagas.push(processWatcher);
 
 //
-const INSTALL_UNSIGNED = A`INSTALL_UNSIGNED`;
-type InstallUnsignedAction = { type:typeof INSTALL_UNSIGNED, id:Id };
-const installUnsigned = (id): InstallUnsignedAction => ({ type:INSTALL_UNSIGNED, id })
-function* installUnsignedWorker(action: InstallUnsignedAction) {
-    const { id } = action;
+const INSTALL = A`INSTALL`;
+type InstallAction = { type:typeof INSTALL, id:Id, signed:boolean };
+const install = (id, signed): InstallAction => ({ type:INSTALL, id, signed })
+function* installWorker(action: InstallAction) {
+    const { id, signed } = action;
 
     const state = yield select();
 
     const {extensions:{ [id]:extension }} = state;
     if (!extension) return; // not a valid extension id
-    const { xpiFileId } = extension;
+    const fileIdKey = signed ? 'signedFileId' : 'xpiFileId';
+    const { [fileIdKey]:fileId } = extension;
 
-    const {files:{ [xpiFileId]:{ data:xpiDataUrl }={} }} = state;
-    if (!xpiDataUrl) return; // no zip file for such a extension id
+    const {files:{ [fileId]:{ data:dataUrl }={} }} = state;
+    if (!dataUrl) return; // no zip file for such a extension id
 
-    const xpiBlob = yield call(dataUrlToBlob, xpiDataUrl);
-    const xpiBlobUrl = URL.createObjectURL(xpiBlob);
+    const blob = yield call(dataUrlToBlob, dataUrl);
+    const blobUrl = URL.createObjectURL(blob);
 
-    yield call(extensiona, 'tabs.create', { url:xpiBlobUrl });
+    yield call(extensiona, 'tabs.create', { url:blobUrl });
 
     // TODO: URL.revokeObjectURL(xpiUrl);
 
 
 }
-function* installUnsignedWatcher() {
-    yield takeEvery(INSTALL_UNSIGNED, installUnsignedWorker);
+function* installWatcher() {
+    yield takeEvery(INSTALL, installWorker);
 }
-sagas.push(installUnsignedWatcher);
+sagas.push(installWatcher);
 
 //
 const SAVE = A`SAVE`;
@@ -566,4 +567,4 @@ function getName(name, listingTitle) {
 }
 
 export type { Entry, Status }
-export { STATUS, installUnsigned, save, requestAdd, process }
+export { STATUS, install, save, requestAdd, process }

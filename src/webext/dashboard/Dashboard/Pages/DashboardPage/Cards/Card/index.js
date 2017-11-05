@@ -4,7 +4,7 @@ import React, { PureComponent } from 'react'
 import moment from 'moment'
 import { pushAlternating } from 'cmn/lib/all'
 
-import { STATUS, installUnsigned, save, process } from '../../../../../../flow-control/extensions'
+import { STATUS, install, save, process } from '../../../../../../flow-control/extensions'
 
 import IMAGE_CWS from './images/chrome-web-store-logo-2012-2015.svg'
 import IMAGE_EXT_GENERIC from './images/extension-generic-flat-black.svg'
@@ -21,6 +21,21 @@ type Props = {
 
 type State = {
     ago: string
+}
+
+function pushAlternatingCallback(aTargetArr, aCallback: (index:number) => any) {
+    // mutates aTargetArr
+	// pushes into an array aEntry, every alternating
+		// so if aEntry 0
+			// [1, 2] becomes [1, 0, 2]
+			// [1] statys [1]
+			// [1, 2, 3] becomes [1, 0, 2, 0, 3]
+	let l = aTargetArr.length;
+	for (let i=l-1; i>0; i--) {
+		aTargetArr.splice(i, 0, aCallback(i));
+	}
+
+	return aTargetArr;
 }
 
 function getName(name, listingTitle) {
@@ -60,7 +75,7 @@ class Card extends PureComponent<Props, State> {
                     <a className="Card--link" href={storeUrl} target="_blank" rel="noopener noreferrer">
                         <img src={kind === 'file' ? IMAGE_FOLDER : IMAGE_CWS} alt="" className="Card--link-image" />
                         <span className="Card--link-label">
-                        { kind === 'file' ? 'Your Computer' : listingTitle }
+                            { kind === 'file' ? 'Your Computer' : listingTitle }
                         </span>
                     </a>
                 </div>
@@ -69,11 +84,11 @@ class Card extends PureComponent<Props, State> {
                         <div className="Card--label">
                             Save to Disk
                         </div>
-                        { pushAlternating([
+                        { pushAlternatingCallback([
                             fileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveExt} key="file">CRX</a>,
                             xpiFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveUnsigned} key="xpi">Unsigned</a>,
                             signedFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveSigned} key="signed">Signed</a>
-                        ].filter(el => el), <span>&nbsp;|&nbsp;</span>) }
+                        ].filter(el => el), ix => <span key={ix}>&nbsp;|&nbsp;</span>) }
                     </div>
                 }
                 { version !== undefined &&
@@ -86,8 +101,8 @@ class Card extends PureComponent<Props, State> {
                 }
                 { (!status || (xpiFileId || signedFileId)) &&
                     <div className="Card--row Card--row--buttons">
+                        { signedFileId && <a href="#" className="Card--link Card--link-button" onClick={this.handleClickInstall}>Install</a> }
                         { xpiFileId && !signedFileId && <a href="#" className="Card--link Card--link-button" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a> }
-                        { signedFileId && <a href="#" className="Card--link Card--link-button">Install</a> }
                         { !xpiFileId && !signedFileId && <span>Invalid status state</span> }
                     </div>
                 }
@@ -105,7 +120,13 @@ class Card extends PureComponent<Props, State> {
         )
     }
 
-    handleClickInstallUnsigned = stopEvent(() => this.props.dispatchProxied(installUnsigned(this.props.id)) ) // TODO: show box explaining unsigned only installs in dev/nightly if they are beta/release/esr - and show directions on how to install it as temporary
+    handleClickInstallUnsigned = stopEvent(() => {
+        const { id, dispatchProxied } = this.props;
+         // TODO: show box explaining unsigned only installs in dev/nightly if they are beta/release/esr - and show directions on how to install it as temporary
+         // dev/nightly can enable "do not show dialog again", if thats the case go straight to install
+        dispatchProxied(install(id, false))
+    })
+    handleClickInstall = stopEvent(() => this.props.dispatchProxied(install(this.props.id, true)))
 
     handleClickSaveExt = stopEvent(() => this.props.dispatchProxied(save(this.props.id, 'ext')) )
     handleClickSaveUnsigned = stopEvent(() => this.props.dispatchProxied(save(this.props.id, 'unsigned')) )
@@ -118,7 +139,7 @@ class Card extends PureComponent<Props, State> {
     getStatusMessage() {
         const { status, statusExtra } = this.props;
         switch (status) {
-            case STATUS.DOWNLOADING: return `Downloading from store ${statusExtra.progress}%`;
+            case STATUS.DOWNLOADING: return `Downloading from store...`;
             case STATUS.PARSEING: return 'Parsing';
             case STATUS.CONVERTING: return 'Converting';
             case 'CREDENTIALING': return 'Checking AMO Credentials';
@@ -142,9 +163,22 @@ class Card extends PureComponent<Props, State> {
             );
             case 'GENERATING_KEYS': return 'Generating AMO Credentials';
             case 'MODING': return 'Preparing presigned package';
-            case 'UPLOADING': return `Uploading for review ${statusExtra.progress}%`;
+            case 'UPLOADING': return `Uploading for review...`;
             case 'CHECKING_REVIEW': return 'Checking review progress';
             case 'WAITING_REVIEW': return `Waiting for review - ${statusExtra.sec}s`;
+            case 'FAILED_UPLOAD': return (
+                <div className="Card--status-wrap">
+                    <span className="Card--status--bad">
+                        Failed to upload to AMO. {statusExtra.error}
+                        { statusExtra.resStatus === 500 && 'Internal server error occured, this extension is likely unsupported by the review system and will even fail manual upload. ' }
+                        { statusExtra.resStatus === 500 && <a className="Card--link Card--link--retry" href="https://github.com/mozilla/addons-server/issues/6833" target="_blank" rel="noopener noreferrer">View Github Issue</a> }
+                    </span>
+                    <span className="Card--status--bad">&nbsp;-&nbsp;</span>
+                    <a href="#" className="Card--link Card--link--retry" onClick={this.retry}>Retry Now</a>
+                    &nbsp;
+                    <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/en-US/developers/addon/submit/upload-unlisted" target="_blank" rel="noopener noreferrer">Try Manual Upload</a>
+                </div>
+            );
             case 'FAILED_REVIEW': return (
                 <div className="Card--status-wrap">
                     <span className="Card--status--bad">AMO validation failed</span>
@@ -152,14 +186,18 @@ class Card extends PureComponent<Props, State> {
                     <a className="Card--link Card--link--retry" href={statusExtra.validationUrl} target="_blank" rel="noopener noreferrer">View Validation Results</a>
                     &nbsp;
                     <a href="#" className="Card--link Card--link--retry" onClick={this.retry}>Retry Now</a>
+                    &nbsp;
+                    <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/en-US/developers/addon/submit/upload-unlisted" target="_blank" rel="noopener noreferrer">Try Manual Upload</a>
                 </div>
             );
-            case 'DOWNLOADING_SIGNED': return `Downloading signed ${statusExtra.progress}%`;
+            case 'DOWNLOADING_SIGNED': return `Downloading signed extension...`;
             default: return (
                 <div className="Card--status-wrap">
                     <span className="Card--status--bad">{status}</span>
                     <span className="Card--status--bad">&nbsp;-&nbsp;</span>
-                    <a href="#" className="Card--link Card--link--retry" onClick={this.retry}>Retry Now</a>
+                    <a className="Card--link Card--link--retry" onClick={this.retry} href="#">Retry Now</a>
+                    &nbsp;
+                    <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/en-US/developers/addon/submit/upload-unlisted" target="_blank" rel="noopener noreferrer">Try Manual Upload</a>
                 </div>
             );
         }
