@@ -52,7 +52,8 @@
     },
 
     "content_scripts": [
-        { "matches":["https://chrome.google.com/webstore/*"], "js":["cws.bundle.js"] }
+        { "matches":["https://chrome.google.com/webstore/*"], "js":["cws.bundle.js"] },
+        { "matches":["https://addons.opera.com/*"], "js":["ows.bundle.js"] }
     ],
 
     "permissions": ["storage", "webNavigation", "webRequest", "webRequestBlocking", "<all_urls>", "tabs", "notifications", "downloads"]

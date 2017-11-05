@@ -41,7 +41,9 @@ export function get_extensionID(url) {
     var match = cws_pattern.exec(url);
     if (match) return match[1];
     match = cws_download_pattern.exec(url);
-    return match && match[1];
+    if (match) return match[1];
+    match = ows_pattern.exec(url);
+    if (match) return match[1];
 }
 
 function get_xpi_url(addonSlug) {
