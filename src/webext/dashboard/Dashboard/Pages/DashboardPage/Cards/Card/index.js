@@ -42,6 +42,73 @@ function getName(name, listingTitle) {
     return name || listingTitle.substr(0, listingTitle.lastIndexOf(' - '));
 }
 
+function getStatusMessage(status, statusExtra, retry) {
+    switch (status) {
+        case undefined: return undefined;
+        case STATUS.DOWNLOADING: return `Downloading from store...`;
+        case STATUS.PARSEING: return 'Parsing';
+        case STATUS.CONVERTING: return 'Converting';
+        case 'CREDENTIALING': return 'Checking AMO Credentials';
+        case 'NOT_LOGGED_IN': return (
+            <div className="Card--status-wrap">
+                <span className="Card--status--bad">You are not logged in on AMO</span>
+                <span className="Card--status--bad">&nbsp;-&nbsp;</span>
+                <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/" target="_blank" rel="noopener noreferrer">Login Now</a>
+                &nbsp;
+                <a href="#" className="Card--link Card--link--retry" onClick={retry}>Retry Now</a>
+            </div>
+        );
+        case 'NEEDS_AGREE': return (
+            <div className="Card--status-wrap">
+                <span className="Card--status--bad">You need to accept AMO agreement</span>
+                <span className="Card--status--bad">&nbsp;-&nbsp;</span>
+                <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/en-US/developers/addon/api/key/" target="_blank" rel="noopener noreferrer">View Agreement</a>
+                &nbsp;
+                <a href="#" className="Card--link Card--link--retry" onClick={retry}>Retry Now</a>
+            </div>
+        );
+        case 'GENERATING_KEYS': return 'Generating AMO Credentials';
+        case 'MODING': return 'Preparing presigned package';
+        case 'UPLOADING': return `Uploading for review...`;
+        case 'CHECKING_REVIEW': return 'Checking review progress';
+        case 'WAITING_REVIEW': return `Waiting for review - ${statusExtra.sec}s`;
+        case 'FAILED_UPLOAD': return (
+            <div className="Card--status-wrap">
+                <span className="Card--status--bad">
+                    Failed to upload to AMO. {statusExtra.error}
+                    { statusExtra.resStatus === 500 && 'Internal server error occured, this extension is likely unsupported by the review system and will even fail manual upload. ' }
+                    { statusExtra.resStatus === 500 && <a className="Card--link Card--link--retry" href="https://github.com/mozilla/addons-server/issues/6833" target="_blank" rel="noopener noreferrer">View Github Issue</a> }
+                </span>
+                <span className="Card--status--bad">&nbsp;-&nbsp;</span>
+                <a href="#" className="Card--link Card--link--retry" onClick={retry}>Retry Now</a>
+                &nbsp;
+                <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/en-US/developers/addon/submit/upload-unlisted" target="_blank" rel="noopener noreferrer">Try Manual Upload</a>
+            </div>
+        );
+        case 'FAILED_REVIEW': return (
+            <div className="Card--status-wrap">
+                <span className="Card--status--bad">AMO validation failed</span>
+                <span className="Card--status--bad">&nbsp;-&nbsp;</span>
+                <a className="Card--link Card--link--retry" href={statusExtra.validationUrl} target="_blank" rel="noopener noreferrer">View Validation Results</a>
+                &nbsp;
+                <a href="#" className="Card--link Card--link--retry" onClick={retry}>Retry Now</a>
+                &nbsp;
+                <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/en-US/developers/addon/submit/upload-unlisted" target="_blank" rel="noopener noreferrer">Try Manual Upload</a>
+            </div>
+        );
+        case 'DOWNLOADING_SIGNED': return `Downloading signed extension...`;
+        default: return (
+            <div className="Card--status-wrap">
+                <span className="Card--status--bad">{status}</span>
+                <span className="Card--status--bad">&nbsp;-&nbsp;</span>
+                <a className="Card--link Card--link--retry" onClick={retry} href="#">Retry Now</a>
+                &nbsp;
+                <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/en-US/developers/addon/submit/upload-unlisted" target="_blank" rel="noopener noreferrer">Try Manual Upload</a>
+            </div>
+        );
+    }
+}
+
 class Card extends PureComponent<Props, State> {
     agoInterval: number
     state = {
@@ -99,6 +166,7 @@ class Card extends PureComponent<Props, State> {
                         <span className="Card--text">{version}</span>
                     </div>
                 }
+                <div className="Card--row--spacer" />
                 { (!status || (xpiFileId || signedFileId)) &&
                     <div className="Card--row Card--row--buttons">
                         { signedFileId && <a href="#" className="Card--link Card--link-button" onClick={this.handleClickInstall}>Install</a> }
@@ -106,13 +174,15 @@ class Card extends PureComponent<Props, State> {
                         { !xpiFileId && !signedFileId && <span>Invalid status state</span> }
                     </div>
                 }
+                { (!status || (xpiFileId || signedFileId)) && <div className="Card--row--spacer" /> }
                 { status &&
                     <div className="Card--row">
                         <div className="Card--status-wrap">
-                            { this.getStatusMessage() }
+                            { getStatusMessage(status, this.props.statusExtra, this.retry) }
                         </div>
                     </div>
                 }
+                { status && <div className="Card--row--spacer" /> }
                 <div className="Card--footer">
                     { ago }
                 </div>
@@ -134,73 +204,6 @@ class Card extends PureComponent<Props, State> {
 
     getAgo() {
         return moment(this.props.date).fromNow();
-    }
-
-    getStatusMessage() {
-        const { status, statusExtra } = this.props;
-        switch (status) {
-            case STATUS.DOWNLOADING: return `Downloading from store...`;
-            case STATUS.PARSEING: return 'Parsing';
-            case STATUS.CONVERTING: return 'Converting';
-            case 'CREDENTIALING': return 'Checking AMO Credentials';
-            case 'NOT_LOGGED_IN': return (
-                <div className="Card--status-wrap">
-                    <span className="Card--status--bad">You are not logged in on AMO</span>
-                    <span className="Card--status--bad">&nbsp;-&nbsp;</span>
-                    <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/" target="_blank" rel="noopener noreferrer">Login Now</a>
-                    &nbsp;
-                    <a href="#" className="Card--link Card--link--retry" onClick={this.retry}>Retry Now</a>
-                </div>
-            );
-            case 'NEEDS_AGREE': return (
-                <div className="Card--status-wrap">
-                    <span className="Card--status--bad">You need to accept AMO agreement</span>
-                    <span className="Card--status--bad">&nbsp;-&nbsp;</span>
-                    <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/en-US/developers/addon/api/key/" target="_blank" rel="noopener noreferrer">View Agreement</a>
-                    &nbsp;
-                    <a href="#" className="Card--link Card--link--retry" onClick={this.retry}>Retry Now</a>
-                </div>
-            );
-            case 'GENERATING_KEYS': return 'Generating AMO Credentials';
-            case 'MODING': return 'Preparing presigned package';
-            case 'UPLOADING': return `Uploading for review...`;
-            case 'CHECKING_REVIEW': return 'Checking review progress';
-            case 'WAITING_REVIEW': return `Waiting for review - ${statusExtra.sec}s`;
-            case 'FAILED_UPLOAD': return (
-                <div className="Card--status-wrap">
-                    <span className="Card--status--bad">
-                        Failed to upload to AMO. {statusExtra.error}
-                        { statusExtra.resStatus === 500 && 'Internal server error occured, this extension is likely unsupported by the review system and will even fail manual upload. ' }
-                        { statusExtra.resStatus === 500 && <a className="Card--link Card--link--retry" href="https://github.com/mozilla/addons-server/issues/6833" target="_blank" rel="noopener noreferrer">View Github Issue</a> }
-                    </span>
-                    <span className="Card--status--bad">&nbsp;-&nbsp;</span>
-                    <a href="#" className="Card--link Card--link--retry" onClick={this.retry}>Retry Now</a>
-                    &nbsp;
-                    <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/en-US/developers/addon/submit/upload-unlisted" target="_blank" rel="noopener noreferrer">Try Manual Upload</a>
-                </div>
-            );
-            case 'FAILED_REVIEW': return (
-                <div className="Card--status-wrap">
-                    <span className="Card--status--bad">AMO validation failed</span>
-                    <span className="Card--status--bad">&nbsp;-&nbsp;</span>
-                    <a className="Card--link Card--link--retry" href={statusExtra.validationUrl} target="_blank" rel="noopener noreferrer">View Validation Results</a>
-                    &nbsp;
-                    <a href="#" className="Card--link Card--link--retry" onClick={this.retry}>Retry Now</a>
-                    &nbsp;
-                    <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/en-US/developers/addon/submit/upload-unlisted" target="_blank" rel="noopener noreferrer">Try Manual Upload</a>
-                </div>
-            );
-            case 'DOWNLOADING_SIGNED': return `Downloading signed extension...`;
-            default: return (
-                <div className="Card--status-wrap">
-                    <span className="Card--status--bad">{status}</span>
-                    <span className="Card--status--bad">&nbsp;-&nbsp;</span>
-                    <a className="Card--link Card--link--retry" onClick={this.retry} href="#">Retry Now</a>
-                    &nbsp;
-                    <a className="Card--link Card--link--retry" href="https://addons.mozilla.org/en-US/developers/addon/submit/upload-unlisted" target="_blank" rel="noopener noreferrer">Try Manual Upload</a>
-                </div>
-            );
-        }
     }
 
     retry = e => {
@@ -226,4 +229,5 @@ function stopEvent(func) {
 //     }
 // }
 
+export { getStatusMessage }
 export default Card

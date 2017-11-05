@@ -3,6 +3,7 @@
 import React, { PureComponent } from 'react'
 import { reduxForm, Field, SubmissionError } from 'redux-form'
 import classnames from 'cmn/lib/classnames'
+import { isObject } from 'cmn/lib/all'
 
 import { callInBackground } from '../../../../connect'
 
@@ -79,8 +80,8 @@ class AddFormDumb extends PureComponent<Props, State> {
 
     handleSubmit = async values => {
         console.log('in handle submit')
-        const errors = await new Promise( resolve => callInBackground('dispatchSubmitAddForm', values, resolve) );
-        if (errors) throw new SubmissionError(errors);
+        const errorsOrId = await new Promise( resolve => callInBackground('dispatchSubmitAddForm', values, resolve) );
+        if (isObject(errorsOrId)) throw new SubmissionError(errorsOrId);
         else {
             this.props.reset();
             this.setState(() => ({ or:undefined }));

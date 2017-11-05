@@ -52,7 +52,7 @@
     },
 
     "content_scripts": [
-        { "matches":["<all_urls>"], "js":["debugify.bundle.js"] }
+        { "matches":["https://chrome.google.com/webstore/*"], "js":["cws.bundle.js"] }
     ],
 
     "permissions": ["storage", "webNavigation", "webRequest", "webRequestBlocking", "<all_urls>", "tabs", "notifications", "downloads"]

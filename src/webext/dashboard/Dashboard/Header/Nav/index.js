@@ -21,7 +21,7 @@ class Nav extends PureComponent<Props, void> {
         console.log('nav props:', this.props);
         return (
             <div className="Nav">
-                { PAGES.map( ({path, label}) =>
+                { PAGES.filter(page => page.label).map( ({path, label}) =>
                     <NavLink className="Nav--link" activeClassName="Nav--link-selected" key={path} to={path} location={location} exact>
                         {label}
                     </NavLink>

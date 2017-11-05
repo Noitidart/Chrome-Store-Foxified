@@ -140,3 +140,7 @@
     font-size: 1em;
     font-weight: 500;
 }
+
+.Card--row--spacer {
+    flex: 1
+}

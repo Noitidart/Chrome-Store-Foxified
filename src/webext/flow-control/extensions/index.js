@@ -41,6 +41,7 @@ type Id = string;
 type Kind = 'cws' | 'amo' | 'ows' | 'file';
 type Status = string; // $Keys<typeof STATUS>; // for some reason stupid flow is not recognizing $Keys
 type Entry = {
+    id: Id,
     kind: Kind,
     date: number, // listing check date - udated when donwnload is started
     storeUrl?: string,
@@ -177,7 +178,7 @@ function* requestAddWorker(action: RequestAddAction) {
         }));
     }
 
-    resolve();
+    resolve(id);
 
     yield put(process(id));
 }
@@ -339,7 +340,7 @@ function* processWorker(action: ProcessAction) {
         zip.file('manifest.json', manifestNewTxt);
         const presignedBlob = yield call([zip, zip.generateAsync], { type:'blob' });
 
-        console.log('presignedBlob url:', URL.createObjectURL(presignedBlob));
+        // console.log('presignedBlob url:', URL.createObjectURL(presignedBlob));
 
         // upload
         const { version, applications:{gecko:{ id:signingId }}} = JSON.parse(manifestNewTxt);

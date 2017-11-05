@@ -8,7 +8,7 @@ export type Shape = {
 
 const INITIAL = {
     title: extension.i18n.getMessage('browseraction_title'),
-    badgeText: '?'
+    badgeText: ''
 }
 
 const A = ([actionType]: string[]) => 'BROWSER_ACTION_' + actionType; // Action type prefixer

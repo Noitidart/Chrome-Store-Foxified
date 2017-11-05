@@ -22,7 +22,7 @@ class CardsDumb extends PureComponent<Props, void> {
 
         return (
             <div className="Cards">
-                { Object.values(extensions).map( extension => <Card key={extension.id} {...extension} dispatchProxied={dispatchProxied} /> )}
+                { Object.values(extensions).sort((a, b)=>b.date-a.date).map( extension => <Card key={extension.id} {...extension} dispatchProxied={dispatchProxied} /> )}
             </div>
         )
     }
