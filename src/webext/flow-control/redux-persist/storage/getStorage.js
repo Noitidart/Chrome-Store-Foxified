@@ -21,10 +21,7 @@ function hasStorage(storageType) {
     storage.getItem(testKey)
     storage.removeItem(testKey)
   } catch (e) {
-    if (process.env.NODE_ENV !== 'production')
-      console.warn(
-        `redux-persist ${storageType} test failed, persistence will be disabled.`
-      )
+    if (process.env.NODE_ENV !== 'production') console.warn(`redux-persist ${storageType} test failed, persistence will be disabled.`)
     return false
   }
   return true
@@ -35,9 +32,7 @@ export default function getStorage(type: string): Storage {
   if (hasStorage(storageType)) return window[storageType]
   else {
     if (process.env.NODE_ENV !== 'production') {
-      console.error(
-        `redux-persist failed to create sync storage. falling back to memory storage.`
-      )
+      console.error(`redux-persist failed to create sync storage. falling back to memory storage.`)
     }
     return noopStorage
   }

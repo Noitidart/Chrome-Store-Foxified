@@ -42,10 +42,7 @@ export default function persistReducer<State: Object, Action: Object>(
     let defaultState = baseReducer(undefined, {
       type: 'redux-persist/default-state-probe',
     })
-    if (Array.isArray(defaultState) || typeof defaultState !== 'object')
-      console.error(
-        'redux-persist: does not yet support non plain object state.'
-      )
+    if (Array.isArray(defaultState) || typeof defaultState !== 'object') console.error('redux-persist: does not yet support non plain object state.')
   }
   return (state: State, action: Action) => {
     let { _persist, ...rest } = state || {}
@@ -73,8 +70,7 @@ export default function persistReducer<State: Object, Action: Object>(
               action.rehydrate(config.key, migratedState)
             },
             migrateErr => {
-              if (process.env.NODE_ENV !== 'production' && migrateErr)
-                console.error('redux-persist: migration error', migrateErr)
+              if (process.env.NODE_ENV !== 'production' && migrateErr) console.error('redux-persist: migration error', migrateErr)
               action.rehydrate(config.key, undefined, migrateErr)
             }
           )

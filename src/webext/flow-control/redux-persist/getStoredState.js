@@ -15,8 +15,7 @@ export default function getStoredState(config: PersistConfig): Promise<Object> {
 
     storage.getItem(storageKey, (err, serialized) => {
       if (err) {
-        if (process.env.NODE_ENV !== 'production' && debug)
-          console.log('redux-persist/getStoredState: Error in storage.get', err)
+        if (process.env.NODE_ENV !== 'production' && debug) console.log('redux-persist/getStoredState: Error in storage.get', err)
         reject(err)
       }
 
@@ -45,11 +44,7 @@ export default function getStoredState(config: PersistConfig): Promise<Object> {
           // })
           // resolve(state)
         } catch (err) {
-          if (process.env.NODE_ENV !== 'production' && debug)
-            console.log(
-              `redux-persist/getStoredState: Error restoring data ${serialized}`,
-              err
-            )
+          if (process.env.NODE_ENV !== 'production' && debug) console.log(`redux-persist/getStoredState: Error restoring data ${serialized}`,err)
           reject(err)
         }
       }

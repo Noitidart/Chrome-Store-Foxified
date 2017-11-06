@@ -8,7 +8,9 @@ class AsyncBrowserExtensionStorage {
             while (true) {
                 const { [key]:value } = await extensiona('storage.local.get', key);
                 // console.log('did local.get, key:', key, 'value:', value, 'extension.runtime.lastError:', extension.runtime.lastError);
-                if (extension.runtime.lastError) console.error(`AsyncBrowserExtensionSotrage :: getItem "${key}" - runtime error:`, extension.runtime.lastError);
+                if (extension.runtime.lastError) {
+                    console.error(`AsyncBrowserExtensionSotrage :: getItem "${key}" - runtime error:`, extension.runtime.lastError);
+                }
                 else return cb(null, value);
             }
         } catch (e) {
@@ -22,7 +24,9 @@ class AsyncBrowserExtensionStorage {
             while (true) {
                 await extensiona('storage.local.set', { [key]:value });
                 // console.log('did local.set, v:', v, 'key:', key, 'value:', value, 'extension.runtime.lastError:', extension.runtime.lastError);
-                if (extension.runtime.lastError) console.error(`AsyncBrowserExtensionSotrage :: setItem "${key}" - runtime error:`, extension.runtime.lastError);
+                if (extension.runtime.lastError) {
+                    console.error(`AsyncBrowserExtensionSotrage :: setItem "${key}" - runtime error:`, extension.runtime.lastError);
+                }
                 else return cb(null);
             }
         } catch (e) {
@@ -35,7 +39,9 @@ class AsyncBrowserExtensionStorage {
         try {
             while (true) {
                 await extensiona('storage.local.remove', key);
-                if (extension.runtime.lastError) console.error(`AsyncBrowserExtensionSotrage :: removeItem "${key}" - runtime error:`, extension.runtime.lastError);
+                if (extension.runtime.lastError) {
+                    console.error(`AsyncBrowserExtensionSotrage :: removeItem "${key}" - runtime error:`, extension.runtime.lastError);
+                }
                 else return cb(null);
             }
         } catch (e) {
@@ -48,7 +54,9 @@ class AsyncBrowserExtensionStorage {
         try {
             while (true) {
                 const values = await extensiona('storage.local.get', null);
-                if (extension.runtime.lastError) console.error('AsyncBrowserExtensionSotrage :: getAllKeys - runtime error:', extension.runtime.lastError);
+                if (extension.runtime.lastError) {
+                    console.error('AsyncBrowserExtensionSotrage :: getAllKeys - runtime error:', extension.runtime.lastError);
+                }
                 else return cb(null, Object.keys(values));
             }
         } catch (e) {

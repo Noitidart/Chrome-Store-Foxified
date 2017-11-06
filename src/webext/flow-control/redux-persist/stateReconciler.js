@@ -13,16 +13,7 @@ export default function stateReconciler<State: Object>(
     if (inboundState) {
       Object.keys(inboundState).forEach(key => {
         // check if initialState is missing a key
-        if (!originalState.hasOwnProperty(key))
-          console.log(
-            `
-          redux-persist/stateReconciler: state missing key
-          "${key}". state-manager will still store the rehydrated value. If you
-          removed ${key} from your reducer tree, you should write a migration to
-          remove ${key} from stored state. If you code-split ${key} reducer, then
-          this is the expected behavior.
-        `
-          )
+        if (!originalState.hasOwnProperty(key)) console.log(`redux-persist/stateReconciler: state missing key\n"${key}". state-manager will still store the rehydrated value. If you\nremoved ${key} from your reducer tree, you should write a migration to\nremove ${key} from stored state. If you code-split ${key} reducer, then\nthis is the expected behavior.`)
 
         // check recently added reducer properties that may require a migration
         if (
@@ -36,16 +27,7 @@ export default function stateReconciler<State: Object>(
             : []
           const inboundStateKeys = Object.keys(inboundState[key])
           stateKeys.forEach(checkKey => {
-            if (inboundState[checkKey] === 'undefined')
-              console.log(
-                `
-              redux-persist/stateReconciler: initialState for "${key}"
-              has property "${checkKey}" which is missing in rehydratedState. After
-              rehydration, "${checkKey}" will be null. If you recently added
-              ${checkKey} to your ${key} reducer, consider adding ${checkKey} to a
-              state migration.
-            `
-              )
+            if (inboundState[checkKey] === 'undefined') console.log(`redux-persist/stateReconciler: initialState for "${key}"\nhas property "${checkKey}" which is missing in rehydratedState. After\nrehydration, "${checkKey}" will be null. If you recently added\n${checkKey} to your ${key} reducer, consider adding ${checkKey} to a\nstate migration.`)
           })
         }
       })
@@ -58,11 +40,7 @@ export default function stateReconciler<State: Object>(
     Object.keys(inboundState).forEach(key => {
       // if reducer modifies substate, skip auto rehydration
       if (originalState[key] !== reducedState[key]) {
-        if (process.env.NODE_ENV !== 'production' && debug)
-          console.log(
-            'redux-persist/stateReconciler: sub state for key `%s` modified, skipping.',
-            key
-          )
+        if (process.env.NODE_ENV !== 'production' && debug) console.log('redux-persist/stateReconciler: sub state for key `%s` modified, skipping.',key)
         return
       }
       // otherwise hard set the new value
@@ -70,17 +48,7 @@ export default function stateReconciler<State: Object>(
     })
   }
 
-  if (
-    process.env.NODE_ENV !== 'production' &&
-    debug &&
-    inboundState &&
-    typeof inboundState === 'object'
-  )
-    console.log(
-      `redux-persist/stateReconciler: rehydrated keys '${Object.keys(
-        inboundState
-      ).join(', ')}'`
-    )
+  if (process.env.NODE_ENV !== 'production' && debug && inboundState && typeof inboundState === 'object') console.log(`redux-persist/stateReconciler: rehydrated keys '${Object.keys(inboundState).join(', ')}'`)
 
   return newState
 }
