@@ -4,6 +4,8 @@ import { HashRouter } from 'react-router-dom'
 
 import store from './subflow'
 
+import ShouldShowModalWelcome from './ShouldShowModalWelcome'
+import Modal from './Modal'
 import Header from './Header'
 import Pages from './Pages'
 
@@ -16,6 +18,8 @@ class Dashboard extends PureComponent<void, void, void> {
             <Provider store={store}>
                 <HashRouter>
                     <div className="App">
+                        <Modal />
+                        <ShouldShowModalWelcome />
                         <Header />
                         <Pages />
                     </div>

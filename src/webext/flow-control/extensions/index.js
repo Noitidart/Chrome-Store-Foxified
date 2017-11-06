@@ -493,17 +493,20 @@ const SAVE = A`SAVE`;
 type SaveAction = { type:typeof SAVE, id:Id, kind:'ext'|'unsigned'|'signed' };
 const save = (id, kind): SaveAction => ({ type:SAVE, id, kind })
 function* saveWorker(action: SaveAction) {
-    const { id, kind } = action;
-
-    const { fileIdKey, fileExt } = getSaveKindDetails(kind);
+    const { id, kind:saveKind } = action;
 
     const state = yield select();
-
     const {extensions:{ [id]:extension }} = state;
     if (!extension) return; // not a valid extension id
-    const { name, listingTitle, version, [fileIdKey]:fileId } = extension;
+
+    const { name, kind, listingTitle, version } = extension;
+
+    const { fileIdKey, fileExt } = getSaveKindDetails(saveKind, kind);
+    const { [fileIdKey]:fileId } = extension;
+    console.log('fileId:', fileId);
 
     const {files:{ [fileId]:{ data:fileDataUrl }={} }} = state;
+    console.log('fileDataUrl:', fileDataUrl);
     if (!fileDataUrl) return; // no zip file for such a extension id
 
     const fileBlob = yield call(dataUrlToBlob, fileDataUrl);
@@ -523,12 +526,19 @@ function* saveWatcher() {
 }
 sagas.push(saveWatcher);
 
-function getSaveKindDetails(kind) {
-    switch (kind) {
-        case 'ext': return { fileIdKey:'fileId', fileExt:'crx' };
+function getSaveKindDetails(saveKind, kind) {
+    switch (saveKind) {
+        case 'ext': {
+            switch (kind) {
+                case 'cws': return { fileIdKey:'fileId', fileExt:'crx' };
+                case 'ows': return { fileIdKey:'fileId', fileExt:'nex' };
+                case 'file': return { fileIdKey:'fileId', fileExt:'crx' }; // TODO: how to get original file ext?
+                default: throw new Error(`Unknown kind: "${kind}"`);
+            }
+        }
         case 'unsigned': return { fileIdKey:'xpiFileId', fileExt:'xpi' };
         case 'signed': return { fileIdKey:'signedFileId', fileExt:'xpi' };
-        default: throw new Error(`Unknown save kind: "${kind}"`);
+        default: throw new Error(`Unknown save kind: "${saveKind}"`);
     }
 }
 

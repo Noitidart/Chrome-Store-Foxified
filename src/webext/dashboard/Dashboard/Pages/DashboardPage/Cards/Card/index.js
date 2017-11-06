@@ -6,6 +6,9 @@ import { pushAlternating } from 'cmn/lib/all'
 
 import { STATUS, install, save, process } from '../../../../../../flow-control/extensions'
 
+import Modal from '../../../../Modal'
+import ModalUnsigned from './ModalUnsigned'
+
 import IMAGE_OWS from './images/opera-addons-logo.svg'
 import IMAGE_CWS from './images/chrome-web-store-logo-2012-2015.svg'
 import IMAGE_EXT_GENERIC from './images/extension-generic-flat-black.svg'
@@ -17,7 +20,8 @@ import type { Entry as Extension, Status } from '../../../../../../flow-control/
 
 type Props = {
     ...Extension,
-    dispatchProxied: *
+    dispatchProxied: *,
+    shouldShowUnsignedModal: boolean
 }
 
 type State = {
@@ -162,7 +166,7 @@ class Card extends PureComponent<Props, State> {
                             Save to Disk
                         </div>
                         { pushAlternatingCallback([
-                            fileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveExt} key="file">CRX</a>,
+                            fileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveExt} key="file">Original</a>,
                             xpiFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveUnsigned} key="xpi">Unsigned</a>,
                             signedFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveSigned} key="signed">Signed</a>
                         ].filter(el => el), ix => <span key={ix}>&nbsp;|&nbsp;</span>) }
@@ -201,12 +205,16 @@ class Card extends PureComponent<Props, State> {
     }
 
     handleClickInstallUnsigned = stopEvent(() => {
-        const { id, dispatchProxied } = this.props;
-         // TODO: show box explaining unsigned only installs in dev/nightly if they are beta/release/esr - and show directions on how to install it as temporary
-         // dev/nightly can enable "do not show dialog again", if thats the case go straight to install
-        dispatchProxied(install(id, false))
+        const { id, dispatchProxied, shouldShowUnsignedModal } = this.props;
+        // TODO: show box explaining unsigned only installs in dev/nightly if they are beta/release/esr - and show directions on how to install it as temporary
+        // dev/nightly can enable "do not show dialog again", if thats the case go straight to install
+        if (shouldShowUnsignedModal) Modal.show(<ModalUnsigned id={id} dispatchProxied={dispatchProxied} />)
+        else dispatchProxied(install(id, false));
     })
-    handleClickInstall = stopEvent(() => this.props.dispatchProxied(install(this.props.id, true)))
+    handleClickInstall = stopEvent(() => {
+        const { id, dispatchProxied } = this.props;
+        dispatchProxied(install(id, true));
+    })
 
     handleClickSaveExt = stopEvent(() => this.props.dispatchProxied(save(this.props.id, 'ext')) )
     handleClickSaveUnsigned = stopEvent(() => this.props.dispatchProxied(save(this.props.id, 'unsigned')) )
