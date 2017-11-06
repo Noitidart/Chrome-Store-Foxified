@@ -5,12 +5,14 @@ import { takeEvery, call, put } from 'redux-saga/effects'
 
 export type Shape = {
     isFirstRun: boolean,
-    shouldShowUnsignedModal: boolean
+    shouldShowUnsignedModal: boolean,
+    nextDonateReminder: number
 }
 
 const INITIAL = {
     isFirstRun: true,
-    shouldShowUnsignedModal: true
+    shouldShowUnsignedModal: true,
+    nextDonateReminder: 0
 }
 export const sagas = [];
 

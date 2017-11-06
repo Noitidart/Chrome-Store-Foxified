@@ -22,7 +22,7 @@ class ModalUnsigned extends PureComponent<Props> {
         return (
             <div className="ModalUnsigned">
                 <a href="#" onClick={this.confirm}>Yes, continue to install unsigned</a>
-                <a href="#" onClick={Modal.hide}>Cancel</a>
+                <a href="#" onClick={this.hide}>Cancel</a>
 
                 <input type="checkbox" onChange={this.handleChange} id="shouldShow" />
                 <label htmlFor="shouldShow"> Do not show this dialog again</label>
@@ -30,6 +30,10 @@ class ModalUnsigned extends PureComponent<Props> {
         )
     }
 
+    hide = e => {
+        e.preventDefault();
+        Modal.hide();
+    }
     confirm = e => {
         e.stopPropagation();
         e.preventDefault();

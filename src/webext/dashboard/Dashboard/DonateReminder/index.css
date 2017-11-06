@@ -1,0 +1,29 @@
+.Donate {
+    z-index: 99; /* 1 less than modal */
+    position: fixed;
+    top: 2em;
+    right: 2em;
+    width: 450px;
+    border: 1px solid #CCCCCC;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    background-color: #F7F7F7;
+}
+
+.Donate--message {
+    font-size: 1.2em;
+    margin-bottom: 10px;
+}
+
+.Donate--buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.Donate--button {
+    font-weight: bold;
+    font-size: 0.9em;
+    padding: 10px;
+}

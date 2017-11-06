@@ -4,6 +4,7 @@ import { HashRouter } from 'react-router-dom'
 
 import store from './subflow'
 
+import DonateReminder from './DonateReminder'
 import ShouldShowModalWelcome from './ShouldShowModalWelcome'
 import Modal from './Modal'
 import Header from './Header'
@@ -20,6 +21,7 @@ class Dashboard extends PureComponent<void, void, void> {
                     <div className="App">
                         <Modal />
                         <ShouldShowModalWelcome />
+                        <DonateReminder />
                         <Header />
                         <Pages />
                     </div>

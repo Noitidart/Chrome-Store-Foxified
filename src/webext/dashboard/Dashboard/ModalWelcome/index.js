@@ -23,10 +23,15 @@ class ModalWelcome extends PureComponent<void, State> {
     render() {
         return (
             <div className="ModalUnsigned">
-                <a href="#" onClick={Modal.hide}>Hide</a>
+                <a href="#" onClick={this.hide}>Hide</a>
                 Weclome!
             </div>
         )
+    }
+
+    hide = e => {
+        e.preventDefault();
+        Modal.hide();
     }
 }
 
