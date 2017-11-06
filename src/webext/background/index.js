@@ -4,6 +4,7 @@ import 'cmn/lib/extension-polyfill'
 
 import React from 'react'
 import { render } from 'react-dom'
+import { Provider } from 'react-redux'
 
 import { Server as PortsServer } from 'cmn/lib/comm/webext-ports'
 import { callInTemplate } from 'cmn/lib/comm/comm'
@@ -20,5 +21,9 @@ export let gReduxServer; // needed export so it can be tapped by redux-comm
 
 document.addEventListener('DOMContentLoaded', () => {
     BACKEND.gReduxServer = gReduxServer = new ReduxServer(store, ()=>null)
-    render(<Background />, document.body);
+    render(
+        <Provider store={store}>
+            <Background />
+        </Provider>
+    , document.body);
 }, { once:true });

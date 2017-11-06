@@ -1,23 +1,55 @@
+// @flow
+
 import React, { PureComponent } from 'react'
-import { Provider } from 'react-redux'
+import { connect } from 'react-redux'
 
-import store from '../../flow-control'
-
-import ForRehydrated from '../../ForRehydrated'
 import BrowserAction from './BrowserAction'
 
-const renderProp = () => <div><BrowserAction /></div>;
+import DASHBOARD_PAGE from '../../dashboard/index.html'
 
-class Background extends PureComponent<void, void> {
+type Props = {
+    isRehydrated: boolean,
+    isFirstRun: boolean
+}
+
+class BackgroundDumb extends PureComponent<Props> {
+    componentDidUpdate(propsOld) {
+        const { isRehydrated, isFirstRun } = this.props;
+        const { isRehydrated:isRehydratedOld } = propsOld
+
+        if (isRehydrated && !isRehydratedOld) {
+            if (isFirstRun) this.openDashboard();
+        }
+    }
+    componentDidMount() {
+        const { isRehydrated, isFirstRun } = this.props;
+
+        if (isRehydrated) {
+            if (isFirstRun) this.openDashboard();
+        }
+    }
     render() {
         return (
-            <Provider store={store}>
-                <ForRehydrated>
-                    { renderProp }
-                </ForRehydrated>
-            </Provider>
+            <div>
+                <BrowserAction />
+            </div>
         )
     }
+
+    openDashboard() {
+        extension.tabs.create({ url:DASHBOARD_PAGE });
+    }
 }
+
+const BackgroundSmart = connect(
+    function({ _persist:{ rehydrated }, account:{ isFirstRun }}) {
+        return {
+            isRehydrated: rehydrated,
+            isFirstRun
+        }
+    }
+)
+
+const Background = BackgroundSmart(BackgroundDumb)
 
 export default Background
