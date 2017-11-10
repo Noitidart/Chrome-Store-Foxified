@@ -4,6 +4,11 @@
     flex-direction: column;
 }
 
+.Page--subwrap {
+    display: flex;
+    flex-direction: column;
+}
+
 .Page--intro {
     margin: 18px 0;
     font-size: large;
