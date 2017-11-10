@@ -1,6 +1,7 @@
 // @flow
 
 import { select } from 'redux-saga/effects'
+import qs from 'qs'
 
 export function deleteUndefined<T: {}>(obj: T): T {
     // mutates obj
@@ -69,6 +70,10 @@ export function fetchApi(input:string, init={}) {
     if (init.body) init.body = JSON.stringify(init.body);
 
     if (!input.startsWith('http')) input = `${DOMAIN}/api/${input}`;
+    if (init.qs) {
+        input += '?' + qs.stringify(init.qs);
+        delete init.qs;
+    }
 
     return fetch(input, init);
 }

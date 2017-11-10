@@ -2,6 +2,10 @@
 
 import React, { PureComponent } from 'react'
 import { Link } from 'react-router-dom'
+import { isObjectEmpty } from 'cmn/lib/all'
+
+import { fetchApi } from '../../../../flow-control/utils'
+import { normalizeUniversal } from '../../../../flow-control/normalizers'
 
 import './index.css'
 import IMAGE_OWS from '../DashboardPage/Cards/Card/images/opera-addons-logo.svg'
@@ -20,22 +24,28 @@ type Props = {
 
 type State = {
     isLoading: boolean,
-    topics: { name:string, kind:string }[]
+    extensions: {},
+    comments: {},
+    thumbs: {},
+    displaynames: {}
 }
 
 class ForumPage extends PureComponent<Props, State> {
     state = {
         isLoading: true,
-        topics: []
+        extensions: {},
+        comments: {},
+        thumbs: {},
+        displaynames: {}
     }
     componentDidMount() {
         this.refresh();
     }
     render() {
         const {match:{params:{ kind }}} = this.props;
-        const { isLoading, topics } = this.state;
+        const { isLoading, extensions } = this.state;
 
-        const hasTopics = topics && !!topics.length;
+        const hasExtensions = extensions && !isObjectEmpty(extensions);
         return (
             <div>
                 <p className="Page--intro">
@@ -49,14 +59,18 @@ class ForumPage extends PureComponent<Props, State> {
                         Loading...
                     </div>
                 }
-                { !isLoading && !hasTopics &&
+                { !isLoading && !hasExtensions &&
                     <div className="ForumMessage">
                         No extensions found
                     </div>
                 }
-                { !isLoading && hasTopics &&
+                { !isLoading && hasExtensions &&
                     <div className="Topics">
-                        { topics.map(({ name }) => <Link className="Topic" to={`/topic/${name}`} key={name}>{name}</Link> )}
+                        { Object.values(extensions).map(({ name }) => ( // eslint-disable-line no-extra-parens
+                            <div className="Topic" key={name}>
+                                <Link to={`/topic/${kind}/${name}`}>{name}</Link>
+                            </div>
+                        ) )}
                     </div>
                 }
             </div>
@@ -65,10 +79,10 @@ class ForumPage extends PureComponent<Props, State> {
 
     refresh = async () => {
         const {match:{params:{ kind }}} = this.props;
-        const res = fetch(`http://localhost:8000/api/entitys/${kind}`);
+        const res = await fetchApi('extensions', { qs:{kind} });
         if (res.status === 200) {
-            const topics = await res.json();
-            this.setState(() => ({ isLoading:false, topics }));
+            const reply = await res.json();
+            this.setState(() => ({ isLoading:false, ...normalizeUniversal(reply) }));
         } else {
             this.setState(() => ({ isLoading:false }));
         }

@@ -3,12 +3,11 @@
 import React, { PureComponent } from 'react'
 import { Link } from 'react-router-dom'
 import moment from 'moment'
-import qs from 'qs'
-import { normalize, schema } from 'normalizr'
 import { pick } from 'cmn/lib/all'
 import classnames from 'cmn/lib/classnames'
 
-import { deleteUndefined, fetchApi } from '../../../../../../flow-control/utils'
+import { fetchApi } from '../../../../../../flow-control/utils'
+import { normalizeUniversal } from '../../../../../../flow-control/normalizers'
 import { STATUS, install, save, process, deleteExtension } from '../../../../../../flow-control/extensions'
 
 import Modal from '../../../../Modal'
@@ -32,8 +31,10 @@ type Props = {
 type State = {
     ago: string,
     isLoading: true,
-    thumbs: {}, // { id:string, like:boolean, displayname_id:string, entity_id:string, created_at:string, updated_at:string }
-    displaynames: {} // { id:string, like:boolean, displayname_id:string, entity_id:string, created_at:string, updated_at:string }[]
+    extensions: {},
+    comments: {},
+    thumbs: {},
+    displaynames: {}
 }
 
 function pushAlternatingCallback(aTargetArr, aCallback: (index:number) => any) {
@@ -228,6 +229,7 @@ class Card extends PureComponent<Props, State> {
                         { signedFileId && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstall}>Install</a> }
                         { xpiFileId && !signedFileId && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a> }
                         { !xpiFileId && !signedFileId && <span>Invalid status state</span> }
+                        &nbsp;&nbsp;&nbsp;
                         <a href="#" className="Card--link Card--link--button Card--link--button Card--link--button-danger" onClick={this.delete}>{ status ? 'Cancel' : 'Delete' }</a>
                     </div>
                 }
@@ -349,7 +351,7 @@ class Card extends PureComponent<Props, State> {
         const thumb = Object.values(thumbs).find(thumb => thumb.displayname_id === displayname.id);
 
         this.setState(() => ({ isLoading:true }));
-        const res = await fetchApi(`thumbs/${thumb.id}?${qs.stringify({ forename })}`, { method:'DELETE' });
+        const res = await fetchApi(`thumbs/${thumb.id}`, { method:'DELETE', qs:{ forename } });
 
         console.log('res.status:', res.status);
 
@@ -357,26 +359,12 @@ class Card extends PureComponent<Props, State> {
     }
     loadEntitys = async () => {
         const { name, kind } = this.props;
-        const res = await fetchApi(`extension?${qs.stringify({ name, kind })}`);
+        const res = await fetchApi(`extension`, { qs:{ name, kind } });
         if (res.status === 404) {
             this.setState(() => ({ isLoading:false, comments:{}, thumbs:{}, displaynames:{} }));
         } else {
             const reply = await res.json();
-
-            const SCHEMA_DISPLAYNAME = new schema.Entity('displaynames');
-            const SCHEMA_THUMB = new schema.Entity('thumbs', { displayname:SCHEMA_DISPLAYNAME });
-            const SCHEMA_COMMENT = new schema.Entity('comments', { displayname:SCHEMA_DISPLAYNAME });
-
-            const SCHEMA_EXTENSION = new schema.Entity('extensions', {
-                comments: [ SCHEMA_COMMENT ],
-                thumbs: [ SCHEMA_THUMB ]
-            });
-            const normalized = normalize([ reply ], [ SCHEMA_EXTENSION ]);
-            console.log('normalized:', normalized);
-
-            const { thumbs={}, comments={}, displaynames={} } = normalized.entities;
-
-            this.setState(() => ({ isLoading:false, thumbs, comments, displaynames }));
+            this.setState(() => ({ isLoading:false, ...normalizeUniversal(reply) }));
         }
     }
 }
