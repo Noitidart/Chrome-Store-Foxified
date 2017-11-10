@@ -27,7 +27,17 @@ type Props = {
     ...FormProps
 }
 
-class RegisterFormDumb extends PureComponent<Props> {
+type State = {
+    forename: string,
+    isChecking: boolean,
+    isTaken?: boolean
+}
+
+class RegisterFormDumb extends PureComponent<Props, State> {
+    state = {
+        forename: this.props.account.forename,
+        isChecking: false
+    }
 
     constructor(props) {
         super(props);
@@ -36,10 +46,11 @@ class RegisterFormDumb extends PureComponent<Props> {
 
     render() {
         const { name, kind, submitting, error } = this.props;
+        const { isChecking, isTaken } = this.state;
 
         return (
             <form className="RegisterForm Settings--row" onSubmit={this.handleSubmit}>
-                <Field name="forename" component={FieldText} disabled={submitting} label="Display Name" onChange={this.handleChange} />
+                <Field name="forename" component={FieldText} disabled={submitting} label="Display Name" onChange={this.handleChange} isChecking={isChecking} isTaken={isTaken} />
                 <div className="Field--row">
                     <div className="Field--label" />
                     <div className="Field--desc">
@@ -53,8 +64,24 @@ class RegisterFormDumb extends PureComponent<Props> {
 
     handleChange = (e, valueNew, value) => {
         const { dispatchProxied } = this.props;
-        const forename = valueNew;
+        const forename = valueNew.trim();
         dispatchProxied(set({ forename }));
+
+        if (forename) {
+            this.setState(() => ({ forename, isChecking:true, isTaken:undefined }))
+            this.checkForename(forename);
+        } else {
+            this.setState(() => ({ forename, isChecking:false, isTaken:undefined }));
+        }
+    }
+    async checkForename(forename) {
+        const res = await fetchApi('displaynames', { qs:{ forename }});
+        if (this.state.forename.trim() === forename) {
+            console.log(`check resolved fore forename "${forename}", isTaken:`, res.status === 200, res.status);
+            if (res.status === 404) this.setState(() => ({ isChecking:false, isTaken:false }));
+            else if (res.status === 200) this.setState(() => ({ isChecking:false, isTaken:true }));
+        }
+        else console.log(`check for forename "${forename}" is no longer applicable becasue forename changed to "${this.state.forename}"`);
     }
     handleSubmit = values => {
         console.log('values:', values);
@@ -64,18 +91,18 @@ class RegisterFormDumb extends PureComponent<Props> {
     }
 }
 
-function validateWarnings({ forename }) {
-    const warnings = {};
+// function validateWarnings({ forename }) {
+//     const warnings = {};
 
-    if (['john', 'paul', 'george', 'ringo'].includes(forename)) {
-        warnings.forename = 'This display name already exists. If you are sure this is yours, then ignore this warning, otherwise please change it.';
-    }
-    return warnings;
-}
+//     if (['john', 'paul', 'george', 'ringo'].includes(forename)) {
+//         warnings.forename = 'This display name already exists. If you are sure this is yours, then ignore this warning, otherwise please change it.';
+//     }
+//     return warnings;
+// }
 
 const RegisterFormControlled = reduxForm({
     form: 'register',
-    warn: validateWarnings
+    // warn: validateWarnings
 })
 
 const RegisterFormSmart = connect(
