@@ -32,4 +32,6 @@
     display: flex;
     justify-content: center;
     font-size: 1.2em;
+    padding: 20px 0 40px 0;
+    font-style: italic;
 }

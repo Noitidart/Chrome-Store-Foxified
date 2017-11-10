@@ -19,7 +19,7 @@ const PAGES = [
     { path:'/forum/:kind',          label:null,        Body:ForumPage  },
     { path:'/topic/:kind/:name',    label:null,        Body:TopicPage  },
     { path:'/settings',             label:'Settings',  Body:SettingsPage },
-    { path:'/install/:kind/:name',  label:null,        Body:InstallPage }
+    { path:'/install/:kind/:extid', label:null,        Body:InstallPage }
 
 ]
 

@@ -66,28 +66,14 @@ class TopicPage extends PureComponent<Props, State> {
 
         return (
             <div>
-                { !isLoading && !hasTopic &&
-                    <p className="Page--intro">
-                        No extension named &quot;{extension ? extension.name : name}&quot; in
-                        &nbsp;
-                        { kind === 'ows' && 'Opera' }
-                        { kind === 'cws' && 'Chrome' }
-                        { kind === 'amo' && 'Firefox' }
-                        { kind === 'msft' && 'Edge' }
-                        &nbsp;
-                        category
-                    </p>
-                }
-                { hasTopic &&
-                    <p className="Page--intro">
-                        {name} for
-                        &nbsp;
-                        { kind === 'ows' && 'Opera' }
-                        { kind === 'cws' && 'Chrome' }
-                        { kind === 'amo' && 'Firefox' }
-                        { kind === 'msft' && 'Edge' }
-                    </p>
-                }
+                <p className="Page--intro">
+                    {name} for
+                    &nbsp;
+                    { kind === 'ows' && 'Opera' }
+                    { kind === 'cws' && 'Chrome' }
+                    { kind === 'amo' && 'Firefox' }
+                    { kind === 'msft' && 'Edge' }
+                </p>
                 { isLoading &&
                     <div className="ForumMessage">
                         Loading...
@@ -101,17 +87,17 @@ class TopicPage extends PureComponent<Props, State> {
                             <span>{ extension.name }</span>
                         </div>
                         <div className="TopicMeta">
-                            <b className="TopicMeta--label">For:</b>
+                            <b className="TopicMeta--label">Source:</b>
                             &nbsp;
                             <span>
-                                { kind === 'ows' && 'Opera' }
-                                { kind === 'cws' && 'Chrome' }
-                                { kind === 'amo' && 'Firefox' }
-                                { kind === 'msft' && 'Edge' }
+                                    { kind === 'ows' && 'Opera add-ons' }
+                                    { kind === 'cws' && 'Chrome Web Store' }
+                                    { kind === 'amo' && 'AMO' }
+                                    { kind === 'msft' && 'Edge' }
                             </span>
                         </div>
                         <div className="TopicMeta">
-                            <b className="TopicMeta--label">Created At:</b>
+                            <b className="TopicMeta--label">Topic created at:</b>
                             &nbsp;
                             <span>{ moment.utc(extension.created_at).fromNow() }</span>
                         </div>
@@ -123,21 +109,21 @@ class TopicPage extends PureComponent<Props, State> {
                         <div className="TopicMeta">
                             <b className="TopicMeta--label">Works for them:</b>
                             &nbsp;
-                            <span>{ thumbUpCnt } people vote this works</span>
+                            <span>{ thumbUpCnt }</span>
                         </div>
                         <div className="TopicMeta">
                             <b className="TopicMeta--label">Broken for them:</b>
                             &nbsp;
-                            <span>{ thumbDnCnt } people voted this doesn&apos;t work</span>
+                            <span>{ thumbDnCnt }</span>
                         </div>
                     </div>
                 }
-                { !isLoading && hasTopic && !hasComments &&
+                { !isLoading && !hasComments &&
                     <div className="ForumMessage">
                         No comments yet, be the first to comment!
                     </div>
                 }
-                { !isLoading && hasTopic && hasComments &&
+                { hasTopic && hasComments &&
                     <div className="Comments">
                         { Object.values(comments).sort(sortAscCreated).map(comment =>
                             <div className="Comment" key={comment.id}>
@@ -167,7 +153,7 @@ class TopicPage extends PureComponent<Props, State> {
                         ) }
                     </div>
                 }
-                { !isLoading && hasTopic &&
+                { !isLoading &&
                     <ReplyForm form={`comment-reply-${pageKey}`} loadEntitys={this.loadEntitys} name={name} kind={kind} />
                 }
             </div>

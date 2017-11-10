@@ -144,18 +144,18 @@ function isChromeNotChromium() {
 }
 
 // Get location of addon gallery for a given extension
-export function get_webstore_url(url) {
-    var cws = cws_pattern.exec(url) || cws_download_pattern.exec(url);
+export function get_webstore_url(url, kind, id) {
+    var cws = kind === 'cws' || cws_pattern.exec(url) || cws_download_pattern.exec(url);
     if (cws) {
-        return 'https://chrome.google.com/webstore/detail/' + cws[1];
+        return 'https://chrome.google.com/webstore/detail/' + (id || cws[1]);
     }
-    var ows = ows_pattern.exec(url);
+    var ows = kind === 'ows' || ows_pattern.exec(url);
     if (ows) {
-        return 'https://addons.opera.com/extensions/details/' + ows[1];
+        return 'https://addons.opera.com/extensions/details/' + (id || ows[1]);
     }
-    var amo = amo_pattern.exec(url) || amo_download_pattern.exec(url);
+    var amo = kind === 'amo' || amo_pattern.exec(url) || amo_download_pattern.exec(url);
     if (amo) {
-        return 'https://addons.mozilla.org/firefox/addon/' + amo[1];
+        return 'https://addons.mozilla.org/firefox/addon/' + (id || amo[1]);
     }
 }
 

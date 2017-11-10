@@ -156,7 +156,7 @@ class Card extends PureComponent<Props, State> {
     }
     componentDidMount() {
         this.agoInterval = setInterval(() => this.setState(() => ({ ago:this.getAgo() })), 30000);
-        if (!!this.props.name) this.loadEntitys();
+        if (this.props.name) this.loadEntitys();
     }
     componentWillUnmount() {
         clearInterval(this.agoInterval);
