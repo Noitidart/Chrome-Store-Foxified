@@ -7,14 +7,19 @@ import CounterPage from './CounterPage'
 import DashboardPage from './DashboardPage'
 import SettingsPage from './SettingsPage'
 import InstallPage from './InstallPage'
+import ForumsPage from './ForumsPage'
+import ForumPage from './ForumPage'
+import TopicPage from './TopicPage'
 
 import './index.css'
 
 const PAGES = [
     { path:'/',                     label:'Dashboard', Body:DashboardPage  },
-    { path:'/counter',              label:'Counter',   Body:CounterPage  },
+    { path:'/forums',               label:'Forums',    Body:ForumsPage  },
+    { path:'/forum/:kind',          label:null,        Body:ForumPage  },
+    { path:'/topic/:kind/:name',    label:null,        Body:TopicPage  },
     { path:'/settings',             label:'Settings',  Body:SettingsPage },
-    { path:'/install/:kind/:extid', label:null,        Body:InstallPage }
+    { path:'/install/:kind/:name',  label:null,        Body:InstallPage }
 
 ]
 

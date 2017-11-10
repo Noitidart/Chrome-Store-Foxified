@@ -75,8 +75,12 @@
     text-decoration: none;
 }
 
-.Card--link-button {
+.Card--link--button {
     font-size: 1em;
+}
+
+.Card--link--button-danger {
+    color: #C33D3D;
 }
 
 .Card--link:hover {
@@ -143,4 +147,21 @@
 
 .Card--row--spacer {
     flex: 1
+}
+
+.Card--link--normal {
+    font-size: 1em;
+    display: inline;
+}
+
+.Thumb--green {
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #27AE60
+}
+
+.Thumb--red {
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #C33D3D;
 }

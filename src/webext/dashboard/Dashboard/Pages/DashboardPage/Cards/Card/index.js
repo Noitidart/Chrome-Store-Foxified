@@ -1,10 +1,15 @@
 // @flow
 
 import React, { PureComponent } from 'react'
+import { Link } from 'react-router-dom'
 import moment from 'moment'
-import { pushAlternating } from 'cmn/lib/all'
+import qs from 'qs'
+import { normalize, schema } from 'normalizr'
+import { pick } from 'cmn/lib/all'
+import classnames from 'cmn/lib/classnames'
 
-import { STATUS, install, save, process } from '../../../../../../flow-control/extensions'
+import { deleteUndefined, fetchApi } from '../../../../../../flow-control/utils'
+import { STATUS, install, save, process, deleteExtension } from '../../../../../../flow-control/extensions'
 
 import Modal from '../../../../Modal'
 import ModalUnsigned from './ModalUnsigned'
@@ -25,7 +30,10 @@ type Props = {
 }
 
 type State = {
-    ago: string
+    ago: string,
+    isLoading: true,
+    thumbs: {}, // { id:string, like:boolean, displayname_id:string, entity_id:string, created_at:string, updated_at:string }
+    displaynames: {} // { id:string, like:boolean, displayname_id:string, entity_id:string, created_at:string, updated_at:string }[]
 }
 
 function pushAlternatingCallback(aTargetArr, aCallback: (index:number) => any) {
@@ -126,18 +134,31 @@ function getStatusMessage(status, statusExtra, retry) {
 class Card extends PureComponent<Props, State> {
     agoInterval: number
     state = {
-        ago: this.getAgo()
+        ago: this.getAgo(),
+        isLoading: true,
+        displaynames: {},
+        thumbs: {},
+        comments: {}
     }
 
     componentDidMount() {
         this.agoInterval = setInterval(() => this.setState(() => ({ ago:this.getAgo() })), 30000);
+        this.loadEntitys();
     }
     componentWillUnmount() {
         clearInterval(this.agoInterval);
     }
     render() {
         const { name, date, version, storeUrl, listingTitle, status, fileId, xpiFileId, signedFileId, kind } = this.props;
-        const { ago } = this.state;
+        const { ago, isLoading, thumbs, displaynames } = this.state;
+
+        const forename = 'noit';
+        const displayname = Object.values(displaynames).find(displayname => displayname.forename === forename);
+        const thumbUpCnt = Object.values(thumbs).reduce( (sum, { like }) => like ? ++sum : sum, 0 );
+        const thumbDnCnt = Object.values(thumbs).reduce( (sum, { like }) => !like ? ++sum : sum, 0 );
+        const thumb = displayname ? Object.values(thumbs).find(thumb => thumb.displayname_id === displayname.id) : null;
+        const isThumbUp = thumb && thumb.like;
+        const isThumbDn = thumb && !thumb.like;
 
         return (
             <div className="Card">
@@ -180,12 +201,34 @@ class Card extends PureComponent<Props, State> {
                         <span className="Card--text">{version}</span>
                     </div>
                 }
+                { !!name && kind !== 'file' &&
+                    <div className="Card--row">
+                        <div className="Card--label">
+                            Works for you?
+                        </div>
+                        { isLoading &&
+                            <span className="Card--text">
+                                Loading...
+                            </span>
+                        }
+                        { !isLoading &&
+                            <span className="Card--text">
+                                <a href="#" onClick={this.thumbUp} className={classnames('Card--link Card--link--normal', isThumbUp && 'Thumb--green')}>Yes</a> ({thumbUpCnt})
+                                &nbsp; | &nbsp;
+                                <a href="#" onClick={this.thumbDn} className={classnames('Card--link Card--link--normal', isThumbDn && 'Thumb--red')}>No</a> ({thumbDnCnt})
+                                &nbsp; | &nbsp;
+                                <Link className="Card--link Card--link--normal" to={`/topic/${kind}/${name}`}>Discuss</Link>
+                            </span>
+                        }
+                    </div>
+                }
                 <div className="Card--row--spacer" />
                 { (!status || (xpiFileId || signedFileId)) &&
                     <div className="Card--row Card--row--buttons">
-                        { signedFileId && <a href="#" className="Card--link Card--link-button" onClick={this.handleClickInstall}>Install</a> }
-                        { xpiFileId && !signedFileId && <a href="#" className="Card--link Card--link-button" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a> }
+                        { signedFileId && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstall}>Install</a> }
+                        { xpiFileId && !signedFileId && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a> }
                         { !xpiFileId && !signedFileId && <span>Invalid status state</span> }
+                        <a href="#" className="Card--link Card--link--button Card--link--button Card--link--button-danger" onClick={this.delete}>{ status ? 'Cancel' : 'Delete' }</a>
                     </div>
                 }
                 { (!status || (xpiFileId || signedFileId)) && <div className="Card--row--spacer" /> }
@@ -228,6 +271,113 @@ class Card extends PureComponent<Props, State> {
         const { dispatchProxied, id } = this.props;
         e.preventDefault();
         dispatchProxied(process(id));
+    }
+
+    delete = e => {
+        const { dispatchProxied, id } = this.props;
+        e.preventDefault();
+        dispatchProxied(deleteExtension(id));
+    }
+
+    thumbUp = async e => {
+        const { dispatchProxied, id, name, kind } = this.props;
+        e.preventDefault();
+
+        const { displaynames, thumbs } = this.state;
+        const forename = 'noit';
+        const displayname = Object.values(displaynames).find(displayname => displayname.forename === forename);
+        const thumb = displayname ? Object.values(thumbs).find(thumb => thumb.displayname_id === displayname.id) : null;
+        const isThumbUp = thumb && thumb.like;
+        const isThumbDn = thumb && !thumb.like;
+
+        if (isThumbUp) {
+            this.thumbDelete();
+        } else {
+            this.setState(() => ({ isLoading:true }));
+            const res = await fetchApi(isThumbDn ? `thumbs/${thumb.id}` : 'thumbs', {
+                method: isThumbDn ? 'PUT' : 'POST',
+                body: {
+                    name,
+                    kind,
+                    forename,
+                    like: true
+                }
+            });
+            console.log('res.status:', res.status);
+            this.loadEntitys();
+        }
+
+    }
+    thumbDn = async e => {
+        const { dispatchProxied, id, name, kind } = this.props;
+        e.preventDefault();
+
+        const { displaynames, thumbs } = this.state;
+        const forename = 'noit';
+        const displayname = Object.values(displaynames).find(displayname => displayname.forename === forename);
+        const thumb = displayname ? Object.values(thumbs).find(thumb => thumb.displayname_id === displayname.id) : null;
+        const isThumbUp = thumb && thumb.like;
+        const isThumbDn = thumb && !thumb.like;
+
+        if (isThumbDn) {
+            this.thumbDelete();
+        } else {
+            this.setState(() => ({ isLoading:true }));
+            const res = await fetchApi(isThumbUp ? `thumbs/${thumb.id}` : 'thumbs', {
+                method: isThumbUp ? 'PUT' : 'POST',
+                body: {
+                    name,
+                    kind,
+                    forename,
+                    like: false
+                }
+            });
+            console.log('res.status:', res.status);
+            this.loadEntitys();
+        }
+
+
+    }
+    thumbDelete = async e => {
+        const { dispatchProxied, id, name, kind } = this.props;
+        if (e) e.preventDefault();
+
+        const { displaynames, thumbs } = this.state;
+        const forename = 'noit';
+        const displayname = Object.values(displaynames).find(displayname => displayname.forename === forename);
+        if (!displayname) return; // not  thumbed by this forename
+        const thumb = Object.values(thumbs).find(thumb => thumb.displayname_id === displayname.id);
+
+        this.setState(() => ({ isLoading:true }));
+        const res = await fetchApi(`thumbs/${thumb.id}?${qs.stringify({ forename })}`, { method:'DELETE' });
+
+        console.log('res.status:', res.status);
+
+        this.loadEntitys();
+    }
+    loadEntitys = async () => {
+        const { name, kind } = this.props;
+        const res = await fetchApi(`extension?${qs.stringify({ name, kind })}`);
+        if (res.status === 404) {
+            this.setState(() => ({ isLoading:false, comments:{}, thumbs:{}, displaynames:{} }));
+        } else {
+            const reply = await res.json();
+
+            const SCHEMA_DISPLAYNAME = new schema.Entity('displaynames');
+            const SCHEMA_THUMB = new schema.Entity('thumbs', { displayname:SCHEMA_DISPLAYNAME });
+            const SCHEMA_COMMENT = new schema.Entity('comments', { displayname:SCHEMA_DISPLAYNAME });
+
+            const SCHEMA_EXTENSION = new schema.Entity('extensions', {
+                comments: [ SCHEMA_COMMENT ],
+                thumbs: [ SCHEMA_THUMB ]
+            });
+            const normalized = normalize([ reply ], [ SCHEMA_EXTENSION ]);
+            console.log('normalized:', normalized);
+
+            const { thumbs={}, comments={}, displaynames={} } = normalized.entities;
+
+            this.setState(() => ({ isLoading:false, thumbs, comments, displaynames }));
+        }
     }
 }
 

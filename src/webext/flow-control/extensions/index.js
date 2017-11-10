@@ -81,8 +81,8 @@ const add = (entry): AddAction => ({ type:ADD, entry });
 
 //
 const DELETE = A`DELETE`;
-type DeleteAction = { type:typeof DELETE, idOrIds:Id|Id[] };
-const del = (idOrIds): DeleteAction => ({ type:DELETE, idOrIds });
+type DeleteAction = { type:typeof DELETE, id:Id };
+const deleteExtension = (id): DeleteAction => ({ type:DELETE, id });
 
 //
 const PATCH = A`PATCH`;
@@ -551,9 +551,8 @@ type Action =
 export default function reducer(state: Shape = INITIAL, action:Action): Shape {
     switch(action.type) {
         case DELETE: {
-            const { idOrIds } = action;
-            const ids = !Array.isArray(idOrIds) ? [idOrIds] : idOrIds;
-            return omit({ ...state }, ...ids);
+            const { id } = action;
+            return omit({ ...state }, id);
         }
         case ADD: {
             const { entry } = action;
@@ -578,4 +577,4 @@ function getName(name, listingTitle) {
 }
 
 export type { Entry, Status }
-export { STATUS, install, save, requestAdd, process }
+export { STATUS, install, save, requestAdd, process, deleteExtension }

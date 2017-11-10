@@ -13,7 +13,14 @@ class SettingsPage extends PureComponent<void, void> {
                 <p className="Page--intro">
                     Customize your experience ^_^
                 </p>
-                <b>Memory</b> <button onClick={this.purgeStore}>Clear Memory</button>
+                <div className="Settings--row">
+                    <b className="Settings--label">Memory</b> <button onClick={this.purgeStore}>Clear Memory</button>
+                </div>
+                <div className="Settings--row">
+                    <b className="Settings--label">Display Name</b> <input type="text" />
+                    <br />
+                    <small>Set a name here if you want to vote or leave comments on extensions</small>
+                </div>
             </div>
         )
     }

@@ -7,5 +7,13 @@
 .Page--intro {
     margin: 18px 0;
     font-size: large;
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.Page--intro--icon {
+    width: 32px;
+    height: 32px;
+    margin: 0 10px;
 }

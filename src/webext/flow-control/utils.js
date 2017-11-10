@@ -52,3 +52,24 @@ const requestAddSaga = function* requestAddSaga() {
 }
 sagas.push(requestAddSaga);
 */
+
+export function fetchApi(input:string, init={}) {
+    // adds the default headers in but doesnt overwrite if it already has those keys
+    // if init.body is object, then it JSON.stringify's it
+    // if input is string, and doesnt start with http, then `https://${fetchApi.DOMAIN}/api/` is prefixed to it
+
+    // currently only supports string `input`
+
+    const DOMAIN = 'http://localhost:8000';
+    init.headers = Object.assign({
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+    }, init.headers);
+
+    if (init.body) init.body = JSON.stringify(init.body);
+
+    if (!input.startsWith('http')) input = `${DOMAIN}/api/${input}`;
+
+    return fetch(input, init);
+}
+

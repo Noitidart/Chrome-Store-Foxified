@@ -1,0 +1,24 @@
+.ModalUnsigned {
+    display: flex;
+    padding: 20px;
+    flex-direction: column;
+    max-width: 50vw;
+}
+
+.ModalUnsigned--button {
+    padding: 5px;
+    font-weight: bold;
+    align-self: flex-end;
+}
+
+.ModalUnsigned--checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 15px 0 10px 0;
+}
+
+.ModalUnsigned--para {
+    padding: 3px;
+    margin: 0 3px;
+}
