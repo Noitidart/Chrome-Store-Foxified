@@ -32,7 +32,7 @@ type Props = {
 
 type State = {
     ago: string,
-    isLoading: true,
+    isLoading: boolean,
     extensions: {},
     comments: {},
     thumbs: {},
@@ -147,9 +147,16 @@ class Card extends PureComponent<Props, State> {
         isChecking: false
     }
 
+    componentDidUpdate(propsOld) {
+        const { name } = this.props;
+        const { name:nameOld } = propsOld;
+
+        if (name !== nameOld) this.loadEntitys();
+
+    }
     componentDidMount() {
         this.agoInterval = setInterval(() => this.setState(() => ({ ago:this.getAgo() })), 30000);
-        this.loadEntitys();
+        if (!!this.props.name) this.loadEntitys();
     }
     componentWillUnmount() {
         clearInterval(this.agoInterval);

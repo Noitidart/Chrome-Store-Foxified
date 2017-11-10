@@ -128,7 +128,7 @@ class TopicPage extends PureComponent<Props, State> {
                         <div className="TopicMeta">
                             <b className="TopicMeta--label">Broken for them:</b>
                             &nbsp;
-                            <span>{ thumbDnCnt } people have voted this doesn&apos;t work</span>
+                            <span>{ thumbDnCnt } people voted this doesn&apos;t work</span>
                         </div>
                     </div>
                 }
