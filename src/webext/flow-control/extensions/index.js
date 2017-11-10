@@ -91,6 +91,40 @@ type PatchAction = { type:typeof PATCH, id:Id, data:Entry };
 const patch = (id, data): PatchAction => ({ type:PATCH, id, data });
 
 //
+const CHECK_UPDATE = A`CHECK_UPDATE`;
+type CheckUpdateAction = { type:typeof CHECK_UPDATE, id:Id, ...StatusInjection };
+const checkUpdate = (id: Id): CheckUpdateAction => injectStatusPromise({ type:CHECK_UPDATE, id });
+
+function* checkUpdateWorker(action: CheckUpdateAction) {
+    const { id, resolve } = action;
+
+    const {extensions:{ [id]:extension }} = yield select();
+
+    if (!extension) {
+        console.warn('no such extension with id:', id);
+        return;
+    }
+
+    const { storeUrl, version } = extension;
+
+    const url = yield call(get_crx_url, storeUrl);
+    const res = yield call(fetch, url);
+    const blob = yield call([res, res.blob]);
+
+    const zipBuf = crxToZip(yield call(blobToArrBuf, blob));
+    const zip = yield call(Zip.loadAsync, zipBuf);
+    const manifest = JSON.parse(yield call([zip.file('manifest.json'), 'async'], 'string'));
+    const { version:versionNew } = manifest;
+
+    if (versionNew !== version) resolve({ isUpdateAvailable:true, versionNew });
+    else resolve({ isUpdateAvailable:false, versionNew });
+}
+function* checkUpdateWatcher() {
+    yield takeEvery(CHECK_UPDATE, checkUpdateWorker);
+}
+sagas.push(checkUpdateWatcher);
+
+//
 const REQUEST_ADD = A`REQUEST_ADD`;
 type RequestAddAction = { type:typeof REQUEST_ADD, storeUrl:string, fileDataUrl:string, ...StatusInjection };
 const requestAdd = ({ storeUrl, fileDataUrl }: { storeUrl:string, fileDataUrl:string }): RequestAddAction => injectStatusPromise({ type:REQUEST_ADD, storeUrl, fileDataUrl });
@@ -577,4 +611,4 @@ function getName(name, listingTitle) {
 }
 
 export type { Entry, Status }
-export { STATUS, install, save, requestAdd, process, deleteExtension }
+export { STATUS, install, save, requestAdd, process, deleteExtension, checkUpdate }

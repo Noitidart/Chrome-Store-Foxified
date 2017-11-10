@@ -3,9 +3,9 @@
 import React, { PureComponent } from 'react'
 import { Link } from 'react-router-dom'
 import moment from 'moment'
-import { pick } from 'cmn/lib/all'
 import classnames from 'cmn/lib/classnames'
 
+import { callInBackground } from '../../../../../connect'
 import { fetchApi } from '../../../../../../flow-control/utils'
 import { normalizeUniversal } from '../../../../../../flow-control/normalizers'
 import { STATUS, install, save, process, deleteExtension } from '../../../../../../flow-control/extensions'
@@ -36,7 +36,9 @@ type State = {
     extensions: {},
     comments: {},
     thumbs: {},
-    displaynames: {}
+    displaynames: {},
+    isChecking: boolean,
+    isUpdateAvailable?: boolean
 }
 
 function pushAlternatingCallback(aTargetArr, aCallback: (index:number) => any) {
@@ -141,7 +143,8 @@ class Card extends PureComponent<Props, State> {
         isLoading: true,
         displaynames: {},
         thumbs: {},
-        comments: {}
+        comments: {},
+        isChecking: false
     }
 
     componentDidMount() {
@@ -153,7 +156,7 @@ class Card extends PureComponent<Props, State> {
     }
     render() {
         const { name, date, version, storeUrl, listingTitle, status, fileId, xpiFileId, signedFileId, kind, forename } = this.props;
-        const { ago, isLoading, thumbs, displaynames, comments } = this.state;
+        const { ago, isLoading, thumbs, displaynames, comments, isChecking } = this.state;
 
         const hasForename = !!forename;
         const displayname = hasForename && Object.values(displaynames).find(displayname => displayname.forename === forename);
@@ -178,12 +181,22 @@ class Card extends PureComponent<Props, State> {
                     <div className="Card--label">
                         Source
                     </div>
-                    <a className="Card--link" href={storeUrl} target="_blank" rel="noopener noreferrer">
-                        <img src={getSourceImage(kind)} alt="" className="Card--link-image" />
-                        <span className="Card--link-label">
-                            { kind === 'file' ? 'Your Computer' : listingTitle }
+                    { kind !== 'file' &&
+                        <a className="Card--link" href={storeUrl} target="_blank" rel="noopener noreferrer">
+                            <img src={getSourceImage(kind)} alt="" className="Card--link-image" />
+                            <span className="Card--link-label">
+                                { kind === 'file' ? 'Your Computer' : listingTitle }
+                            </span>
+                        </a>
+                    }
+                    { kind === 'file' &&
+                        <span className="Card--link">
+                            <img src={IMAGE_FOLDER} alt="" className="Card--link-image" />
+                            <span className="Card--link-label">
+                                Your Computer
+                            </span>
                         </span>
-                    </a>
+                    }
                 </div>
                 { [fileId, xpiFileId, signedFileId].some( entry => entry ) &&
                     <div className="Card--row">
@@ -203,6 +216,17 @@ class Card extends PureComponent<Props, State> {
                             Version
                         </div>
                         <span className="Card--text">{version}</span>
+                    </div>
+                }
+                { kind !== 'file' && !status &&
+                    <div className="Card--row">
+                        <div className="Card--label">
+                            Update
+                        </div>
+                        <span className="Card--text">
+                            { !isChecking && <a href="#" onClick={this.checkUpdate} className="Card--link Card--link--normal">Check for updates</a> }
+                            { isChecking && 'Checking...' }
+                        </span>
                     </div>
                 }
                 { !!name && kind !== 'file' &&
@@ -386,6 +410,18 @@ class Card extends PureComponent<Props, State> {
             const reply = await res.json();
             this.setState(() => ({ isLoading:false, ...normalizeUniversal(reply) }));
         }
+    }
+
+    checkUpdate = async () => {
+        const { id, storeUrl, name } = this.props; // TODO: name is available whenever checkUpdate can run?
+        this.setState(() => ({ isChecking:true }));
+
+        const { isUpdateAvailable, versionNew } = await new Promise( resolve => callInBackground('dispatchCheckUpdate', id, resolve) );
+
+        this.setState(() => ({ isChecking:false }));
+
+        if (isUpdateAvailable) alert(`${name} :: An update is available (v${versionNew}). . To update, click on "Delete" then go back to extension page on the store and click "Add to Firefox".`);
+        else alert(`${name} :: No update available`);
     }
 }
 

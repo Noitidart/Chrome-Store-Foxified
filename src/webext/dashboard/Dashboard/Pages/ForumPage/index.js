@@ -99,7 +99,7 @@ class ForumPage extends PureComponent<Props, State> {
                             <div className="Topic" key={name}>
                                 <Link to={`/topic/${kind}/${name}`}>{name}</Link>
                                 { sortBy !== 'name' && '  -  ' }
-                                { sortBy === 'comments-recent' ? latest_comment ? { moment.utc(latest_comment.created_at).fromNow() }
+                                { sortBy === 'comments-recent' ? latest_comment ? moment.utc(latest_comment.created_at).fromNow()
                                                                                 : 'No Comments'
                                                                : undefined
                                 }

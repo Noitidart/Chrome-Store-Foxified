@@ -26,7 +26,7 @@ class DonateReminderDumb extends PureComponent<Props> {
         return !isVisible ? null : ( // eslint-disable-line no-extra-parens
             <div className="Donate">
                 <div className="Donate--message">
-                    Please support the development and server costs. A server is used for the upcoming community feature, $1/month would be very helpful!
+                    Please support the development and server costs. A server is used for the forum and voting features, $1/month would be very helpful!
                 </div>
                 <div className="Donate--buttons">
                     <a className="Donate--button" href="https://www.paypal.me/Noitidart" target="_blank" rel="noopener noreferrer">Support now on Paypal</a>

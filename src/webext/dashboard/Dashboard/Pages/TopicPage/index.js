@@ -111,9 +111,9 @@ class TopicPage extends PureComponent<Props, State> {
                             </span>
                         </div>
                         <div className="TopicMeta">
-                            <b className="TopicMeta--label">Topic Created At:</b>
+                            <b className="TopicMeta--label">Created At:</b>
                             &nbsp;
-                            <span>{ extension.created_at }</span>
+                            <span>{ moment.utc(extension.created_at).fromNow() }</span>
                         </div>
                         <div className="TopicMeta">
                             <b className="TopicMeta--label">Total Votes:</b>

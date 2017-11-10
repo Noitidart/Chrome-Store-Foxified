@@ -4,11 +4,11 @@
     top: 2em;
     right: 2em;
     width: 450px;
-    border: 1px solid #CCCCCC;
+    border: 1px solid #BBBBBB;
     padding: 10px;
     display: flex;
     flex-direction: column;
-    background-color: #F7F7F7;
+    background-color: #F0F0F7;
 }
 
 .Donate--message {

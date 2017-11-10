@@ -1,6 +1,6 @@
 // @flow
 
-import { requestAdd } from '../flow-control/extensions'
+import { requestAdd, checkUpdate } from '../flow-control/extensions'
 import store, { persistor } from '../flow-control'
 
 import DASHBOARD_PAGE from '../dashboard/index.html'
@@ -15,6 +15,10 @@ export function purgeStore() {
 
 export async function dispatchSubmitAddForm(values) {
     return await store.dispatch(requestAdd(values)).promise;
+}
+
+export async function dispatchCheckUpdate(id) {
+    return await store.dispatch(checkUpdate(id)).promise;
 }
 
 // content script backend
