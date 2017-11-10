@@ -151,7 +151,7 @@ class Card extends PureComponent<Props, State> {
     }
     render() {
         const { name, date, version, storeUrl, listingTitle, status, fileId, xpiFileId, signedFileId, kind } = this.props;
-        const { ago, isLoading, thumbs, displaynames } = this.state;
+        const { ago, isLoading, thumbs, displaynames, comments } = this.state;
 
         const forename = 'noit';
         const displayname = Object.values(displaynames).find(displayname => displayname.forename === forename);
@@ -160,6 +160,7 @@ class Card extends PureComponent<Props, State> {
         const thumb = displayname ? Object.values(thumbs).find(thumb => thumb.displayname_id === displayname.id) : null;
         const isThumbUp = thumb && thumb.like;
         const isThumbDn = thumb && !thumb.like;
+        const commentsCnt = Object.values(comments).length;
 
         return (
             <div className="Card">
@@ -218,7 +219,7 @@ class Card extends PureComponent<Props, State> {
                                 &nbsp; | &nbsp;
                                 <a href="#" onClick={this.thumbDn} className={classnames('Card--link Card--link--normal', isThumbDn && 'Thumb--red')}>No</a> ({thumbDnCnt})
                                 &nbsp; | &nbsp;
-                                <Link className="Card--link Card--link--normal" to={`/topic/${kind}/${name}`}>Discuss</Link>
+                                <Link className="Card--link Card--link--normal" to={`/topic/${kind}/${name}`}>Discuss</Link> ({commentsCnt})
                             </span>
                         }
                     </div>

@@ -79,7 +79,8 @@
     font-size: 1em;
 }
 
-.Card--link--button-danger {
+.Card--link--button-danger,
+.Card--link--button-danger:visited {
     color: #C33D3D;
 }
 
@@ -160,8 +161,16 @@
     color: #27AE60
 }
 
+.Thumb--green:visited {
+    color: #27AE60
+}
+
 .Thumb--red {
     font-weight: bold;
     text-transform: uppercase;
+    color: #C33D3D;
+}
+
+.Thumb--red:visited {
     color: #C33D3D;
 }

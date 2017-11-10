@@ -34,7 +34,7 @@ class AddFormDumb extends PureComponent<Props, State> {
 
     constructor(props) {
         super(props);
-        this.handleSubmit = this.props.handleSubmit(this.handleSubmit);
+        this.handleSubmit = props.handleSubmit(this.handleSubmit);
     }
 
     render() {

@@ -41,4 +41,5 @@ const DashboardPageProxied = proxy(['api'])
 
 const DashboardPage = DashboardPageProxied(DashboardPageDumb)
 
+export { DATE_PAGE_LOADED }
 export default DashboardPage

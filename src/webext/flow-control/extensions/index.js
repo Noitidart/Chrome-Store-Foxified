@@ -38,7 +38,7 @@ const SIGNED_STATUS = {
 const AMO_DOMAIN = 'https://addons.mozilla.org';
 
 type Id = string;
-type Kind = 'cws' | 'amo' | 'ows' | 'file';
+type Kind = 'cws' | 'amo' | 'ows' | 'file' | 'msft';
 type Status = string; // $Keys<typeof STATUS>; // for some reason stupid flow is not recognizing $Keys
 type Entry = {
     id: Id,

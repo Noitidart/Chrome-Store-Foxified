@@ -1,0 +1,12 @@
+.Reply {
+    display: flex;
+}
+
+.Reply--field {
+    flex: 1;
+    height: 6.6em;
+}
+
+.Reply--button {
+    width: 50px;
+}
