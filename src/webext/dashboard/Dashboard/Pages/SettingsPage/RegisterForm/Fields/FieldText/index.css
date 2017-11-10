@@ -1,0 +1,4 @@
+.Field--input-text--noflex {
+    max-width: 15em;
+    flex: 0;
+}

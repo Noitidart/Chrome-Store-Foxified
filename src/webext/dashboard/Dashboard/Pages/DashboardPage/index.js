@@ -23,7 +23,7 @@ const DATE_PAGE_LOADED = Date.now().toString();
 
 class DashboardPageDumb extends PureComponent<Props, void> {
     render() {
-        const {location:{state:{ key:pageKey=DATE_PAGE_LOADED }={}}, dispatchProxied, api } = this.props;
+        const {location:{state:{ key:pageKey=DATE_PAGE_LOADED }={}}, history:{ push }, dispatchProxied, api } = this.props;
 
         return (
             <div>
@@ -31,7 +31,7 @@ class DashboardPageDumb extends PureComponent<Props, void> {
                     A panel to all your extension downloads
                 </p>
                 <AddForm form={`validate_${pageKey}`} actionId={`validate_${pageKey}`} dispatch={dispatchProxied} api={api} />
-                <Cards />
+                <Cards push={push} />
             </div>
         )
     }

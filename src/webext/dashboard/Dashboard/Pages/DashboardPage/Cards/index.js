@@ -14,17 +14,18 @@ import type { Entry as Extension } from '../../../../../flow-control/extensions'
 type Props = {
     dispatchProxied: *,
     extensions: Extension[],
-    account: AccountShape
+    account: AccountShape,
+    push: () => void
 }
 
 class CardsDumb extends PureComponent<Props, void> {
     render() {
-        const { extensions, dispatchProxied, account:{ shouldShowUnsignedModal } } = this.props;
+        const { extensions, dispatchProxied, account:{ shouldShowUnsignedModal, forename }, push } = this.props;
         console.log('Cards extensions:', extensions);
 
         return (
             <div className="Cards">
-                { Object.values(extensions).sort((a, b)=>b.date-a.date).map( extension => <Card key={extension.id} {...extension} dispatchProxied={dispatchProxied} shouldShowUnsignedModal={shouldShowUnsignedModal} /> )}
+                { Object.values(extensions).sort((a, b)=>b.date-a.date).map( extension => <Card key={extension.id} {...extension} dispatchProxied={dispatchProxied} shouldShowUnsignedModal={shouldShowUnsignedModal} forename={forename} push={push} /> )}
             </div>
         )
     }

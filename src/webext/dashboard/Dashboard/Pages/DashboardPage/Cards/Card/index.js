@@ -24,8 +24,10 @@ import type { Entry as Extension, Status } from '../../../../../../flow-control/
 
 type Props = {
     ...Extension,
+    forename: string,
     dispatchProxied: *,
-    shouldShowUnsignedModal: boolean
+    shouldShowUnsignedModal: boolean,
+    push: () => void
 }
 
 type State = {
@@ -150,11 +152,11 @@ class Card extends PureComponent<Props, State> {
         clearInterval(this.agoInterval);
     }
     render() {
-        const { name, date, version, storeUrl, listingTitle, status, fileId, xpiFileId, signedFileId, kind } = this.props;
+        const { name, date, version, storeUrl, listingTitle, status, fileId, xpiFileId, signedFileId, kind, forename } = this.props;
         const { ago, isLoading, thumbs, displaynames, comments } = this.state;
 
-        const forename = 'noit';
-        const displayname = Object.values(displaynames).find(displayname => displayname.forename === forename);
+        const hasForename = !!forename;
+        const displayname = hasForename && Object.values(displaynames).find(displayname => displayname.forename === forename);
         const thumbUpCnt = Object.values(thumbs).reduce( (sum, { like }) => like ? ++sum : sum, 0 );
         const thumbDnCnt = Object.values(thumbs).reduce( (sum, { like }) => !like ? ++sum : sum, 0 );
         const thumb = displayname ? Object.values(thumbs).find(thumb => thumb.displayname_id === displayname.id) : null;
@@ -283,11 +285,20 @@ class Card extends PureComponent<Props, State> {
     }
 
     thumbUp = async e => {
-        const { dispatchProxied, id, name, kind } = this.props;
+        const { dispatchProxied, id, name, kind, forename, push } = this.props;
         e.preventDefault();
 
+        const hasForename = !!forename;
+
+        if (!hasForename) {
+            setTimeout(() => {
+                const shouldGoToSettings = confirm('To be able to vote, you need to first set a "display name" from the settings page. Go there now?')
+                if (shouldGoToSettings) push('settings');
+            }, 0);
+            return;
+        }
+
         const { displaynames, thumbs } = this.state;
-        const forename = 'noit';
         const displayname = Object.values(displaynames).find(displayname => displayname.forename === forename);
         const thumb = displayname ? Object.values(thumbs).find(thumb => thumb.displayname_id === displayname.id) : null;
         const isThumbUp = thumb && thumb.like;
@@ -312,11 +323,20 @@ class Card extends PureComponent<Props, State> {
 
     }
     thumbDn = async e => {
-        const { dispatchProxied, id, name, kind } = this.props;
+        const { dispatchProxied, id, name, kind, forename, push } = this.props;
         e.preventDefault();
 
+        const hasForename = !!forename;
+
+        if (!hasForename) {
+            setTimeout(() => {
+                const shouldGoToSettings = confirm('To be able to vote, you need to first set a "display name" from the settings page. Go there now?')
+                if (shouldGoToSettings) push('settings');
+            }, 0);
+            return;
+        }
+
         const { displaynames, thumbs } = this.state;
-        const forename = 'noit';
         const displayname = Object.values(displaynames).find(displayname => displayname.forename === forename);
         const thumb = displayname ? Object.values(thumbs).find(thumb => thumb.displayname_id === displayname.id) : null;
         const isThumbUp = thumb && thumb.like;
@@ -342,11 +362,10 @@ class Card extends PureComponent<Props, State> {
 
     }
     thumbDelete = async e => {
-        const { dispatchProxied, id, name, kind } = this.props;
+        const { dispatchProxied, id, name, kind, forename } = this.props;
         if (e) e.preventDefault();
 
         const { displaynames, thumbs } = this.state;
-        const forename = 'noit';
         const displayname = Object.values(displaynames).find(displayname => displayname.forename === forename);
         if (!displayname) return; // not  thumbed by this forename
         const thumb = Object.values(thumbs).find(thumb => thumb.displayname_id === displayname.id);

@@ -9,6 +9,13 @@
     font-size: 0.85em;
     white-space: nowrap;
 }
+.Field--warning {
+    display: flex;
+    font-weight: 500;
+    color: #F1C40F;
+    font-size: 0.85em;
+    white-space: nowrap;
+}
 .Field--label--error {
     color: #C33D3D;
 }

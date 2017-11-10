@@ -1,12 +1,18 @@
-.Reply {
+.ReplyForm {
     display: flex;
+    flex-direction: column;
+    padding: 0 40px 40px;
 }
 
-.Reply--field {
+.ReplyForm--field {
     flex: 1;
     height: 6.6em;
 }
 
-.Reply--button {
+.ReplyForm--button {
     width: 50px;
+}
+
+.ReplyForm--row {
+    display: flex;
 }
