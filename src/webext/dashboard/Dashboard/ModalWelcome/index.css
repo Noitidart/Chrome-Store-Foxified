@@ -165,13 +165,16 @@ Alternate code below
     font-size: 18px;
     position: unset;
     font-family: 'Quicksand';
+    top: 95%;
 }
 .it0 {
-    padding-left: 12px;
-    padding-right: 185px;
+    left: 15px;
 }
 .it1 {
-    padding-right: 210px;
+    left: 340px;
+}
+.it2 {
+    left: 680px;
 }
 #storeLinks {
     font-size: 32px;
