@@ -7,6 +7,10 @@
     "version": "~ADDON_VERSION~",
     "default_locale": "en_US",
     "homepage_url": "https://github.com/Noitidart/~ADDON_NAME_HYPH~/",
+    "options_ui": {
+        "page": "7e4e10b3bb36ac2d03095a183833b2b1.html#/settings",
+        "open_in_tab": true
+    },
     "icons": {
         "24": "icon32.png",
         "32": "icon32.png",

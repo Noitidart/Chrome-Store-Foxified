@@ -61,7 +61,7 @@ export function fetchApi(input:string, init={}) {
 
     // currently only supports string `input`
 
-    const DOMAIN = 'http://localhost:8000';
+    const DOMAIN = 'https://foxified.sundayschoolonline.org';
     init.headers = Object.assign({
         Accept: 'application/json',
         'Content-Type': 'application/json',
