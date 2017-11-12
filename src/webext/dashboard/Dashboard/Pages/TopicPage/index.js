@@ -135,7 +135,7 @@ class TopicPage extends PureComponent<Props, State> {
                                         { displaynames[comment.displayname].forename }
                                     </div>
                                     <div className="Comment--date">
-                                        { moment.utc(extensions.created_at).fromNow() }
+                                        { moment.utc(comment.created_at).fromNow() }
                                     </div>
                                     { comment.displayname_id in commenterThumbs &&
                                         <div className="Comment--thumb">
