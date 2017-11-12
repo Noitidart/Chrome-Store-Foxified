@@ -163,7 +163,7 @@ Alternate code below
 .instText {
     opacity: 0;
     font-size: 18px;
-    position: unset;
+    position: fixed;
     font-family: 'Quicksand';
     top: 95%;
 }
