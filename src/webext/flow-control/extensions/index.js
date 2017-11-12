@@ -3,6 +3,7 @@
 import { select, takeEvery, take, call, put, race } from 'redux-saga/effects'
 import { delay } from 'redux-saga'
 import Zip from 'jszip'
+import qs from 'qs'
 import { calcSalt } from 'cmn/lib/all'
 
 import { addFile, deleteFile } from '../files'
@@ -317,16 +318,18 @@ function* processWorker(action: ProcessAction) {
 
                 let keyInputHtml, secretInputHtml;
 
-                keyInputHtml = keyInputHtmlPatt.exec(html);
-                secretInputHtml = secretInputHtmlPatt.exec(html);
+                [ keyInputHtml ] = keyInputHtmlPatt.exec(html) || [];
+                [ secretInputHtml ] = secretInputHtmlPatt.exec(html) || [];
+
+                const valuePatt = /value=["']?(.*?)["' /<]/i;
 
                 if (!keyInputHtml || !secretInputHtml) {
                     // need to generate keys
-                    const tokenHtml = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(html);
-                    console.log('tokenHtml:', tokenHtml);
+
+                    const [ tokenHtml ] = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(html) || [];
                     if (!tokenHtml) return yield put(patch(id, { status:'Could not generate credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
 
-                    const token = /value=["']?(.*?)["' /<]/i.exec(tokenHtml);
+                    const [, token ] = valuePatt.exec(tokenHtml) || [];
                     if (!token) return yield put(patch(id, { status:'Could not extract token for credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
 
 
@@ -334,30 +337,26 @@ function* processWorker(action: ProcessAction) {
                         method: 'POST',
                         credentials: 'include',
                         headers: {
-                            Referer: AMO_DOMAIN + '/en-US/developers/addon/api/key/',
+                            Referer: `${AMO_DOMAIN}/en-US/developers/addon/api/key/`,
                             'Content-Type': 'application/x-www-form-urlencoded'
                         },
-                        body: JSON.stringify({
+                        body: qs.stringify({
                             csrfmiddlewaretoken: token,
                             action: 'generate'
                         })
                     });
                     const html2 = yield call([res, res.text]);
 
-                    keyInputHtml = keyInputHtmlPatt.exec(html2);
-                    secretInputHtml = secretInputHtmlPatt.exec(html2);
+                    [ keyInputHtml ] = keyInputHtmlPatt.exec(html2) || [];
+                    [ secretInputHtml ] = secretInputHtmlPatt.exec(html2) || [];
                 }
 
                 if (!keyInputHtml || !secretInputHtml) return yield put(patch(id, { status:'Could not extract generated credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
 
-                const valuePatt = /value=["']?(.*?)["' /<]/i;
-                userKey = valuePatt.exec(keyInputHtml);
-                userSecret = valuePatt.exec(secretInputHtml);
+                [, userKey ] = valuePatt.exec(keyInputHtml) || [];
+                [, userSecret ] = valuePatt.exec(secretInputHtml) || [];
 
                 if (!userKey || !userSecret) return yield put(patch(id, { status:'Could not credential values - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
-
-                userKey = userKey[1];
-                userSecret = userSecret[1];
             }
         }
 

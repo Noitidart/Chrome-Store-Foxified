@@ -31,7 +31,7 @@ class FieldText extends PureComponent<Props, void> {
                     </label>
                     <div style={{display:'flex'}}>
                         <input {...input} type="text" className={classnames('Field--input-text', error && 'Field--input-text--error')} onFocus={this.flexField} onBlur={this.unflexField} />
-                        { value && <button onClick={this.clear}>Clear</button> }
+                        { value && <input type="button" onClick={this.clear} value="Clear" /> }
                     </div>
                 </div>
                 { error &&
