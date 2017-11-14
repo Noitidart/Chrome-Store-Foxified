@@ -3,7 +3,7 @@
         "replace": {
             "~ADDON_NAME~": "Chrome Store Foxified",
             "~ADDON_NAME_HYPH~": "Chrome-Store-Foxified",
-            "~ADDON_VERSION~": "3.3",
+            "~ADDON_VERSION~": "3.4",
             "~ADDON_ID~": "Chrome-Store-Foxified@jetpack",
             "~ADDON_DESC~": "Point and click to install extensions into your browser from the AMO, Chrome Web Store, Microsoft Store, or Opera Addons websites."
         }

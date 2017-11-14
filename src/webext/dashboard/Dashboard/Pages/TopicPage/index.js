@@ -129,7 +129,7 @@ class TopicPage extends PureComponent<Props, State> {
                             <div className="Comment" key={comment.id}>
                                 <div className="Comment--meta">
                                     <div className="Comment--avatar">
-                                        { displaynames[comment.displayname].forename.match(/(\w)(?:\w*\s(\w))?/).slice(1).join('').toUpperCase() }
+                                        { displaynames[comment.displayname].forename.match(/(.)(?:.*\s(.))?/).slice(1).join('').toUpperCase() }
                                     </div>
                                     <div className="Comment--displayname">
                                         { displaynames[comment.displayname].forename }
