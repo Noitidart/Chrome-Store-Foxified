@@ -27,7 +27,7 @@ class ModalUnsigned extends PureComponent<Props> {
                 </div>
                 <div className="ModalUnsigned--para">
                     <h3>Developer Edition / Nightly</h3>
-                    In order to enable installing unsigned addons automatically, you have to first go to <b>about:config</b> and then toggle the <b>xpinstall.signatures.required</b> preference to <b>true</b>. Once you have done that, Chrome Store Foxified can automatically install unsigned addons.
+                    In order to enable installing unsigned addons automatically, you have to first go to <b>about:config</b> and then toggle the <b>xpinstall.signatures.required</b> preference to <b>false</b>. Once you have done that, Chrome Store Foxified can automatically install unsigned addons.
                 </div>
 
                 <div className="ModalUnsigned--checkbox">
