@@ -27,3 +27,31 @@ document.addEventListener('DOMContentLoaded', () => {
         </Provider>
     , document.body);
 }, { once:true });
+
+(async function() {
+    const platform = await extensiona('runtime.getPlatformInfo');
+    console.log('platform.os:', platform.os);
+    if (platform.os === 'android') {
+        extension.webRequest.onBeforeSendHeaders.addListener(
+            function(info) {
+                const headers = info.requestHeaders;
+                headers.forEach(header => {
+                    if (header.name.toLowerCase() === 'user-agent') {
+                        header.value = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:58.0) Gecko/20100101 Firefox/58.0';
+                    }
+                });
+                return {requestHeaders: headers};
+            },
+            {
+                // Modify the headers for these pages
+                urls: [
+                    'https://chrome.google.com/webstore/*',
+                    'https://chrome.google.com/webstore/*'
+                ],
+                // In the main window and frames
+                types: ['main_frame', 'sub_frame']
+            },
+            ['blocking', 'requestHeaders']
+        );
+    }
+})();
