@@ -67,6 +67,9 @@ type Entry = {
     // status > PARSEING
     name?: string, // once parseed
     version?: string, // once parseed
+    //
+    modedManifest?: string,
+    origManifest?: string
 }
 
 export type Shape = {

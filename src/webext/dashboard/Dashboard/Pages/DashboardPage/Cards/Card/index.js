@@ -174,6 +174,11 @@ class Card extends PureComponent<Props, State> {
         const isThumbDn = thumb && !thumb.like;
         const commentsCnt = Object.values(comments).length;
 
+        const hasFile = !!fileId;
+        const hasXpi = !!xpiFileId;
+        const hasSigned = !!signedFileId;
+        const isFile = kind === 'file';
+
         return (
             <div className="Card">
                 <div className="Card--background" />
@@ -188,15 +193,15 @@ class Card extends PureComponent<Props, State> {
                     <div className="Card--label">
                         Source
                     </div>
-                    { kind !== 'file' &&
+                    { !isFile &&
                         <a className="Card--link" href={storeUrl} target="_blank" rel="noopener noreferrer">
                             <img src={getSourceImage(kind)} alt="" className="Card--link-image" />
                             <span className="Card--link-label">
-                                { kind === 'file' ? 'Your Computer' : listingTitle }
+                                { isFile ? 'Your Computer' : listingTitle }
                             </span>
                         </a>
                     }
-                    { kind === 'file' &&
+                    { isFile &&
                         <span className="Card--link">
                             <img src={IMAGE_FOLDER} alt="" className="Card--link-image" />
                             <span className="Card--link-label">
@@ -205,19 +210,19 @@ class Card extends PureComponent<Props, State> {
                         </span>
                     }
                 </div>
-                { [fileId, xpiFileId, signedFileId].some( entry => entry ) &&
+                { (hasFile || hasXpi || hasSigned) &&
                     <div className="Card--row">
                         <div className="Card--label">
                             Save to Disk
                         </div>
                         { pushAlternatingCallback([
-                            fileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveExt} key="file">Original</a>,
-                            xpiFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveUnsigned} key="xpi">Unsigned</a>,
-                            signedFileId !== undefined && <a href="#" className="Card--link" onClick={this.handleClickSaveSigned} key="signed">Signed</a>
+                            hasFile && <a href="#" className="Card--link" onClick={this.handleClickSaveExt} key="file">Original</a>,
+                            hasXpi && <a href="#" className="Card--link" onClick={this.handleClickSaveUnsigned} key="xpi">Unsigned</a>,
+                            hasSigned && <a href="#" className="Card--link" onClick={this.handleClickSaveSigned} key="signed">Signed</a>
                         ].filter(el => el), ix => <span key={ix}>&nbsp;|&nbsp;</span>) }
                     </div>
                 }
-                { version !== undefined &&
+                { !!version &&
                     <div className="Card--row">
                         <div className="Card--label">
                             Version
@@ -225,7 +230,7 @@ class Card extends PureComponent<Props, State> {
                         <span className="Card--text">{version}</span>
                     </div>
                 }
-                { kind !== 'file' && !status &&
+                { !isFile && !status &&
                     <div className="Card--row">
                         <div className="Card--label">
                             Update
@@ -236,7 +241,7 @@ class Card extends PureComponent<Props, State> {
                         </span>
                     </div>
                 }
-                { !!name && kind !== 'file' &&
+                { !!name && !isFile &&
                     <div className="Card--row">
                         <div className="Card--label">
                             Works for you?
@@ -257,15 +262,26 @@ class Card extends PureComponent<Props, State> {
                         }
                     </div>
                 }
+                { hasFile &&
+                    <div className="Card--row">
+                        <div className="Card--label">
+                            Update
+                        </div>
+                        <span className="Card--text">
+                            { !isChecking && <a href="#" onClick={this.checkUpdate} className="Card--link Card--link--normal">Check for updates</a> }
+                            { isChecking && 'Checking...' }
+                        </span>
+                    </div>
+                }
                 <div className="Card--row--spacer" />
                 <div className="Card--row Card--row--buttons">
-                    { signedFileId && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstall}>Install</a> }
-                    { xpiFileId && !signedFileId && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a> }
-                    { !status && !xpiFileId && !signedFileId && <span>Possible invalid status state</span> }
+                    { hasSigned && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstall}>Install</a> }
+                    { hasXpi && !hasSigned && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a> }
+                    { !status && !hasXpi && !hasSigned && <span>Possible invalid status state</span> }
                     &nbsp;&nbsp;&nbsp;
                     <a href="#" className="Card--link Card--link--button Card--link--button Card--link--button-danger" onClick={this.delete}>{ status ? 'Cancel' : 'Delete' }</a>
                 </div>
-                { (!status || (xpiFileId || signedFileId)) && <div className="Card--row--spacer" /> }
+                { (!status || (hasXpi || hasSigned)) && <div className="Card--row--spacer" /> }
                 { status &&
                     <div className="Card--row">
                         <div className="Card--status-wrap">

@@ -30,6 +30,9 @@ class DashboardPageDumb extends PureComponent<Props, void> {
                 <p className="Page--intro">
                     A panel to all your extension downloads
                 </p>
+                <p className="Page--intro">
+                    Please note that add-ons installed through Chrome Store Foxified do not automatically update. You also don&apos;t profit from Firefox-specific changes the author may have done. It is recommended to regularly check for updates and switch to the official version from addons.mozilla.org when the add-on has been ported.
+                </p>
                 <AddForm form={`validate_${pageKey}`} actionId={`validate_${pageKey}`} dispatch={dispatchProxied} api={api} />
                 <Cards push={push} />
             </div>
