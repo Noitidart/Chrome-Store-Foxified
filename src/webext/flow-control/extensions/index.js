@@ -9,7 +9,7 @@ import { calcSalt } from 'cmn/lib/all'
 import { addFile, deleteFile } from '../files'
 import { get_webstore_url, get_crx_url, get_webstore_name, get_extensionID } from '../../cws_pattern'
 import { omit } from 'cmn/lib/all'
-import { injectStatusPromise, blobToDataUrl, dataUrlToBlob, blobToArrBuf, crxToZip, arrBufToDataUrl, deleteUndefined, fetchEpoch, getBase64FromDataUrl, hashCode, generateJWTToken } from './utils'
+import { injectStatusPromise, blobToDataUrl, dataUrlToBlob, blobToArrBuf, crxToZip, arrBufToDataUrl, deleteUndefined, fetchEpoch, getBase64FromDataUrl, hashCode, generateJWTToken, parseGoogleJson } from './utils'
 import { getId, getIdSaga } from '../utils'
 
 import type { StatusInjection } from './utils'
@@ -114,7 +114,7 @@ function* checkUpdateWorker(action: CheckUpdateAction) {
 
     const zipBuf = crxToZip(yield call(blobToArrBuf, blob));
     const zip = yield call(Zip.loadAsync, zipBuf);
-    const manifest = JSON.parse(yield call([zip.file('manifest.json'), 'async'], 'string'));
+    const manifest = parseGoogleJson(yield call([zip.file('manifest.json'), 'async'], 'string'));
     const { version:versionNew } = manifest;
 
     if (versionNew !== version) resolve({ isUpdateAvailable:true, versionNew });
@@ -180,13 +180,13 @@ function* requestAddWorker(action: RequestAddAction) {
         const blob = yield call(dataUrlToBlob, fileDataUrl);
         const zipBuf = crxToZip(yield call(blobToArrBuf, blob));
         const zip = yield call(Zip.loadAsync, zipBuf);
-        const manifest = JSON.parse(yield call([zip.file('manifest.json'), 'async'], 'string'));
+        const manifest = parseGoogleJson(yield call([zip.file('manifest.json'), 'async'], 'string'));
         const { version } = manifest;
         let { name } = manifest;
         if (name.startsWith('__MSG')) {
             // get default localized name
             const defaultLocale = manifest.default_locale;
-            const messages = JSON.parse(yield call([zip.file(`_locales/${defaultLocale}/messages.json`), 'async'], 'string'));
+            const messages = parseGoogleJson(yield call([zip.file(`_locales/${defaultLocale}/messages.json`), 'async'], 'string'));
             const nameKey = name.substring('__MSG_'.length, name.length-2);
             const entry = Object.entries(messages).find( ([key]) => key.toLowerCase() === nameKey.toLowerCase() );
             name = entry[1].message;
@@ -256,17 +256,29 @@ function* processWorker(action: ProcessAction) {
         const blob = yield call(dataUrlToBlob, fileDataUrl);
         const zipBuf = crxToZip(yield call(blobToArrBuf, blob));
         const zip = yield call(Zip.loadAsync, zipBuf);
-        const manifest = JSON.parse(yield call([zip.file('manifest.json'), 'async'], 'string'));
+        console.log('got zip, will get manifestStr');
+        const manifestStr = yield call([zip.file('manifest.json'), 'async'], 'string');
+        console.log('manifestStr:', manifestStr);
+        let manifest;
+        try { manifest = parseGoogleJson(yield call([zip.file('manifest.json'), 'async'], 'string')) }
+        catch(ex) { return console.error('failed to parse manifest') || console.error('ex:', ex.message) }
+        console.log('parsed, manifst:', manifest);
         const { version } = manifest;
         let { name } = manifest;
         if (name.startsWith('__MSG')) {
             // get default localized name
             const defaultLocale = manifest.default_locale;
-            const messages = JSON.parse(yield call([zip.file(`_locales/${defaultLocale}/messages.json`), 'async'], 'string'));
+            console.log('defaultLocale:', defaultLocale);
+            const messagesStr = yield call([zip.file(`_locales/${defaultLocale}/messages.json`), 'async'], 'string');
+            console.log('messagesStr:', messagesStr);
+            const messages = parseGoogleJson(messagesStr);
+            console.log('getting name');
             const nameKey = name.substring('__MSG_'.length, name.length-2);
+            console.log('nameKey:', nameKey);
             const entry = Object.entries(messages).find( ([key]) => key.toLowerCase() === nameKey.toLowerCase() );
             name = entry[1].message;
         }
+        console.log('outside of name');
 
         if (ext.kind !== 'file') yield put(patch(id, { version, name }));
 
@@ -284,7 +296,7 @@ function* processWorker(action: ProcessAction) {
             }
         };
 
-        zip.file('manifest.json', JSON.stringify(manifestNew));
+        zip.file('manifest.json', JSON.stringify(manifestNew, null, 4));
         // application/x-xpinstall
         // const xpiDataUrl = 'data:application/zip;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
         const xpiDataUrl = 'data:application/x-xpinstall;base64,' + (yield call([zip, zip.generateAsync], { type:'base64' }));
@@ -376,7 +388,7 @@ function* processWorker(action: ProcessAction) {
         // console.log('presignedBlob url:', URL.createObjectURL(presignedBlob));
 
         // upload
-        const { version, applications:{gecko:{ id:signingId }}} = JSON.parse(manifestNewTxt);
+        const { version, applications:{gecko:{ id:signingId }}} = parseGoogleJson(manifestNewTxt);
 
         yield put(patch(id, { status:'UPLOADING', statusExtra:{ progress:0 } }));
         {

@@ -258,15 +258,13 @@ class Card extends PureComponent<Props, State> {
                     </div>
                 }
                 <div className="Card--row--spacer" />
-                { (!status || (xpiFileId || signedFileId)) &&
-                    <div className="Card--row Card--row--buttons">
-                        { signedFileId && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstall}>Install</a> }
-                        { xpiFileId && !signedFileId && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a> }
-                        { !xpiFileId && !signedFileId && <span>Invalid status state</span> }
-                        &nbsp;&nbsp;&nbsp;
-                        <a href="#" className="Card--link Card--link--button Card--link--button Card--link--button-danger" onClick={this.delete}>{ status ? 'Cancel' : 'Delete' }</a>
-                    </div>
-                }
+                <div className="Card--row Card--row--buttons">
+                    { signedFileId && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstall}>Install</a> }
+                    { xpiFileId && !signedFileId && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a> }
+                    { !status && !xpiFileId && !signedFileId && <span>Possible invalid status state</span> }
+                    &nbsp;&nbsp;&nbsp;
+                    <a href="#" className="Card--link Card--link--button Card--link--button Card--link--button-danger" onClick={this.delete}>{ status ? 'Cancel' : 'Delete' }</a>
+                </div>
                 { (!status || (xpiFileId || signedFileId)) && <div className="Card--row--spacer" /> }
                 { status &&
                     <div className="Card--row">
