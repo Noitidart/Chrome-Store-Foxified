@@ -7,14 +7,16 @@ export type Shape = {
     isFirstRun: boolean,
     shouldShowUnsignedModal: boolean,
     nextDonateReminder: number,
-    forename: string
+    forename: string,
+    dontAutoUpload: boolean
 }
 
 const INITIAL = {
     isFirstRun: true,
     shouldShowUnsignedModal: true,
     nextDonateReminder: 0,
-    forename: ''
+    forename: '',
+    dontAutoUpload: false
 }
 export const sagas = [];
 

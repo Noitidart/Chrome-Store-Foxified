@@ -3,6 +3,7 @@
 import React, { PureComponent } from 'react'
 
 import RegisterForm from './RegisterForm'
+import SettingAutoUpload from './SettingAutoUpload'
 
 import { callInBackground } from '../../../connect'
 
@@ -15,15 +16,24 @@ class SettingsPage extends PureComponent<void, void> {
                 <p className="Page--intro">
                     Customize your experience ^_^
                 </p>
-                <div className="Field--row">
-                    <label className="Field--label">
-                        Memory
-                    </label>
-                    <a className="Card--link Card--link--button-danger Card--link--normal" href="#" onClick={this.purgeStore}>
-                        Clear Memory
-                    </a>
-                </div>
                 <RegisterForm />
+                <SettingAutoUpload />
+                <div className="Field--stack">
+                    <div className="Field--row">
+                        <label className="Field--label">
+                            Memory
+                        </label>
+                        <a className="Card--link Card--link--button-danger Card--link--normal" href="#" onClick={this.purgeStore}>
+                            Clear Memory
+                        </a>
+                    </div>
+                    <div className="Field--row">
+                        <div className="Field--label" />
+                        <div className="Field--desc">
+                            If you are getting blank pages, or an error happend, clear memory then restart the extension or browser.
+                        </div>
+                    </div>
+                </div>
             </div>
         )
     }

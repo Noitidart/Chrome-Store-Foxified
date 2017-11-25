@@ -23,7 +23,7 @@ class ModalUnsigned extends PureComponent<Props> {
             <div className="ModalUnsigned">
                 <div className="ModalUnsigned--para">
                     <h3>Default / ESR / Beta</h3>
-                    If your Firefox version is default, ESR, or beta, due to the change in the Firefox addon system, unsigned addons cannot <i>automatically</i> be installed by Chrome Store Foxified. You will have to first download the &quot;Unsignd&quot; package, then go to <b>about:debugging</b> and then click on <b>&quot;Load Temporary Addon&quot;</b> and select the download Unsigned package.
+                    If your Firefox version is default, ESR, or beta, due to the change in the Firefox addon system, unsigned addons cannot <i>automatically</i> be installed by Chrome Store Foxified. You will have to first save to disk the &quot;Unsignd&quot; file, then go to <b>about:debugging</b> and then click on <b>&quot;Load Temporary Addon&quot;</b> and select the saved file.
                 </div>
                 <div className="ModalUnsigned--para">
                     <h3>Developer Edition / Nightly</h3>

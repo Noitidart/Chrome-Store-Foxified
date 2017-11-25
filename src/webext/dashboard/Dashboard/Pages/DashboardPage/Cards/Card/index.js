@@ -277,6 +277,8 @@ class Card extends PureComponent<Props, State> {
                 <div className="Card--row Card--row--buttons">
                     { hasSigned && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstall}>Install</a> }
                     { hasXpi && !hasSigned && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickInstallUnsigned}>Install Unsigned</a> }
+                    { !status && hasXpi && !hasSigned && '\u00A0\u00A0\u00A0' }
+                    { !status && hasXpi && !hasSigned && <a href="#" className="Card--link Card--link--button" onClick={this.handleClickSignNow}>Sign Now</a> }
                     { !status && !hasXpi && !hasSigned && <span>Possible invalid status state</span> }
                     &nbsp;&nbsp;&nbsp;
                     <a href="#" className="Card--link Card--link--button Card--link--button Card--link--button-danger" onClick={this.delete}>{ status ? 'Cancel' : 'Delete' }</a>
@@ -285,7 +287,7 @@ class Card extends PureComponent<Props, State> {
                 { status &&
                     <div className="Card--row">
                         <div className="Card--status-wrap">
-                            { getStatusMessage(status, this.props.statusExtra, this.retry) }
+                            { getStatusMessage(status, this.props.statusExtra, this.retryUpload) }
                         </div>
                     </div>
                 }
@@ -308,6 +310,10 @@ class Card extends PureComponent<Props, State> {
         const { id, dispatchProxied } = this.props;
         dispatchProxied(install(id, true));
     })
+    handleClickSignNow = stopEvent(() => {
+        const { id, dispatchProxied } = this.props;
+        dispatchProxied(process(id, true));
+    })
 
     handleClickSaveExt = stopEvent(() => this.props.dispatchProxied(save(this.props.id, 'ext')) )
     handleClickSaveUnsigned = stopEvent(() => this.props.dispatchProxied(save(this.props.id, 'unsigned')) )
@@ -317,7 +323,7 @@ class Card extends PureComponent<Props, State> {
         return moment(this.props.date).fromNow();
     }
 
-    retry = e => {
+    retryUpload = e => {
         const { dispatchProxied, id } = this.props;
         e.preventDefault();
         dispatchProxied(process(id));

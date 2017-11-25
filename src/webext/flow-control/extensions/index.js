@@ -227,13 +227,13 @@ sagas.push(requestAddWatcher);
 
 //
 const PROCESS = A`PROCESS`
-type ProcessAction = { type:typeof PROCESS, id:Id };
-const process = (id): ProcessAction => ({ type:PROCESS, id });
+type ProcessAction = { type:typeof PROCESS, id:Id, shouldForceUpload?:boolean };
+const process = (id: Id, shouldForceUpload: boolean = false): ProcessAction => ({ type:PROCESS, id, shouldForceUpload });
 
 function* processWorker(action: ProcessAction) {
-    const { id } = action;
+    const { id, shouldForceUpload } = action;
 
-    const {extensions:{ [id]:ext }} = yield select();
+    const {extensions:{ [id]:ext }, account:{ dontAutoUpload }} = yield select();
 
     let { signedFileId, xpiFileId, fileId } = ext;
 
@@ -310,193 +310,199 @@ function* processWorker(action: ProcessAction) {
     }
 
     // sign it
-    if (signedFileId === undefined) {
+    if (!dontAutoUpload || (dontAutoUpload && shouldForceUpload)) { // eslint-disable-line no-extra-parens
+        if (signedFileId === undefined) {
 
-        // get user.key and user.secret everytime fresh, because user may have logged into another account
-        yield put(patch(id, { status:'CREDENTIALING', statusExtra:undefined }));
-        let userKey, userSecret;
-        {
-            const res = yield call(fetch, `${AMO_DOMAIN}/en-US/developers/addon/api/key/`, {
-                credentials: 'include'
-            });
-            const html = yield call([res, res.text]);
+            // get user.key and user.secret everytime fresh, because user may have logged into another account
+            yield put(patch(id, { status:'CREDENTIALING', statusExtra:undefined }));
 
-            if (html.includes('accept-agreement')) {
-                yield put(patch(id, { status:'NEEDS_AGREE', statusExtra:undefined }));
-                return;
-            } else if (!html.includes('firefox/users/edit') && !html.includes('android/users/edit')) {
-                yield put(patch(id, { status:'NOT_LOGGED_IN', statusExtra:undefined }));
-                return;
-            } else {
-                const keyInputHtmlPatt = /input[^<]+jwtkey[^>]+/i;
-                const secretInputHtmlPatt = /input[^<]+jwtsecret[^>]+/i
+            let userKey, userSecret;
+            {
+                const res = yield call(fetch, `${AMO_DOMAIN}/en-US/developers/addon/api/key/`, {
+                    credentials: 'include'
+                });
+                const html = yield call([res, res.text]);
 
-                let keyInputHtml, secretInputHtml;
+                if (html.includes('accept-agreement')) {
+                    yield put(patch(id, { status:'NEEDS_AGREE', statusExtra:undefined }));
+                    return;
+                } else if (!html.includes('firefox/users/edit') && !html.includes('android/users/edit')) {
+                    yield put(patch(id, { status:'NOT_LOGGED_IN', statusExtra:undefined }));
+                    return;
+                } else {
+                    const keyInputHtmlPatt = /input[^<]+jwtkey[^>]+/i;
+                    const secretInputHtmlPatt = /input[^<]+jwtsecret[^>]+/i
 
-                [ keyInputHtml ] = keyInputHtmlPatt.exec(html) || [];
-                [ secretInputHtml ] = secretInputHtmlPatt.exec(html) || [];
+                    let keyInputHtml, secretInputHtml;
 
-                const valuePatt = /value=["']?(.*?)["' /<]/i;
+                    [ keyInputHtml ] = keyInputHtmlPatt.exec(html) || [];
+                    [ secretInputHtml ] = secretInputHtmlPatt.exec(html) || [];
 
-                if (!keyInputHtml || !secretInputHtml) {
-                    // need to generate keys
+                    const valuePatt = /value=["']?(.*?)["' /<]/i;
 
-                    const [ tokenHtml ] = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(html) || [];
-                    if (!tokenHtml) return yield put(patch(id, { status:'Could not generate credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
+                    if (!keyInputHtml || !secretInputHtml) {
+                        // need to generate keys
 
-                    const [, token ] = valuePatt.exec(tokenHtml) || [];
-                    if (!token) return yield put(patch(id, { status:'Could not extract token for credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
+                        const [ tokenHtml ] = /input[^<]+csrfmiddlewaretoken[^>]+/i.exec(html) || [];
+                        if (!tokenHtml) return yield put(patch(id, { status:'Could not generate credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
+
+                        const [, token ] = valuePatt.exec(tokenHtml) || [];
+                        if (!token) return yield put(patch(id, { status:'Could not extract token for credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
 
 
-                    const res = yield call(fetch, `${AMO_DOMAIN}/en-US/developers/addon/api/key/`, {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: {
-                            Referer: `${AMO_DOMAIN}/en-US/developers/addon/api/key/`,
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        },
-                        body: qs.stringify({
-                            csrfmiddlewaretoken: token,
-                            action: 'generate'
-                        })
-                    });
-                    const html2 = yield call([res, res.text]);
+                        const res = yield call(fetch, `${AMO_DOMAIN}/en-US/developers/addon/api/key/`, {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: {
+                                Referer: `${AMO_DOMAIN}/en-US/developers/addon/api/key/`,
+                                'Content-Type': 'application/x-www-form-urlencoded'
+                            },
+                            body: qs.stringify({
+                                csrfmiddlewaretoken: token,
+                                action: 'generate'
+                            })
+                        });
+                        const html2 = yield call([res, res.text]);
 
-                    [ keyInputHtml ] = keyInputHtmlPatt.exec(html2) || [];
-                    [ secretInputHtml ] = secretInputHtmlPatt.exec(html2) || [];
+                        [ keyInputHtml ] = keyInputHtmlPatt.exec(html2) || [];
+                        [ secretInputHtml ] = secretInputHtmlPatt.exec(html2) || [];
+                    }
+
+                    if (!keyInputHtml || !secretInputHtml) return yield put(patch(id, { status:'Could not extract generated credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
+
+                    [, userKey ] = valuePatt.exec(keyInputHtml) || [];
+                    [, userSecret ] = valuePatt.exec(secretInputHtml) || [];
+
+                    if (!userKey || !userSecret) return yield put(patch(id, { status:'Could not credential values - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
                 }
-
-                if (!keyInputHtml || !secretInputHtml) return yield put(patch(id, { status:'Could not extract generated credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
-
-                [, userKey ] = valuePatt.exec(keyInputHtml) || [];
-                [, userSecret ] = valuePatt.exec(secretInputHtml) || [];
-
-                if (!userKey || !userSecret) return yield put(patch(id, { status:'Could not credential values - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
             }
-        }
 
-        // modify id in xpiBlob to use hash of user.id
-        yield put(patch(id, { status:'MODING', statusExtra:undefined }));
+            // modify id in xpiBlob to use hash of user.id
+            yield put(patch(id, { status:'MODING', statusExtra:undefined }));
 
-        const userHash = hashCode(userKey);
-        const {files:{ [xpiFileId]:{ data:xpiDataUrl }={} }} = yield select();
-        const blob = yield call(dataUrlToBlob, xpiDataUrl);
-        const zipBuf = crxToZip(yield call(blobToArrBuf, blob));
-        const zip = yield call(Zip.loadAsync, zipBuf);
-        const manifestTxt = yield call([zip.file('manifest.json'), 'async'], 'string');
-        const manifestNewTxt = manifestTxt.replace('@chrome-store-foxified-unsigned', `@chrome-store-foxified-${userHash}`);
-        zip.file('manifest.json', manifestNewTxt);
-        const presignedBlob = yield call([zip, zip.generateAsync], { type:'blob' });
+            const userHash = hashCode(userKey);
+            const {files:{ [xpiFileId]:{ data:xpiDataUrl }={} }} = yield select();
+            const blob = yield call(dataUrlToBlob, xpiDataUrl);
+            const zipBuf = crxToZip(yield call(blobToArrBuf, blob));
+            const zip = yield call(Zip.loadAsync, zipBuf);
+            const manifestTxt = yield call([zip.file('manifest.json'), 'async'], 'string');
+            const manifestNewTxt = manifestTxt.replace('@chrome-store-foxified-unsigned', `@chrome-store-foxified-${userHash}`);
+            zip.file('manifest.json', manifestNewTxt);
+            const presignedBlob = yield call([zip, zip.generateAsync], { type:'blob' });
 
-        // console.log('presignedBlob url:', URL.createObjectURL(presignedBlob));
+            // console.log('presignedBlob url:', URL.createObjectURL(presignedBlob));
 
-        // upload
-        const { version, applications:{gecko:{ id:signingId }}} = parseGoogleJson(manifestNewTxt);
+            // upload
+            const { version, applications:{gecko:{ id:signingId }}} = parseGoogleJson(manifestNewTxt);
 
-        yield put(patch(id, { status:'UPLOADING', statusExtra:{ progress:0 } }));
-        {
-            const body = new FormData();
-            body.append('Content-Type', 'multipart/form-data');
-            const presignedFile = new File([presignedBlob], 'dummyname.xpi'); // http://stackoverflow.com/a/24746459/1828637
-            body.append('upload', presignedFile);
-
-            const res = yield call(fetch, `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`, {
-                method: 'PUT',
-                credentials: 'include',
-                body,
-                headers: {
-                    Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
-                }
-            });
-            const reply = yield call([res, res.json]);
-            console.log('UPLOADING res.status:', res.status, 'reply:', reply);
-
-            if (![201, 202, 409].includes(res.status)) {
-                let error;
-                try {
-                    ({ error } = reply); // yield call([res, res.json]));
-                } catch(ignore) {} // eslint-disable-line no-empty
-                console.log('error:', error);
-                return yield put(patch(id, { status:'FAILED_UPLOAD', statusExtra:{ resStatus:res.status, error } }));
-                // return yield put(patch(id, { status:`Failed to upload to AMO. ${error || `It is likely this extension will also fail manual upload.`}`, statusExtra:undefined }));
-            }
-        }
-
-        // wait for review - and get downloadUrl
-        let downloadUrl;
-        {
-            while(true) {
-                yield put(patch(id, { status:'CHECKING_REVIEW', statusExtra:undefined }));
+            yield put(patch(id, { status:'UPLOADING', statusExtra:{ progress:0 } }));
+            {
+                const body = new FormData();
+                body.append('Content-Type', 'multipart/form-data');
+                const presignedFile = new File([presignedBlob], 'dummyname.xpi'); // http://stackoverflow.com/a/24746459/1828637
+                body.append('upload', presignedFile);
 
                 const res = yield call(fetch, `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`, {
+                    method: 'PUT',
                     credentials: 'include',
+                    body,
                     headers: {
                         Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
                     }
                 });
                 const reply = yield call([res, res.json]);
-                console.log('CHECKING res.status:', res.status, 'reply:', reply);
+                console.log('UPLOADING res.status:', res.status, 'reply:', reply);
 
-                if (res.status !== 200) {
+                if (![201, 202, 409].includes(res.status)) {
                     let error;
                     try {
                         ({ error } = reply); // yield call([res, res.json]));
                     } catch(ignore) {} // eslint-disable-line no-empty
-                    return yield put(patch(id, { status:`Failed to upload to AMO. ${error || ''}`, statusExtra:undefined }));
+                    console.log('error:', error);
+                    return yield put(patch(id, { status:'FAILED_UPLOAD', statusExtra:{ resStatus:res.status, error } }));
+                    // return yield put(patch(id, { status:`Failed to upload to AMO. ${error || `It is likely this extension will also fail manual upload.`}`, statusExtra:undefined }));
                 }
+            }
 
-                const { processed, validation_results, reviewed, passed_review, files:[ file ], validation_url } = reply;
-                const isDownloadReady = !!file;
+            // wait for review - and get downloadUrl
+            let downloadUrl;
+            {
+                while(true) {
+                    yield put(patch(id, { status:'CHECKING_REVIEW', statusExtra:undefined }));
 
-                if (isDownloadReady) {
-                    // ok review complete and approved - download it
-                    downloadUrl = file.download_url;
-                    break;
-                } else {
-                    // not yet signed, maybe failed?
-                    console.log('processed:', processed, 'validation_results:', validation_results, 'reviewed:', reviewed, 'passed_review:', passed_review);
-                    if (processed && validation_results && !validation_results.success) return yield put(patch(id, { status:'FAILED_REVIEW', statusExtra:{ validationUrl:validation_url } }));
-                    // if (reviewed && !passed_review) return yield put(patch(id, { status:'FAILED_REVIEW', statusExtra:{ validationUrl:validation_url } }));
-                    else {
-                        for (let i=10; i>=1; i--) {
-                            yield put(patch(id, { status:'WAITING_REVIEW', statusExtra:{ sec:i } }));
-                            yield call(delay, 1000);
+                    const res = yield call(fetch, `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`, {
+                        credentials: 'include',
+                        headers: {
+                            Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
+                        }
+                    });
+                    const reply = yield call([res, res.json]);
+                    console.log('CHECKING res.status:', res.status, 'reply:', reply);
+
+                    if (res.status !== 200) {
+                        let error;
+                        try {
+                            ({ error } = reply); // yield call([res, res.json]));
+                        } catch(ignore) {} // eslint-disable-line no-empty
+                        return yield put(patch(id, { status:`Failed to upload to AMO. ${error || ''}`, statusExtra:undefined }));
+                    }
+
+                    const { processed, validation_results, reviewed, passed_review, files:[ file ], validation_url } = reply;
+                    const isDownloadReady = !!file;
+
+                    if (isDownloadReady) {
+                        // ok review complete and approved - download it
+                        downloadUrl = file.download_url;
+                        break;
+                    } else {
+                        // not yet signed, maybe failed?
+                        console.log('processed:', processed, 'validation_results:', validation_results, 'reviewed:', reviewed, 'passed_review:', passed_review);
+                        if (processed && validation_results && !validation_results.success) return yield put(patch(id, { status:'FAILED_REVIEW', statusExtra:{ validationUrl:validation_url } }));
+                        // if (reviewed && !passed_review) return yield put(patch(id, { status:'FAILED_REVIEW', statusExtra:{ validationUrl:validation_url } }));
+                        else {
+                            for (let i=10; i>=1; i--) {
+                                yield put(patch(id, { status:'WAITING_REVIEW', statusExtra:{ sec:i } }));
+                                yield call(delay, 1000);
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // download it
-        yield put(patch(id, { status:'DOWNLOADING_SIGNED', statusExtra:{ progress:0 } }));
-        {
-            console.log('downloadUrl:', downloadUrl);
-            const res = yield call(fetch, downloadUrl, {
-                credentials: 'include',
-                headers: {
-                    Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
+            // download it
+            yield put(patch(id, { status:'DOWNLOADING_SIGNED', statusExtra:{ progress:0 } }));
+            {
+                console.log('downloadUrl:', downloadUrl);
+                const res = yield call(fetch, downloadUrl, {
+                    credentials: 'include',
+                    headers: {
+                        Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
+                    }
+                });
+                console.log('DOWNLOADING res.status:', res.status);
+
+                if (res.status !== 200) {
+                    let error;
+                    try {
+                        ({ error } = yield call([res, res.json]));
+                    } catch(ignore) {} // eslint-disable-line no-empty
+                    return yield put(patch(id, { status:`Failed to download from AMO. ${error || ''}`, statusExtra:undefined }));
                 }
-            });
-            console.log('DOWNLOADING res.status:', res.status);
 
-            if (res.status !== 200) {
-                let error;
-                try {
-                    ({ error } = yield call([res, res.json]));
-                } catch(ignore) {} // eslint-disable-line no-empty
-                return yield put(patch(id, { status:`Failed to download from AMO. ${error || ''}`, statusExtra:undefined }));
+                const blob = yield call([res, res.blob]);
+                const signedDataUrl = yield call(blobToDataUrl, blob);
+
+                const signedFileId = yield (yield put(addFile(signedDataUrl))).promise;
+                yield put(patch(id, { signedFileId }));
             }
 
-            const blob = yield call([res, res.blob]);
-            const signedDataUrl = yield call(blobToDataUrl, blob);
+            yield put(patch(id, { status:undefined, statusExtra:undefined }));
 
-            const signedFileId = yield (yield put(addFile(signedDataUrl))).promise;
-            yield put(patch(id, { signedFileId }));
+            yield put(install(id, true));
         }
-
+    } else {
         yield put(patch(id, { status:undefined, statusExtra:undefined }));
-
-        yield put(install(id, true));
+        yield put(install(id, false));
     }
 
 }

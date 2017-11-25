@@ -185,9 +185,9 @@ function b64utoa(aStr) {
 
 export function parseGoogleJson(str) {
     // google stupidly allows comments in their json, and also new spaces
-    console.log('with comments:', str);
+    // console.log('with comments:', str);
     str = JSONminify(str);
-    console.log('without comments:', str);
+    // console.log('without comments:', str);
     return JSON.parse(str);
     // remove comments, trim it
 }
