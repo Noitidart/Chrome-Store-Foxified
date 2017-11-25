@@ -262,9 +262,7 @@ function* processWorker(action: ProcessAction) {
         console.log('got zip, will get manifestStr');
         const manifestStr = yield call([zip.file('manifest.json'), 'async'], 'string');
         console.log('manifestStr:', manifestStr);
-        let manifest;
-        try { manifest = parseGoogleJson(yield call([zip.file('manifest.json'), 'async'], 'string')) }
-        catch(ex) { return console.error('failed to parse manifest') || console.error('ex:', ex.message) }
+        const manifest = parseGoogleJson(yield call([zip.file('manifest.json'), 'async'], 'string'));
         console.log('parsed, manifst:', manifest);
         const { version } = manifest;
         let { name } = manifest;
