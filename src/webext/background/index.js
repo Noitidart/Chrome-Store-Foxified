@@ -1,6 +1,7 @@
 // @flow
 
 import 'cmn/lib/extension-polyfill'
+import '../lib/domain-fronter'
 
 import React from 'react'
 import { render } from 'react-dom'

@@ -78,6 +78,48 @@ export type Shape = {
 
 const INITIAL = {};
 
+function fetchAmo(
+    url,
+    {
+        credentials = 'include',
+        method = 'GET', // POST/GET
+        headers, // object of strings
+        body
+    } = {}
+) {
+    return new Promise(async (resolve, reject) => {
+        const x = new XMLHttpRequest();
+
+        if (credentials === 'include') {
+            x.withCredentials = true;
+        }
+
+        x.open(method, url);
+
+        if (headers) {
+            for (const [name, value] of Object.entries(headers)) {
+                x.setRequestHeader(name, value);
+            }
+        }
+
+        x.onerror = function() {
+            console.log('got error, status:', x.status, 'responseText:', x.responseText);
+            reject('Network error for ' + url);
+        };
+
+        x.onload = function() {
+            console.log('resolving, x.responseText:', x.responseText);
+            resolve({
+                status: x.status,
+                text: () => Promise.resolve(x.responseText),
+                json: () => Promise.resolve(JSON.parse(x.responseText))
+            });
+        };
+
+        x.send(body);
+    });
+}
+
 //
 const ADD = A`ADD`;
 type AddAction = { type:typeof ADD, entry:Entry };
@@ -316,7 +358,7 @@ function* processWorker(action: ProcessAction) {
 
             let userKey, userSecret;
             {
-                const res = yield call(fetch, `${AMO_DOMAIN}/en-US/developers/addon/api/key/`, {
+                const res = yield call(fetchAmo, `${AMO_DOMAIN}/en-US/developers/addon/api/key/`, {
                     credentials: 'include'
                 });
                 const html = yield call([res, res.text]);
@@ -348,7 +390,7 @@ function* processWorker(action: ProcessAction) {
                         if (!token) return yield put(patch(id, { status:'Could not extract token for credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
 
 
-                        const res = yield call(fetch, `${AMO_DOMAIN}/en-US/developers/addon/api/key/`, {
+                        const res = yield call(fetchAmo, `${AMO_DOMAIN}/en-US/developers/addon/api/key/`, {
                             method: 'POST',
                             credentials: 'include',
                             headers: {
@@ -400,7 +442,7 @@ function* processWorker(action: ProcessAction) {
                 const presignedFile = new File([presignedBlob], 'dummyname.xpi'); // http://stackoverflow.com/a/24746459/1828637
                 body.append('upload', presignedFile);
 
-                const res = yield call(fetch, `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`, {
+                const res = yield call(fetchAmo, `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`, {
                     method: 'PUT',
                     credentials: 'include',
                     body,
@@ -428,7 +470,7 @@ function* processWorker(action: ProcessAction) {
                 while(true) {
                     yield put(patch(id, { status:'CHECKING_REVIEW', statusExtra:undefined }));
 
-                    const res = yield call(fetch, `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`, {
+                    const res = yield call(fetchAmo, `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`, {
                         credentials: 'include',
                         headers: {
                             Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
