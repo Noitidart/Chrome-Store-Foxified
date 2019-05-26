@@ -470,6 +470,7 @@ function* processWorker(action: ProcessAction) {
                 while(true) {
                     yield put(patch(id, { status:'CHECKING_REVIEW', statusExtra:undefined }));
 
+                    console.log('checking for signingId:', signingId, 'version:', version);
                     const res = yield call(fetchAmo, `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`, {
                         credentials: 'include',
                         headers: {
@@ -480,6 +481,17 @@ function* processWorker(action: ProcessAction) {
                     console.log('CHECKING res.status:', res.status, 'reply:', reply);
 
                     if (res.status !== 200) {
+                        if (res.status === 404) {
+                            // maybe download is already done, let's see if downloadUrl can be got, if not then continue to error after this if block
+                            const res = yield call(fetchAmo, `${AMO_DOMAIN}/api/v3/addons/addon/${encodeURIComponent(signingId)}/versions`, {
+                                credentials: 'include',
+                                headers: {
+                                    Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
+                                }
+                            });
+                            const reply = yield call([res, res.json]);
+                            console.log('reply:', reply);
+                        }
                         let error;
                         try {
                             ({ error } = reply); // yield call([res, res.json]));
