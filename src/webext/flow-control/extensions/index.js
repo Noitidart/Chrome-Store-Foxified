@@ -11,6 +11,7 @@ import { get_webstore_url, get_crx_url, get_webstore_name, get_extensionID } fro
 import { omit } from 'cmn/lib/all'
 import { injectStatusPromise, blobToDataUrl, dataUrlToBlob, blobToArrBuf, crxToZip, arrBufToDataUrl, deleteUndefined, fetchEpoch, getBase64FromDataUrl, hashCode, generateJWTToken, parseGoogleJson } from './utils'
 import { getId, getIdSaga } from '../utils'
+import fetchFronted from '../../lib/fetch-frontend';
 
 import type { StatusInjection } from './utils'
 import type { FileId } from '../files'
@@ -316,9 +317,11 @@ function* processWorker(action: ProcessAction) {
 
             let userKey, userSecret;
             {
-                const res = yield call(fetch, `${AMO_DOMAIN}/en-US/developers/addon/api/key/`, {
-                    credentials: 'include'
-                });
+                const res = yield call(
+                    fetchFronted,
+                    `${AMO_DOMAIN}/en-US/developers/addon/api/key/`,
+                    { credentials: 'include' }
+                );
                 const html = yield call([res, res.text]);
 
                 if (html.includes('accept-agreement')) {
@@ -348,18 +351,22 @@ function* processWorker(action: ProcessAction) {
                         if (!token) return yield put(patch(id, { status:'Could not extract token for credentials - please report this bug at https://github.com/Noitidart/Chrome-Store-Foxified/issues.', statusExtra:undefined }));
 
 
-                        const res = yield call(fetch, `${AMO_DOMAIN}/en-US/developers/addon/api/key/`, {
-                            method: 'POST',
-                            credentials: 'include',
-                            headers: {
-                                Referer: `${AMO_DOMAIN}/en-US/developers/addon/api/key/`,
-                                'Content-Type': 'application/x-www-form-urlencoded'
-                            },
-                            body: qs.stringify({
-                                csrfmiddlewaretoken: token,
-                                action: 'generate'
-                            })
-                        });
+                        const res = yield call(
+                            fetchFronted,
+                            `${AMO_DOMAIN}/en-US/developers/addon/api/key/`,
+                            {
+                                method: 'POST',
+                                credentials: 'include',
+                                headers: {
+                                    Referer: `${AMO_DOMAIN}/en-US/developers/addon/api/key/`,
+                                    'Content-Type': 'application/x-www-form-urlencoded'
+                                },
+                                body: qs.stringify({
+                                    csrfmiddlewaretoken: token,
+                                    action: 'generate'
+                                })
+                            }
+                        );
                         const html2 = yield call([res, res.text]);
 
                         [ keyInputHtml ] = keyInputHtmlPatt.exec(html2) || [];
@@ -400,14 +407,18 @@ function* processWorker(action: ProcessAction) {
                 const presignedFile = new File([presignedBlob], 'dummyname.xpi'); // http://stackoverflow.com/a/24746459/1828637
                 body.append('upload', presignedFile);
 
-                const res = yield call(fetch, `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`, {
-                    method: 'PUT',
-                    credentials: 'include',
-                    body,
-                    headers: {
-                        Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
+                const res = yield call(
+                    fetchFronted,
+                    `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`,
+                    {
+                        method: 'PUT',
+                        credentials: 'include',
+                        body,
+                        headers: {
+                            Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
+                        }
                     }
-                });
+                );
                 const reply = yield call([res, res.json]);
                 console.log('UPLOADING res.status:', res.status, 'reply:', reply);
 
@@ -428,12 +439,16 @@ function* processWorker(action: ProcessAction) {
                 while(true) {
                     yield put(patch(id, { status:'CHECKING_REVIEW', statusExtra:undefined }));
 
-                    const res = yield call(fetch, `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`, {
-                        credentials: 'include',
-                        headers: {
-                            Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
+                    const res = yield call(
+                        fetchFronted,
+                        `${AMO_DOMAIN}/api/v3/addons/${encodeURIComponent(signingId)}/versions/${version}`,
+                        {
+                            credentials: 'include',
+                            headers: {
+                                Authorization: 'JWT ' + (yield call(generateJWTToken, userKey, userSecret))
+                            }
                         }
-                    });
+                    );
                     const reply = yield call([res, res.json]);
                     console.log('CHECKING res.status:', res.status, 'reply:', reply);
 

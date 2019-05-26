@@ -60,5 +60,5 @@
         { "matches":["http://addons.opera.com/*", "https://addons.opera.com/*"], "js":["ows.bundle.js"] }
     ],
 
-    "permissions": ["storage", "webNavigation", "webRequest", "webRequestBlocking", "<all_urls>", "tabs", "notifications", "downloads"]
+    "permissions": ["storage", "webNavigation", "webRequest", "webRequestBlocking", "<all_urls>", "cookies", "tabs", "notifications", "downloads"]
 }
