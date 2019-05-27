@@ -8,28 +8,34 @@ window.addEventListener('click', genericClick, true);
     const style = document.createElement('style');
     style.setAttribute('id', 'foxified-style')
     style.textContent = `
-        XXXdiv[aria-label="Available on Chrome"] {
-            overflow: hidden !important;
-            background-color: rgb(124, 191, 54) !important;
-            background-image: linear-gradient(to bottom, rgb(124, 191, 54), rgb(101, 173, 40)) !important; border-color:rgb(78, 155, 25) !important;
+        div[role=button][aria-label*="CHROME"],
+        div[role=button][aria-label*="Chrome"]
+        {
+            background-color: rgb(124, 191, 54);
+            background-image: linear-gradient(to bottom, rgb(124, 191, 54), rgb(101, 173, 40));
+            border-color:rgb(78, 155, 25);
         }
+
         div[role=button][aria-label*="CHROME"] .webstore-test-button-label,
         div[role=button][aria-label*="Chrome"] .webstore-test-button-label
         {
-            /* this is needed, because on search results page, the parent of this is set to display flex, so it centers things vertically, showing my "add to firefox" line and the one i pushed "available on chrome"*/
-            align-self: start;
-            overflow: hidden;
-            height: 100%;
+            font-size: 0;
         }
+
         div[role=button][aria-label*="CHROME"] .webstore-test-button-label::before,
         div[role=button][aria-label*="Chrome"] .webstore-test-button-label::before
         {
-            display: block;
+            display: flex;
             content: "Add To Firefox";
-            z-index: 2;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
         }
-        body > div:last-of-type > div:nth-of-type(2),	/* targeting download div */
-        .h-Yb-wa.Yb-wa									/* alt target download div */
+
+        /* targeting download div */
+        body > div:last-of-type > div:nth-of-type(2),
+        /* alt target download div */
+        .h-Yb-wa.Yb-wa
         {
             display: none;
         }
@@ -47,7 +53,7 @@ function uninit() {
 
 function genericClick(e) {
 	const target = e.target;
-	// console.log('clicked, targetEl:', targetEl.innerHTML);
+	console.log('clicked, target:', target.innerHTML);
 	if (target) {
         if (e.button !== 0) return;
 
